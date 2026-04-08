@@ -13,10 +13,10 @@ interface LoginProps {
 }
 
 const staffMembers = [
-  { id: "1", name: "Admin", role: "Admin", pin: "1234", initials: "AD" },
-  { id: "2", name: "Rahul S.", role: "Cashier", pin: "2345", initials: "RS" },
-  { id: "3", name: "Priya P.", role: "Server", pin: "3456", initials: "PP" },
-  { id: "4", name: "Amit K.", role: "Kitchen", pin: "4567", initials: "AK" },
+  { id: "1", name: "Admin", role: "Admin", pin: "1111", initials: "AD" },
+  { id: "2", name: "Rahul S.", role: "Cashier", pin: "1111", initials: "RS" },
+  { id: "3", name: "Priya P.", role: "Server", pin: "1111", initials: "PP" },
+  { id: "4", name: "Amit K.", role: "Kitchen", pin: "1111", initials: "AK" },
 ];
 
 export function Login({ onLogin }: LoginProps) {
