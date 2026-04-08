@@ -15,7 +15,7 @@ export default function POSApp() {
   return (
     <div className="flex h-screen bg-background">
       <POSSidebar />
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-auto">
         {activeView === "dashboard" && <Dashboard />}
         {activeView === "orders" && <NewOrder />}
         {activeView === "tables" && <TableManagement />}
