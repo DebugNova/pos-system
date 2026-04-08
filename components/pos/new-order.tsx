@@ -307,28 +307,40 @@ export function NewOrder() {
 
         {/* Menu Grid */}
         <div className="flex-1 overflow-y-auto p-3 lg:p-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-3">
             {filteredItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => handleAddItem(item)}
-                className="flex flex-col items-start rounded-lg border border-border bg-card p-3 text-left transition-all hover:border-primary/50 hover:bg-secondary/50 active:scale-[0.98] lg:rounded-xl lg:p-4"
+                className="group relative flex flex-col items-start overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-card to-secondary/30 p-3.5 text-left transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.97] lg:p-4"
               >
-                <span className="text-sm font-medium text-foreground lg:text-base">
-                  {item.name}
-                </span>
-                <span className="mt-0.5 text-base font-bold text-primary lg:mt-1 lg:text-lg">
-                  {item.price.toLocaleString("en-IN", {
-                    style: "currency",
-                    currency: "INR",
-                    minimumFractionDigits: 0,
-                  })}
-                </span>
-                {item.variants && (
-                  <Badge variant="secondary" className="mt-1.5 text-[10px] lg:mt-2 lg:text-xs">
-                    {item.variants.length} variants
-                  </Badge>
-                )}
+                {/* Subtle glow effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/0 transition-all duration-300 group-hover:from-primary/5 group-hover:to-primary/10" />
+                
+                {/* Content */}
+                <div className="relative z-10 flex w-full flex-col">
+                  <span className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary lg:text-base">
+                    {item.name}
+                  </span>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-lg font-bold text-primary lg:text-xl">
+                      {item.price.toLocaleString("en-IN", {
+                        style: "currency",
+                        currency: "INR",
+                        minimumFractionDigits: 0,
+                      })}
+                    </span>
+                    {/* Add indicator */}
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 transition-all group-hover:opacity-100">
+                      <Plus className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  {item.variants && (
+                    <Badge variant="outline" className="mt-2 w-fit border-primary/30 bg-primary/10 text-[10px] text-primary lg:text-xs">
+                      {item.variants.length} variants
+                    </Badge>
+                  )}
+                </div>
               </button>
             ))}
           </div>
