@@ -85,6 +85,7 @@ export interface Order {
   total: number;
   createdAt: Date;
   customerName?: string;
+  orderNotes?: string;
   platform?: "swiggy" | "zomato";
 }
 

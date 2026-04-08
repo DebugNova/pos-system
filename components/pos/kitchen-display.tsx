@@ -126,26 +126,41 @@ export function KitchenDisplay() {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground" suppressHydrationWarning>
                       <Clock className="h-3 w-3" />
                       {formatDistanceToNow(order.createdAt, { addSuffix: true })}
                       {order.tableId && (
-                        <Badge variant="secondary" className="ml-1 text-xs">
+                        <Badge variant="secondary" className="text-xs">
                           Table {order.tableId.replace("t", "")}
                         </Badge>
                       )}
+                      {order.customerName && (
+                        <Badge variant="outline" className="text-xs">
+                          {order.customerName}
+                        </Badge>
+                      )}
                     </div>
+                    {order.orderNotes && (
+                      <p className="mt-1 text-xs italic text-primary">
+                        Note: {order.orderNotes}
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <ul className="mb-3 space-y-1">
                       {order.items.map((item) => (
                         <li
                           key={item.id}
-                          className="flex justify-between text-sm"
+                          className="flex flex-col text-sm"
                         >
                           <span className="text-foreground">
                             {item.quantity}x {item.name}
                           </span>
+                          {item.notes && (
+                            <span className="text-xs text-muted-foreground italic pl-4">
+                              - {item.notes}
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -211,26 +226,41 @@ export function KitchenDisplay() {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground" suppressHydrationWarning>
                       <Clock className="h-3 w-3" />
                       {formatDistanceToNow(order.createdAt, { addSuffix: true })}
                       {order.tableId && (
-                        <Badge variant="secondary" className="ml-1 text-xs">
+                        <Badge variant="secondary" className="text-xs">
                           Table {order.tableId.replace("t", "")}
                         </Badge>
                       )}
+                      {order.customerName && (
+                        <Badge variant="outline" className="text-xs">
+                          {order.customerName}
+                        </Badge>
+                      )}
                     </div>
+                    {order.orderNotes && (
+                      <p className="mt-1 text-xs italic text-primary">
+                        Note: {order.orderNotes}
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <ul className="mb-3 space-y-1">
                       {order.items.map((item) => (
                         <li
                           key={item.id}
-                          className="flex justify-between text-sm"
+                          className="flex flex-col text-sm"
                         >
                           <span className="text-foreground">
                             {item.quantity}x {item.name}
                           </span>
+                          {item.notes && (
+                            <span className="text-xs text-muted-foreground italic pl-4">
+                              - {item.notes}
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -297,26 +327,41 @@ export function KitchenDisplay() {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground" suppressHydrationWarning>
                       <Clock className="h-3 w-3" />
                       {formatDistanceToNow(order.createdAt, { addSuffix: true })}
                       {order.tableId && (
-                        <Badge variant="secondary" className="ml-1 text-xs">
+                        <Badge variant="secondary" className="text-xs">
                           Table {order.tableId.replace("t", "")}
                         </Badge>
                       )}
+                      {order.customerName && (
+                        <Badge variant="outline" className="text-xs">
+                          {order.customerName}
+                        </Badge>
+                      )}
                     </div>
+                    {order.orderNotes && (
+                      <p className="mt-1 text-xs italic text-primary">
+                        Note: {order.orderNotes}
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <ul className="mb-3 space-y-1">
                       {order.items.map((item) => (
                         <li
                           key={item.id}
-                          className="flex justify-between text-sm"
+                          className="flex flex-col text-sm"
                         >
                           <span className="text-foreground">
                             {item.quantity}x {item.name}
                           </span>
+                          {item.notes && (
+                            <span className="text-xs text-muted-foreground italic pl-4">
+                              - {item.notes}
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>

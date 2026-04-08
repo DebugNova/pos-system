@@ -71,6 +71,7 @@ export function NewOrder() {
     orderType,
     selectedTable,
     customerName,
+    orderNotes,
     tables,
     menuItems,
     addToCart,
@@ -82,6 +83,7 @@ export function NewOrder() {
     setOrderType,
     setSelectedTable,
     setCustomerName,
+    setOrderNotes,
     addOrder,
     getCartTotal,
     setActiveView,
@@ -143,6 +145,7 @@ export function NewOrder() {
       status: "new",
       tableId: orderType === "dine-in" ? selectedTable || undefined : undefined,
       customerName: customerName || undefined,
+      orderNotes: orderNotes || undefined,
       items: cart.map((item, index) => ({
         id: `oi-${Date.now()}-${index}`,
         menuItemId: item.menuItemId,
@@ -167,6 +170,7 @@ export function NewOrder() {
       status: "new",
       tableId: orderType === "dine-in" ? selectedTable || undefined : undefined,
       customerName: customerName || undefined,
+      orderNotes: orderNotes || undefined,
       items: cart.map((item, index) => ({
         id: `oi-${Date.now()}-${index}`,
         menuItemId: item.menuItemId,
@@ -225,44 +229,54 @@ export function NewOrder() {
           })}
         </div>
 
-        {/* Table Selection for Dine-in / Customer Name for others */}
-        <div className="flex gap-3 border-b border-border p-3 lg:gap-4 lg:p-4">
-          {orderType === "dine-in" ? (
-            <>
-              <span className="flex items-center text-xs text-muted-foreground lg:text-sm">
-                Table:
+        {/* Table Selection for Dine-in */}
+        {orderType === "dine-in" && (
+          <div className="flex gap-3 border-b border-border p-3 lg:gap-4 lg:p-4">
+            <span className="flex items-center text-xs text-muted-foreground lg:text-sm">
+              Table:
+            </span>
+            {availableTables.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 lg:gap-2">
+                {availableTables.map((table) => (
+                  <Button
+                    key={table.id}
+                    variant={selectedTable === table.id ? "default" : "outline"}
+                    size="sm"
+                    className="min-w-[52px] h-9 text-xs lg:min-w-[60px] lg:h-10 lg:text-sm"
+                    onClick={() => setSelectedTable(table.id)}
+                  >
+                    T{table.number}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs text-muted-foreground lg:text-sm">
+                No tables available
               </span>
-              {availableTables.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5 lg:gap-2">
-                  {availableTables.map((table) => (
-                    <Button
-                      key={table.id}
-                      variant={selectedTable === table.id ? "default" : "outline"}
-                      size="sm"
-                      className="min-w-[52px] h-9 text-xs lg:min-w-[60px] lg:h-10 lg:text-sm"
-                      onClick={() => setSelectedTable(table.id)}
-                    >
-                      T{table.number}
-                    </Button>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-xs text-muted-foreground lg:text-sm">
-                  No tables available
-                </span>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-1 items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Customer name (optional)"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="flex-1 h-10 bg-secondary border-none text-sm lg:h-11"
-              />
-            </div>
-          )}
+            )}
+          </div>
+        )}
+
+        {/* Customer Name & Order Notes (for all order types) */}
+        <div className="flex flex-col gap-2 border-b border-border p-3 lg:flex-row lg:gap-4 lg:p-4">
+          <div className="flex flex-1 items-center gap-2">
+            <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Input
+              placeholder="Customer name (optional)"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="flex-1 h-9 bg-secondary border-none text-sm lg:h-10"
+            />
+          </div>
+          <div className="flex flex-1 items-center gap-2">
+            <Edit3 className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Input
+              placeholder="Order note (optional)"
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              className="flex-1 h-9 bg-secondary border-none text-sm lg:h-10"
+            />
+          </div>
         </div>
 
         {/* Search & Categories */}
@@ -363,7 +377,7 @@ export function NewOrder() {
               </Button>
             )}
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
             <Badge variant="outline">{orderType}</Badge>
             {selectedTable && (
               <Badge variant="secondary">
@@ -372,6 +386,11 @@ export function NewOrder() {
             )}
             {customerName && (
               <Badge variant="secondary">{customerName}</Badge>
+            )}
+            {orderNotes && (
+              <Badge variant="outline" className="max-w-[120px] truncate text-xs">
+                {orderNotes}
+              </Badge>
             )}
           </div>
         </CardHeader>

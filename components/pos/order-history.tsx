@@ -295,6 +295,14 @@ export function OrderHistory() {
                 </div>
               )}
 
+              {/* Order Notes */}
+              {order.orderNotes && (
+                <div className="rounded-lg bg-primary/10 border border-primary/20 p-3">
+                  <p className="text-sm text-muted-foreground">Order Note</p>
+                  <p className="font-medium text-primary">{order.orderNotes}</p>
+                </div>
+              )}
+
               {/* Order Items */}
               <div className="rounded-lg bg-secondary/50 p-3">
                 <p className="mb-2 text-sm text-muted-foreground">Items</p>

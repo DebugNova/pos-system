@@ -44,6 +44,7 @@ interface POSState {
   orderType: OrderType;
   selectedTable: string | null;
   customerName: string;
+  orderNotes: string;
   addToCart: (item: Omit<CartItem, "tempId">) => void;
   removeFromCart: (tempId: string) => void;
   updateQuantity: (tempId: string, quantity: number) => void;
@@ -53,6 +54,7 @@ interface POSState {
   setOrderType: (type: OrderType) => void;
   setSelectedTable: (tableId: string | null) => void;
   setCustomerName: (name: string) => void;
+  setOrderNotes: (notes: string) => void;
 
   // Menu Items
   menuItems: MenuItem[];
@@ -119,6 +121,7 @@ export const usePOSStore = create<POSState>()(
       orderType: "dine-in",
       selectedTable: null,
       customerName: "",
+      orderNotes: "",
 
       addToCart: (item) => {
         const tempId = `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -161,11 +164,12 @@ export const usePOSStore = create<POSState>()(
         }));
       },
 
-      clearCart: () => set({ cart: [], selectedTable: null, customerName: "" }),
+      clearCart: () => set({ cart: [], selectedTable: null, customerName: "", orderNotes: "" }),
 
       setOrderType: (type) => set({ orderType: type }),
       setSelectedTable: (tableId) => set({ selectedTable: tableId }),
       setCustomerName: (name) => set({ customerName: name }),
+      setOrderNotes: (notes) => set({ orderNotes: notes }),
 
       // Menu Items
       menuItems: defaultMenuItems,
