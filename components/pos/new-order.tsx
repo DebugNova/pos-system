@@ -8,6 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Search,
   Plus,
@@ -22,6 +31,9 @@ import {
   CupSoda,
   Printer,
   CreditCard,
+  User,
+  Edit3,
+  X,
 } from "lucide-react";
 
 const orderTypes = [
@@ -31,27 +43,44 @@ const orderTypes = [
   { id: "aggregator", label: "Online", icon: Store },
 ] as const;
 
-const categoryIcons = {
+const categoryIcons: Record<string, React.ElementType> = {
   tea: Leaf,
   coffee: Coffee,
   drinks: CupSoda,
 };
 
+const modifiers = [
+  { id: "extra-shot", name: "Extra Shot", price: 30 },
+  { id: "oat-milk", name: "Oat Milk", price: 40 },
+  { id: "sugar-free", name: "Sugar Free", price: 0 },
+  { id: "less-ice", name: "Less Ice", price: 0 },
+  { id: "extra-hot", name: "Extra Hot", price: 0 },
+];
+
 export function NewOrder() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [itemNotes, setItemNotes] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState<string>("");
+  const [showModifierDialog, setShowModifierDialog] = useState(false);
+  const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
 
   const {
     cart,
     orderType,
     selectedTable,
+    customerName,
     tables,
     addToCart,
     removeFromCart,
     updateQuantity,
+    updateItemNotes,
+    updateItemVariant,
     clearCart,
     setOrderType,
     setSelectedTable,
+    setCustomerName,
     addOrder,
     getCartTotal,
     setActiveView,
@@ -69,12 +98,39 @@ export function NewOrder() {
   const availableTables = tables.filter((t) => t.status === "available");
 
   const handleAddItem = (item: MenuItem) => {
+    if (item.variants && item.variants.length > 0) {
+      setCurrentMenuItem(item);
+      setSelectedVariant(item.variants[0].name);
+      setShowModifierDialog(true);
+    } else {
+      addToCart({
+        menuItemId: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: 1,
+      });
+    }
+  };
+
+  const handleAddWithModifiers = () => {
+    if (!currentMenuItem) return;
+
+    const variant = currentMenuItem.variants?.find((v) => v.name === selectedVariant);
+    const price = variant ? variant.price : currentMenuItem.price;
+
     addToCart({
-      menuItemId: item.id,
-      name: item.name,
-      price: item.price,
+      menuItemId: currentMenuItem.id,
+      name: currentMenuItem.name,
+      price: price,
       quantity: 1,
+      variant: selectedVariant || undefined,
+      notes: itemNotes || undefined,
     });
+
+    setShowModifierDialog(false);
+    setCurrentMenuItem(null);
+    setSelectedVariant("");
+    setItemNotes("");
   };
 
   const handlePlaceOrder = () => {
@@ -85,6 +141,7 @@ export function NewOrder() {
       type: orderType,
       status: "new",
       tableId: orderType === "dine-in" ? selectedTable || undefined : undefined,
+      customerName: customerName || undefined,
       items: cart.map((item, index) => ({
         id: `oi-${Date.now()}-${index}`,
         menuItemId: item.menuItemId,
@@ -98,6 +155,46 @@ export function NewOrder() {
     });
 
     setActiveView("kitchen");
+  };
+
+  const handleSendToKitchen = () => {
+    if (cart.length === 0) return;
+    if (orderType === "dine-in" && !selectedTable) return;
+
+    addOrder({
+      type: orderType,
+      status: "new",
+      tableId: orderType === "dine-in" ? selectedTable || undefined : undefined,
+      customerName: customerName || undefined,
+      items: cart.map((item, index) => ({
+        id: `oi-${Date.now()}-${index}`,
+        menuItemId: item.menuItemId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        variant: item.variant,
+        notes: item.notes,
+      })),
+      total: getCartTotal(),
+    });
+
+    setActiveView("kitchen");
+  };
+
+  const handleEditItemNotes = (tempId: string) => {
+    const item = cart.find((i) => i.tempId === tempId);
+    if (item) {
+      setEditingItem(tempId);
+      setItemNotes(item.notes || "");
+    }
+  };
+
+  const handleSaveItemNotes = () => {
+    if (editingItem) {
+      updateItemNotes(editingItem, itemNotes);
+      setEditingItem(null);
+      setItemNotes("");
+    }
   };
 
   return (
@@ -127,31 +224,45 @@ export function NewOrder() {
           })}
         </div>
 
-        {/* Table Selection for Dine-in */}
-        {orderType === "dine-in" && (
-          <div className="flex gap-2 overflow-x-auto border-b border-border p-4">
-            <span className="flex items-center text-sm text-muted-foreground">
-              Table:
-            </span>
-            {availableTables.length > 0 ? (
-              availableTables.map((table) => (
-                <Button
-                  key={table.id}
-                  variant={selectedTable === table.id ? "default" : "outline"}
-                  size="sm"
-                  className="min-w-[60px]"
-                  onClick={() => setSelectedTable(table.id)}
-                >
-                  T{table.number}
-                </Button>
-              ))
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                No tables available
+        {/* Table Selection for Dine-in / Customer Name for others */}
+        <div className="flex gap-4 border-b border-border p-4">
+          {orderType === "dine-in" ? (
+            <>
+              <span className="flex items-center text-sm text-muted-foreground">
+                Table:
               </span>
-            )}
-          </div>
-        )}
+              {availableTables.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {availableTables.map((table) => (
+                    <Button
+                      key={table.id}
+                      variant={selectedTable === table.id ? "default" : "outline"}
+                      size="sm"
+                      className="min-w-[60px]"
+                      onClick={() => setSelectedTable(table.id)}
+                    >
+                      T{table.number}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  No tables available
+                </span>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-1 items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Customer name (optional)"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="flex-1 bg-secondary border-none"
+              />
+            </div>
+          )}
+        </div>
 
         {/* Search & Categories */}
         <div className="flex gap-4 border-b border-border p-4">
@@ -186,7 +297,7 @@ export function NewOrder() {
                 onClick={() => setActiveCategory(cat.id)}
                 className="shrink-0 gap-1.5"
               >
-                <Icon className="h-4 w-4" />
+                {Icon && <Icon className="h-4 w-4" />}
                 {cat.name}
               </Button>
             );
@@ -246,6 +357,9 @@ export function NewOrder() {
                 Table {selectedTable.replace("t", "")}
               </Badge>
             )}
+            {customerName && (
+              <Badge variant="secondary">{customerName}</Badge>
+            )}
           </div>
         </CardHeader>
 
@@ -263,19 +377,37 @@ export function NewOrder() {
                 {cart.map((item) => (
                   <div
                     key={item.tempId}
-                    className="flex items-center justify-between rounded-lg bg-secondary/50 p-3"
+                    className="rounded-lg bg-secondary/50 p-3"
                   >
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">{item.name}</p>
-                      <p className="text-sm text-primary">
-                        {item.price.toLocaleString("en-IN", {
-                          style: "currency",
-                          currency: "INR",
-                          minimumFractionDigits: 0,
-                        })}
-                      </p>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">{item.name}</p>
+                        {item.variant && (
+                          <p className="text-xs text-muted-foreground">{item.variant}</p>
+                        )}
+                        <p className="text-sm text-primary">
+                          {item.price.toLocaleString("en-IN", {
+                            style: "currency",
+                            currency: "INR",
+                            minimumFractionDigits: 0,
+                          })}
+                        </p>
+                        {item.notes && (
+                          <p className="mt-1 text-xs text-muted-foreground italic">
+                            Note: {item.notes}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground"
+                        onClick={() => handleEditItemNotes(item.tempId)}
+                      >
+                        <Edit3 className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="mt-2 flex items-center gap-2">
                       <Button
                         variant="outline"
                         size="icon"
@@ -286,7 +418,7 @@ export function NewOrder() {
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-6 text-center font-medium text-foreground">
+                      <span className="w-8 text-center font-medium text-foreground">
                         {item.quantity}
                       </span>
                       <Button
@@ -299,6 +431,13 @@ export function NewOrder() {
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
+                      <span className="ml-auto font-semibold text-foreground">
+                        {(item.price * item.quantity).toLocaleString("en-IN", {
+                          style: "currency",
+                          currency: "INR",
+                          minimumFractionDigits: 0,
+                        })}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -347,6 +486,7 @@ export function NewOrder() {
                 size="lg"
                 className="flex-1 h-14"
                 disabled={cart.length === 0}
+                onClick={handleSendToKitchen}
               >
                 <Printer className="mr-2 h-4 w-4" />
                 KOT
@@ -367,6 +507,99 @@ export function NewOrder() {
           </div>
         </CardContent>
       </div>
+
+      {/* Modifier Dialog */}
+      <Dialog open={showModifierDialog} onOpenChange={setShowModifierDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{currentMenuItem?.name}</DialogTitle>
+            <DialogDescription>
+              Select variant and add notes
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {/* Variants */}
+            {currentMenuItem?.variants && currentMenuItem.variants.length > 0 && (
+              <div className="space-y-2">
+                <Label>Variant</Label>
+                <div className="flex flex-wrap gap-2">
+                  {currentMenuItem.variants.map((variant) => (
+                    <Button
+                      key={variant.name}
+                      variant={selectedVariant === variant.name ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedVariant(variant.name)}
+                    >
+                      {variant.name} - {variant.price.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label>Special Instructions</Label>
+              <Textarea
+                placeholder="Add notes (e.g., less sugar, extra hot)"
+                value={itemNotes}
+                onChange={(e) => setItemNotes(e.target.value)}
+                className="bg-secondary border-none"
+              />
+            </div>
+
+            {/* Quick modifiers */}
+            <div className="space-y-2">
+              <Label>Quick Options</Label>
+              <div className="flex flex-wrap gap-2">
+                {modifiers.map((mod) => (
+                  <Button
+                    key={mod.id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setItemNotes((prev) => prev ? `${prev}, ${mod.name}` : mod.name)}
+                  >
+                    {mod.name}
+                    {mod.price > 0 && ` (+₹${mod.price})`}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Button className="w-full" onClick={handleAddWithModifiers}>
+              Add to Order
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Notes Dialog */}
+      <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Notes</DialogTitle>
+            <DialogDescription>
+              Add special instructions for this item
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Textarea
+              placeholder="Add notes..."
+              value={itemNotes}
+              onChange={(e) => setItemNotes(e.target.value)}
+              className="bg-secondary border-none"
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setEditingItem(null)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleSaveItemNotes}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -151,4 +151,41 @@ export const sampleOrders: Order[] = [
     total: 150,
     createdAt: new Date(Date.now() - 8 * 60000),
   },
+  {
+    id: "ord-6",
+    type: "aggregator",
+    status: "new",
+    platform: "zomato",
+    customerName: "Vikram K.",
+    items: [
+      { id: "oi-9", menuItemId: "coffee-2", name: "Cappuccino", price: 120, quantity: 2 },
+      { id: "oi-10", menuItemId: "drink-6", name: "Iced Mocha", price: 170, quantity: 1 },
+    ],
+    total: 410,
+    createdAt: new Date(Date.now() - 3 * 60000),
+  },
+  {
+    id: "ord-7",
+    type: "aggregator",
+    status: "preparing",
+    platform: "swiggy",
+    customerName: "Neha S.",
+    items: [
+      { id: "oi-11", menuItemId: "tea-4", name: "Honey Ginger Tea", price: 100, quantity: 2 },
+      { id: "oi-12", menuItemId: "coffee-6", name: "Hazelnut", price: 160, quantity: 1 },
+    ],
+    total: 360,
+    createdAt: new Date(Date.now() - 12 * 60000),
+  },
+  {
+    id: "ord-8",
+    type: "delivery",
+    status: "ready",
+    customerName: "Ankit P.",
+    items: [
+      { id: "oi-13", menuItemId: "drink-3", name: "Peach Iced Tea", price: 150, quantity: 2 },
+    ],
+    total: 300,
+    createdAt: new Date(Date.now() - 20 * 60000),
+  },
 ];
