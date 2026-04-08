@@ -60,33 +60,34 @@ export function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4 p-4 lg:gap-6 lg:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl font-bold text-foreground lg:text-2xl">Dashboard</h1>
+          <p className="text-xs text-muted-foreground lg:text-sm">
             Welcome back, Admin. Here&apos;s your cafe overview.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Button
             variant="outline"
-            className="gap-2"
+            size="sm"
+            className="gap-1.5 h-9 lg:h-10 lg:gap-2"
             onClick={() => setShowReports(true)}
           >
-            <BarChart3 className="h-4 w-4" />
-            Reports
+            <BarChart3 className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
+            <span className="text-xs lg:text-sm">Reports</span>
           </Button>
-          <Badge variant="outline" className="gap-1.5 py-1.5 text-success border-success/30 bg-success/10">
-            <Wifi className="h-3 w-3" />
+          <Badge variant="outline" className="gap-1 py-1 text-xs text-success border-success/30 bg-success/10 lg:gap-1.5 lg:py-1.5">
+            <Wifi className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
             Online
           </Badge>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4 lg:gap-4">
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">

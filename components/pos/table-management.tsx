@@ -108,33 +108,33 @@ export function TableManagement() {
   const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : null;
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full flex-col p-3 lg:p-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Table Management</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-lg font-bold text-foreground lg:text-2xl">Table Management</h1>
+          <p className="text-xs text-muted-foreground lg:text-sm">
             Tap a table to view or start an order
           </p>
         </div>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-success" />
-            <span className="text-sm text-muted-foreground">Available</span>
+        <div className="flex flex-wrap gap-3 lg:gap-4">
+          <div className="flex items-center gap-1.5 lg:gap-2">
+            <div className="h-2.5 w-2.5 rounded-full bg-success lg:h-3 lg:w-3" />
+            <span className="text-xs text-muted-foreground lg:text-sm">Available</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-warning" />
-            <span className="text-sm text-muted-foreground">Occupied</span>
+          <div className="flex items-center gap-1.5 lg:gap-2">
+            <div className="h-2.5 w-2.5 rounded-full bg-warning lg:h-3 lg:w-3" />
+            <span className="text-xs text-muted-foreground lg:text-sm">Occupied</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-destructive" />
-            <span className="text-sm text-muted-foreground">Waiting Payment</span>
+          <div className="flex items-center gap-1.5 lg:gap-2">
+            <div className="h-2.5 w-2.5 rounded-full bg-destructive lg:h-3 lg:w-3" />
+            <span className="text-xs text-muted-foreground lg:text-sm">Waiting Payment</span>
           </div>
         </div>
       </div>
 
       {/* Table Grid */}
-      <div className="grid flex-1 grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid flex-1 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4 xl:grid-cols-4">
         {tables.map((table) => {
           const order = getTableOrder(table.orderId);
           return (

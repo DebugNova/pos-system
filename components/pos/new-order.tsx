@@ -198,11 +198,11 @@ export function NewOrder() {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col lg:flex-row">
       {/* Menu Section */}
-      <div className="flex flex-1 flex-col border-r border-border">
+      <div className="flex flex-1 flex-col border-b border-border lg:border-b-0 lg:border-r">
         {/* Order Type Selection */}
-        <div className="flex gap-2 border-b border-border p-4">
+        <div className="flex gap-2 border-b border-border p-3 lg:p-4">
           {orderTypes.map((type) => {
             const Icon = type.icon;
             const isActive = orderType === type.id;
@@ -212,33 +212,33 @@ export function NewOrder() {
                 variant={isActive ? "default" : "secondary"}
                 size="lg"
                 className={cn(
-                  "flex-1 gap-2 h-14 text-base",
-                  isActive && "bg-primary text-primary-foreground"
+                  "flex-1 gap-1.5 h-11 text-sm lg:h-14 lg:gap-2 lg:text-base",
+                  isActive && "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                 )}
                 onClick={() => setOrderType(type.id as typeof orderType)}
               >
-                <Icon className="h-5 w-5" />
-                {type.label}
+                <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
+                <span className="hidden sm:inline">{type.label}</span>
               </Button>
             );
           })}
         </div>
 
         {/* Table Selection for Dine-in / Customer Name for others */}
-        <div className="flex gap-4 border-b border-border p-4">
+        <div className="flex gap-3 border-b border-border p-3 lg:gap-4 lg:p-4">
           {orderType === "dine-in" ? (
             <>
-              <span className="flex items-center text-sm text-muted-foreground">
+              <span className="flex items-center text-xs text-muted-foreground lg:text-sm">
                 Table:
               </span>
               {availableTables.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 lg:gap-2">
                   {availableTables.map((table) => (
                     <Button
                       key={table.id}
                       variant={selectedTable === table.id ? "default" : "outline"}
                       size="sm"
-                      className="min-w-[60px]"
+                      className="min-w-[52px] h-9 text-xs lg:min-w-[60px] lg:h-10 lg:text-sm"
                       onClick={() => setSelectedTable(table.id)}
                     >
                       T{table.number}
@@ -246,7 +246,7 @@ export function NewOrder() {
                   ))}
                 </div>
               ) : (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs text-muted-foreground lg:text-sm">
                   No tables available
                 </span>
               )}
@@ -258,27 +258,27 @@ export function NewOrder() {
                 placeholder="Customer name (optional)"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="flex-1 bg-secondary border-none"
+                className="flex-1 h-10 bg-secondary border-none text-sm lg:h-11"
               />
             </div>
           )}
         </div>
 
         {/* Search & Categories */}
-        <div className="flex gap-4 border-b border-border p-4">
+        <div className="flex gap-3 border-b border-border p-3 lg:gap-4 lg:p-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search menu..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 bg-secondary border-none"
+              className="pl-10 h-10 bg-secondary border-none text-sm lg:h-12"
             />
           </div>
         </div>
 
         {/* Category Tabs */}
-        <div className="flex gap-2 overflow-x-auto border-b border-border px-4 py-3">
+        <div className="flex gap-1.5 overflow-x-auto border-b border-border px-3 py-2.5 lg:gap-2 lg:px-4 lg:py-3">
           <Button
             variant={activeCategory === "all" ? "default" : "ghost"}
             size="sm"
@@ -305,18 +305,18 @@ export function NewOrder() {
         </div>
 
         {/* Menu Grid */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+        <div className="flex-1 overflow-y-auto p-3 lg:p-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-3">
             {filteredItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => handleAddItem(item)}
-                className="flex flex-col items-start rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/50 hover:bg-secondary/50 active:scale-[0.98]"
+                className="flex flex-col items-start rounded-lg border border-border bg-card p-3 text-left transition-all hover:border-primary/50 hover:bg-secondary/50 active:scale-[0.98] lg:rounded-xl lg:p-4"
               >
-                <span className="text-base font-medium text-foreground">
+                <span className="text-sm font-medium text-foreground lg:text-base">
                   {item.name}
                 </span>
-                <span className="mt-1 text-lg font-bold text-primary">
+                <span className="mt-0.5 text-base font-bold text-primary lg:mt-1 lg:text-lg">
                   {item.price.toLocaleString("en-IN", {
                     style: "currency",
                     currency: "INR",
@@ -324,7 +324,7 @@ export function NewOrder() {
                   })}
                 </span>
                 {item.variants && (
-                  <Badge variant="secondary" className="mt-2 text-xs">
+                  <Badge variant="secondary" className="mt-1.5 text-[10px] lg:mt-2 lg:text-xs">
                     {item.variants.length} variants
                   </Badge>
                 )}
@@ -335,7 +335,7 @@ export function NewOrder() {
       </div>
 
       {/* Cart Section */}
-      <div className="flex w-96 flex-col bg-card">
+      <div className="flex w-full flex-col bg-card lg:w-80 xl:w-96">
         <CardHeader className="border-b border-border">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Current Order</CardTitle>
