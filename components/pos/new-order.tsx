@@ -199,9 +199,9 @@ export function NewOrder() {
   };
 
   return (
-    <div className="flex h-full flex-col lg:flex-row">
+    <div className="flex h-full flex-row">
       {/* Menu Section */}
-      <div className="flex flex-1 flex-col border-b border-border lg:border-b-0 lg:border-r">
+      <div className="flex flex-1 flex-col border-r border-border">
         {/* Order Type Selection */}
         <div className="flex gap-2 border-b border-border p-3 lg:p-4">
           {orderTypes.map((type) => {
@@ -336,7 +336,7 @@ export function NewOrder() {
       </div>
 
       {/* Cart Section */}
-      <div className="flex w-full flex-col bg-card lg:w-80 xl:w-96">
+      <div className="flex w-72 shrink-0 flex-col bg-card sm:w-80 lg:w-80 xl:w-96">
         <CardHeader className="border-b border-border">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Current Order</CardTitle>

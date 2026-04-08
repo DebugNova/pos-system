@@ -3,6 +3,9 @@ import { persist } from "zustand/middleware";
 import type { Order, OrderItem, OrderType, Table, MenuItem } from "./data";
 import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
 
+// Version to force refresh when data structure changes
+const STORE_VERSION = 2;
+
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
 }
@@ -361,12 +364,24 @@ export const usePOSStore = create<POSState>()(
     }),
     {
       name: "suhashi-pos-storage",
+      version: STORE_VERSION,
       partialize: (state) => ({
         orders: state.orders,
         tables: state.tables,
         menuItems: state.menuItems,
         staffMembers: state.staffMembers,
       }),
+      migrate: (persistedState, version) => {
+        // Reset tables to default when version changes
+        if (version < STORE_VERSION) {
+          const state = persistedState as Partial<POSState>;
+          return {
+            ...state,
+            tables: initialTables,
+          };
+        }
+        return persistedState as POSState;
+      },
       onRehydrateStorage: () => (state) => {
         // Convert date strings back to Date objects after rehydration
         if (state?.orders) {
