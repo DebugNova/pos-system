@@ -219,7 +219,7 @@ export function Dashboard() {
                         </Badge>
                       )}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground" suppressHydrationWarning>
                       {order.items.length} items &bull;{" "}
                       {formatDistanceToNow(order.createdAt, { addSuffix: true })}
                     </p>
