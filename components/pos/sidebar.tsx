@@ -9,7 +9,6 @@ import {
   ShoppingCart,
   Grid3X3,
   ChefHat,
-  BarChart3,
   Settings,
   Coffee,
   Store,
@@ -26,7 +25,6 @@ const navItems = [
   { id: "aggregator", label: "Online", icon: Store, showBadge: true },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "history", label: "History", icon: ClipboardList },
-  { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "settings", label: "Settings", icon: Settings },
 ] as const;
 

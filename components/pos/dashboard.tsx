@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { usePOSStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   IndianRupee,
   ShoppingBag,
@@ -10,11 +12,14 @@ import {
   Clock,
   AlertTriangle,
   Wifi,
-  WifiOff,
+  BarChart3,
+  ArrowLeft,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { ReportsContent } from "./reports";
 
 export function Dashboard() {
+  const [showReports, setShowReports] = useState(false);
   const { orders, tables, setActiveView } = usePOSStore();
 
   const todaySales = orders
@@ -36,6 +41,24 @@ export function Dashboard() {
 
   const recentOrders = orders.slice(0, 5);
 
+  if (showReports) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex items-center gap-4 border-b border-border p-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowReports(false)}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-semibold text-foreground">Reports & Analytics</h1>
+        </div>
+        <ReportsContent />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 p-6">
       {/* Header */}
@@ -46,7 +69,15 @@ export function Dashboard() {
             Welcome back, Admin. Here&apos;s your cafe overview.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setShowReports(true)}
+          >
+            <BarChart3 className="h-4 w-4" />
+            Reports
+          </Button>
           <Badge variant="outline" className="gap-1.5 py-1.5 text-success border-success/30 bg-success/10">
             <Wifi className="h-3 w-3" />
             Online

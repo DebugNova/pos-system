@@ -42,10 +42,10 @@ const hourlyRevenue = [
 ];
 
 const paymentBreakdown = [
-  { name: "UPI", value: 45, color: "hsl(var(--chart-1))" },
-  { name: "Cash", value: 30, color: "hsl(var(--chart-2))" },
-  { name: "Card", value: 20, color: "hsl(var(--chart-3))" },
-  { name: "Online", value: 5, color: "hsl(var(--chart-4))" },
+  { name: "UPI", value: 45, color: "#f59e0b" },
+  { name: "Cash", value: 30, color: "#22c55e" },
+  { name: "Card", value: 20, color: "#3b82f6" },
+  { name: "Online", value: 5, color: "#ec4899" },
 ];
 
 const topItems = [
@@ -56,7 +56,7 @@ const topItems = [
   { name: "Spanish Latte", orders: 24, revenue: 3600 },
 ];
 
-export function Reports() {
+export function ReportsContent() {
   const { orders } = usePOSStore();
 
   const totalRevenue = orders
@@ -182,9 +182,9 @@ export function Reports() {
                   <Line
                     type="monotone"
                     dataKey="revenue"
-                    stroke="hsl(var(--primary))"
+                    stroke="#f59e0b"
                     strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))" }}
+                    dot={{ fill: "#f59e0b", strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -294,7 +294,7 @@ export function Reports() {
                 />
                 <Bar
                   dataKey="orders"
-                  fill="hsl(var(--primary))"
+                  fill="#f59e0b"
                   radius={[0, 4, 4, 0]}
                 />
               </BarChart>

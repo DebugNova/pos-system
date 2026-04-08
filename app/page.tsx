@@ -5,7 +5,7 @@ import { Dashboard } from "@/components/pos/dashboard";
 import { NewOrder } from "@/components/pos/new-order";
 import { TableManagement } from "@/components/pos/table-management";
 import { KitchenDisplay } from "@/components/pos/kitchen-display";
-import { Reports } from "@/components/pos/reports";
+
 import { Settings } from "@/components/pos/settings";
 import { AggregatorInbox } from "@/components/pos/aggregator-inbox";
 import { Billing } from "@/components/pos/billing";
@@ -31,7 +31,6 @@ export default function POSApp() {
         {activeView === "aggregator" && <AggregatorInbox />}
         {activeView === "billing" && <Billing />}
         {activeView === "history" && <OrderHistory />}
-        {activeView === "reports" && <Reports />}
         {activeView === "settings" && <Settings />}
       </main>
     </div>
