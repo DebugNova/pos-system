@@ -14,12 +14,15 @@ import {
   Wifi,
   BarChart3,
   ArrowLeft,
+  Database,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ReportsContent } from "./reports";
+import { DataManager } from "./data-manager";
 
 export function Dashboard() {
   const [showReports, setShowReports] = useState(false);
+  const [showDataManager, setShowDataManager] = useState(false);
   const { orders, tables, setActiveView } = usePOSStore();
 
   const todaySales = orders
@@ -59,6 +62,10 @@ export function Dashboard() {
     );
   }
 
+  if (showDataManager) {
+    return <DataManager onBack={() => setShowDataManager(false)} />;
+  }
+
   return (
     <div className="flex flex-col gap-4 p-4 lg:gap-6 lg:p-6">
       {/* Header */}
@@ -78,6 +85,15 @@ export function Dashboard() {
           >
             <BarChart3 className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
             <span className="text-xs lg:text-sm">Reports</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-9 lg:h-10 lg:gap-2"
+            onClick={() => setShowDataManager(true)}
+          >
+            <Database className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
+            <span className="text-xs lg:text-sm">Data</span>
           </Button>
           <Badge variant="outline" className="gap-1 py-1 text-xs text-success border-success/30 bg-success/10 lg:gap-1.5 lg:py-1.5">
             <Wifi className="h-2.5 w-2.5 lg:h-3 lg:w-3" />

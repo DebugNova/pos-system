@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePOSStore } from "@/lib/store";
-import { categories, menuItems, type MenuItem } from "@/lib/data";
+import { categories, type MenuItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,6 +72,7 @@ export function NewOrder() {
     selectedTable,
     customerName,
     tables,
+    menuItems,
     addToCart,
     removeFromCart,
     updateQuantity,

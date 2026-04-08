@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePOSStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,15 +13,17 @@ interface LoginProps {
   onLogin: (user: { name: string; role: string; pin: string }) => void;
 }
 
-const staffMembers = [
-  { id: "1", name: "Admin", role: "Admin", pin: "1111", initials: "AD" },
-  { id: "2", name: "Rahul S.", role: "Cashier", pin: "1111", initials: "RS" },
-  { id: "3", name: "Priya P.", role: "Server", pin: "1111", initials: "PP" },
-  { id: "4", name: "Amit K.", role: "Kitchen", pin: "1111", initials: "AK" },
-];
+interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+  pin: string;
+  initials: string;
+}
 
 export function Login({ onLogin }: LoginProps) {
-  const [selectedStaff, setSelectedStaff] = useState<typeof staffMembers[0] | null>(null);
+  const { staffMembers } = usePOSStore();
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [shiftStarted, setShiftStarted] = useState(false);
