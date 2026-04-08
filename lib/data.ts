@@ -57,11 +57,11 @@ export interface Table {
 
 export const tables: Table[] = [
   { id: "t1", number: 1, capacity: 2, status: "available" },
-  { id: "t2", number: 2, capacity: 2, status: "occupied", orderId: "ord-1" },
+  { id: "t2", number: 2, capacity: 2, status: "available" },
   { id: "t3", number: 3, capacity: 4, status: "available" },
-  { id: "t4", number: 4, capacity: 4, status: "waiting-payment", orderId: "ord-2" },
+  { id: "t4", number: 4, capacity: 4, status: "available" },
   { id: "t5", number: 5, capacity: 6, status: "available" },
-  { id: "t6", number: 6, capacity: 2, status: "occupied", orderId: "ord-3" },
+  { id: "t6", number: 6, capacity: 2, status: "available" },
   { id: "t7", number: 7, capacity: 4, status: "available" },
   { id: "t8", number: 8, capacity: 4, status: "available" },
 ];
@@ -91,101 +91,4 @@ export interface Order {
   platform?: "swiggy" | "zomato";
 }
 
-export const sampleOrders: Order[] = [
-  {
-    id: "ord-1",
-    type: "dine-in",
-    status: "preparing",
-    tableId: "t2",
-    items: [
-      { id: "oi-1", menuItemId: "coffee-2", name: "Cappuccino", price: 120, quantity: 2 },
-      { id: "oi-2", menuItemId: "tea-3", name: "Lemongrass Tea", price: 100, quantity: 1 },
-    ],
-    total: 340,
-    createdAt: new Date(Date.now() - 15 * 60000),
-  },
-  {
-    id: "ord-2",
-    type: "dine-in",
-    status: "ready",
-    tableId: "t4",
-    items: [
-      { id: "oi-3", menuItemId: "coffee-8", name: "Mocha", price: 150, quantity: 1 },
-      { id: "oi-4", menuItemId: "drink-5", name: "Iced Latte", price: 150, quantity: 1 },
-    ],
-    total: 300,
-    createdAt: new Date(Date.now() - 25 * 60000),
-  },
-  {
-    id: "ord-3",
-    type: "dine-in",
-    status: "new",
-    tableId: "t6",
-    items: [
-      { id: "oi-5", menuItemId: "coffee-3", name: "Latte", price: 120, quantity: 3 },
-    ],
-    total: 360,
-    createdAt: new Date(Date.now() - 2 * 60000),
-  },
-  {
-    id: "ord-4",
-    type: "aggregator",
-    status: "new",
-    platform: "swiggy",
-    customerName: "Rahul S.",
-    items: [
-      { id: "oi-6", menuItemId: "drink-4", name: "Iced Americano", price: 140, quantity: 2 },
-      { id: "oi-7", menuItemId: "coffee-7", name: "Caramel", price: 160, quantity: 1 },
-    ],
-    total: 440,
-    createdAt: new Date(Date.now() - 5 * 60000),
-  },
-  {
-    id: "ord-5",
-    type: "takeaway",
-    status: "preparing",
-    customerName: "Priya M.",
-    items: [
-      { id: "oi-8", menuItemId: "coffee-9", name: "Spanish Latte", price: 150, quantity: 1 },
-    ],
-    total: 150,
-    createdAt: new Date(Date.now() - 8 * 60000),
-  },
-  {
-    id: "ord-6",
-    type: "aggregator",
-    status: "new",
-    platform: "zomato",
-    customerName: "Vikram K.",
-    items: [
-      { id: "oi-9", menuItemId: "coffee-2", name: "Cappuccino", price: 120, quantity: 2 },
-      { id: "oi-10", menuItemId: "drink-6", name: "Iced Mocha", price: 170, quantity: 1 },
-    ],
-    total: 410,
-    createdAt: new Date(Date.now() - 3 * 60000),
-  },
-  {
-    id: "ord-7",
-    type: "aggregator",
-    status: "preparing",
-    platform: "swiggy",
-    customerName: "Neha S.",
-    items: [
-      { id: "oi-11", menuItemId: "tea-4", name: "Honey Ginger Tea", price: 100, quantity: 2 },
-      { id: "oi-12", menuItemId: "coffee-6", name: "Hazelnut", price: 160, quantity: 1 },
-    ],
-    total: 360,
-    createdAt: new Date(Date.now() - 12 * 60000),
-  },
-  {
-    id: "ord-8",
-    type: "delivery",
-    status: "ready",
-    customerName: "Ankit P.",
-    items: [
-      { id: "oi-13", menuItemId: "drink-3", name: "Peach Iced Tea", price: 150, quantity: 2 },
-    ],
-    total: 300,
-    createdAt: new Date(Date.now() - 20 * 60000),
-  },
-];
+export const sampleOrders: Order[] = [];
