@@ -135,40 +135,59 @@
     @apply bg-background text-foreground;
   }
   
-  /* Modern Scrollbar Styles */
+  /* Modern Minimal Scrollbar Styles */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: oklch(0.15 0.01 60);
+    border-radius: 4px;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: oklch(0.35 0.015 60);
-    border-radius: 10px;
+    background: oklch(0.32 0.02 55);
+    border-radius: 4px;
+    border: 2px solid oklch(0.15 0.01 60);
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.45 0.015 60);
+    background: oklch(0.45 0.03 55);
+  }
+  
+  ::-webkit-scrollbar-thumb:active {
+    background: oklch(0.55 0.08 55);
+  }
+  
+  ::-webkit-scrollbar-corner {
+    background: oklch(0.15 0.01 60);
   }
   
   /* Firefox scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: oklch(0.35 0.015 60) transparent;
+    scrollbar-color: oklch(0.32 0.02 55) oklch(0.15 0.01 60);
   }
   
-  /* Hide scrollbar on touch devices but keep functionality */
+  /* Touch devices - even more minimal */
   @media (pointer: coarse) {
     ::-webkit-scrollbar {
       width: 4px;
       height: 4px;
     }
     
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
     ::-webkit-scrollbar-thumb {
-      background: oklch(0.3 0.015 60 / 0.5);
+      background: oklch(0.4 0.03 55 / 0.6);
+      border: none;
+    }
+    
+    * {
+      scrollbar-width: none;
     }
   }
 }
