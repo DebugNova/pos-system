@@ -59,7 +59,7 @@ export function CatLogo({ className, fillColor = "#18181A", ...props }: CatLogoP
           }
           .cat-eyes-group {
             transform-origin: 1000px 722px;
-            animation: cat-blink 5s ease-in-out infinite;
+            animation: cat-blink 3.5s ease-in-out infinite;
           }
           .cat-tail-group {
             transform-origin: 1660px 1600px;

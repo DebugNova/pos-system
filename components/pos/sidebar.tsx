@@ -48,9 +48,19 @@ export function POSSidebar() {
     <aside className="flex h-full w-[72px] flex-col bg-sidebar border-r border-sidebar-border lg:w-20">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border lg:h-20">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary lg:h-12 lg:w-12">
+        <button 
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            // Calculate absolute center to dispatch perfectly to the animation system
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            window.dispatchEvent(new CustomEvent("trigger-logo-animation", { detail: { x, y } }));
+          }}
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary lg:h-12 lg:w-12 hover:opacity-90 active:scale-95 transition-all outline-none"
+          title="Play Logo Animation"
+        >
           <CatLogo className="h-full w-full p-0.5" />
-        </div>
+        </button>
       </div>
 
       {/* Navigation */}

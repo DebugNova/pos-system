@@ -1,7 +1,7 @@
 # SUHASHI Cafe POS — Remaining Work
 
 > Gap analysis: **Blueprint** vs. **Current Implementation**
-> Generated: 2026-04-09 (Updated after Dashboard & Settings Enhancements)
+> Generated: 2026-04-09 (Updated after Premium Brand Intro Animation)
 
 ---
 
@@ -71,7 +71,7 @@ These are MVP 2 deliverables from the blueprint and are expected eventually.
 | 24 | **Advanced Reporting** | 🟡 | Reports page is rendered in the main flow. Fixed **visual contrast** and legibility for charts/tooltips, but still uses **hardcoded mock data**. |
 | 25 | **Staff Performance Reports** | 🔴 | No staff-linked metrics. Orders don't track which staff member created them. |
 | 26 | **Customer Profiles** | 🔴 | No customer database. The `customerName` field on orders is a free-text string. |
-| 27 | **Staff Shifts (Clock In / Clock Out)** | 🟡 | Login screen has a "Start Shift" flow with optional opening cash, but **no shift tracking**: no clock-out, no shift summary, no closing cash reconciliation. |
+| 27 | **Staff Shifts (Clock In / Clock Out)** | 🟡 | Login screen has a "Start Shift" flow with **premium animated transition**, but **no backend shift tracking**: no clock-out, no shift summary, no closing cash reconciliation. |
 | 28 | **Analytics Dashboard** | 🟡 | Dashboard shows basic stats from actual orders, but lacks aggregate analytics, trend comparisons, and forecasting the blueprint envisions. |
 
 ---
@@ -100,13 +100,14 @@ The blueprint specifies these entities. Here's what's missing:
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
-| 29 | **iPad-First Touch Optimization** | 🟡 | Improved touch-friendliness for **Tax Settings** (presets and slider). Design uses large touch targets but lacks PWA manifest/icons. |
+| 29 | **iPad-First Touch Optimization** | 🟢 | Heavily optimized for iPad touch. Features large targets, buttersmooth **Framer Motion transitions**, and a premium branding reveal. Responsive tray-logic for mobile/tablet scaling. |
 | 30 | **PWA / Installable App** | 🔴 | No `manifest.json`, no service worker, no install prompt. Blueprint says it should work as a web app / PWA on iPad. |
 | 31 | **WebSocket Realtime Updates** | 🔴 | Blueprint requires WebSockets for live order/kitchen/aggregator updates. Currently all state is local — multi-device sync is impossible. |
 | 32 | **Audit Logging** | 🔴 | Critical actions (refunds, voids, discounts, order deletions) are not logged anywhere. |
 | 33 | **Low-Light Readability** | 🟢 | Fixed **chart contrast issues** where text was illegible. Dark mode is now fully readable and high-contrast for busy/low-light environments. |
 | 34 | **Sound Notifications** | 🔴 | Settings has toggles for "Order Alerts" and "Kitchen Ready Alerts," but no actual audio notification system exists. |
 | 35 | **Session Timeout / Auto-Lock** | 🔴 | No session timeout. Once logged in, the user stays logged in indefinitely (even across browser restarts due to `localStorage`). |
+| 49 | **Premium UI Transitions & Branding** | 🟢 | Implemented high-end 4.8s cinematic intro transition with "SUHASHI" letter-reveal, animated cat mascot (blinking/scratching), and responsive target landing from any origin. |
 
 ---
 

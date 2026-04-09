@@ -16,7 +16,7 @@ Builds products and websites using AI agents and Claude Code as the primary deve
 **SUHASHI Cafe POS** — A touch-first Point of Sale system for a cafe, designed primarily for iPad.
 Handles dine-in billing, table management, kitchen display, online orders (Swiggy / Zomato), payments, and reporting from a single interface.
 
-**Stack:** Next.js (App Router) · TypeScript · Zustand (state) · Tailwind CSS · shadcn/ui · Recharts
+**Stack:** Next.js (App Router) · TypeScript · Zustand (state) · Tailwind CSS · shadcn/ui · Recharts · Framer Motion (Animations)
 
 **Current state:** Frontend prototype only. All state is client-side via Zustand persisted to `localStorage`. No backend, no real auth, no live integrations yet.
 
@@ -85,7 +85,8 @@ POS system/
 │   │   ├── order-history.tsx   # Past orders + filters
 │   │   ├── reports.tsx         # Charts and analytics
 │   │   ├── settings.tsx        # All configuration tabs
-│   │   └── data-manager.tsx    # Export / import / reset data
+│   │   ├── data-manager.tsx    # Export / import / reset data
+│   │   └── transition-overlay.tsx # Premium brand intro animation
 │   └── ui/                 # shadcn/ui primitives (button, card, dialog, …)
 │
 ├── lib/
@@ -139,3 +140,4 @@ npm run build    # Production build
 - **Print buttons are no-ops** — implement via `window.print()` or ESC/POS when backend is ready.
 - Keep components focused; avoid putting business logic in JSX — extract to store actions or utility functions.
 - Always check `remaining_work.md` before starting a new feature to avoid duplicate effort.
+- **Animation Orchestration:** Use `window.dispatchEvent(new CustomEvent("trigger-logo-animation", { detail: { x, y } }))` to replay the brand intro transition from any component (e.g., sidebar logo). The `TransitionOverlay` in `app/page.tsx` listens for this globally.

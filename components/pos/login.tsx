@@ -11,7 +11,7 @@ import { Coffee, User, Lock, Clock, Wifi } from "lucide-react";
 import { CatLogo } from "@/components/ui/cat-logo";
 
 interface LoginProps {
-  onLogin: (user: { name: string; role: string; pin: string }) => void;
+  onLogin: (user: { name: string; role: string; pin: string }, origin?: {x: number, y: number}) => void;
 }
 
 interface StaffMember {
@@ -41,9 +41,12 @@ export function Login({ onLogin }: LoginProps) {
     }
   };
 
-  const handleStartShift = () => {
+  const handleStartShift = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (selectedStaff) {
-      onLogin({ name: selectedStaff.name, role: selectedStaff.role, pin: selectedStaff.pin });
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      onLogin({ name: selectedStaff.name, role: selectedStaff.role, pin: selectedStaff.pin }, { x, y });
     }
   };
 
