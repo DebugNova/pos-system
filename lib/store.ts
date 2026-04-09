@@ -5,7 +5,7 @@ import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
 import { getDefaultView } from "./roles";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 2;
+const STORE_VERSION = 4;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -474,12 +474,13 @@ export const usePOSStore = create<POSState>()(
         staffMembers: state.staffMembers,
       }),
       migrate: (persistedState, version) => {
-        // Reset tables to default when version changes
+        // Reset tables and menuItems to default when version changes
         if (version < STORE_VERSION) {
           const state = persistedState as Partial<POSState>;
           return {
             ...state,
             tables: initialTables,
+            menuItems: defaultMenuItems,
           };
         }
         return persistedState as POSState;

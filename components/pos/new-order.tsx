@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { usePOSStore } from "@/lib/store";
 import { categories, type MenuItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -430,16 +431,31 @@ export function NewOrder() {
                 className="group relative flex flex-col items-start overflow-hidden rounded-2xl bg-card shadow-sm border border-border/40 text-left transition-all duration-200 hover:shadow-md hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               >
                 {/* Image or Gradient Placeholder */}
-                <div className="relative h-28 w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
-                  {(item as any).image ? (
-                    <img src={(item as any).image} alt={item.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                  {item.image_url ? (
+                    <Image 
+                      src={item.image_url} 
+                      alt={item.name} 
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95" 
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                      onError={(e) => {
+                        // Fallback handling if image fails
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement?.classList.add('fallback-shown');
+                      }}
+                    />
                   ) : (
                     <div className="flex h-full items-center justify-center text-4xl opacity-50">{emoji}</div>
                   )}
+                  {/* Fallback container shown on error via CSS */}
+                  <div className="hidden absolute inset-0 items-center justify-center text-4xl opacity-50 [.fallback-shown_&]:flex">
+                    {emoji}
+                  </div>
                   
                   {/* Ribbons */}
-                  {(item as any).bestseller && (
-                    <div className="absolute top-0 left-0 bg-primary/95 text-primary-foreground text-[10px] uppercase font-bold px-2 py-1 rounded-br-lg shadow-sm backdrop-blur-sm">
+                  {item.bestseller && (
+                    <div className="absolute top-0 left-0 bg-primary/95 text-primary-foreground text-[10px] uppercase font-bold px-2 py-1 rounded-br-lg shadow-sm backdrop-blur-sm z-10">
                       Bestseller
                     </div>
                   )}
