@@ -27,8 +27,11 @@ import {
   ShieldAlert,
   Search,
   Trash2,
+  RefreshCw,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
+import { syncPendingMutations } from "@/lib/sync";
 
 export function Settings() {
   const { currentUser, settings, updateSettings, auditLog, staffMembers, addStaffMember, updateStaffMember, deleteStaffMember } = usePOSStore();
@@ -119,6 +122,34 @@ export function Settings() {
                   className="bg-secondary border-none"
                 />
               </div>
+
+              {/* Install App Settings */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h3 className="font-medium text-foreground">App Installation</h3>
+                    <p className="text-sm text-muted-foreground">Show prompt to install POS on your device.</p>
+                  </div>
+                  <Button onClick={() => updateSettings({ installPromptDismissed: false })} variant="outline" className="gap-2 shrink-0">
+                    <Download className="h-4 w-4" />
+                    Install App
+                  </Button>
+                </div>
+              </div>
+
+              {/* Sync settings if admin */}
+              {permissions.canManageStaff && (
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <h3 className="font-semibold text-foreground">Advanced Data Sync</h3>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Force retry synchronization for pending actions.</p>
+                    <Button onClick={() => syncPendingMutations()} variant="outline" className="gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Retry Sync
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

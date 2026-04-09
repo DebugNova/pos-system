@@ -92,10 +92,11 @@ export function DataManager({ onBack }: DataManagerProps) {
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [editingTable, setEditingTable] = useState<TableType | null>(null);
   const [editingStaff, setEditingStaff] = useState<{ id: string; name: string; role: string; pin: string; initials: string } | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ type: string; id: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ type: string; id: string; name?: string } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [importText, setImportText] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showCancelOrderConfirm, setShowCancelOrderConfirm] = useState(false);
 
   // Stats
   const totalOrders = orders.length;
@@ -169,11 +170,30 @@ export function DataManager({ onBack }: DataManagerProps) {
 
   const handleSaveOrder = () => {
     if (!editingOrder) return;
+
+    // Guard: require confirmation when changing status to cancelled
+    const originalOrder = orders.find((o) => o.id === editingOrder.id);
+    if (editingOrder.status === "cancelled" && originalOrder?.status !== "cancelled") {
+      setShowCancelOrderConfirm(true);
+      return;
+    }
+
     updateOrder(editingOrder.id, {
       status: editingOrder.status,
       customerName: editingOrder.customerName,
     });
     setEditingOrder(null);
+  };
+
+  const handleConfirmCancelOrder = () => {
+    if (!editingOrder) return;
+    updateOrder(editingOrder.id, {
+      status: editingOrder.status,
+      customerName: editingOrder.customerName,
+    });
+    setShowCancelOrderConfirm(false);
+    setEditingOrder(null);
+    toast.success(`Order ${editingOrder.id.toUpperCase()} has been cancelled.`);
   };
 
   const handleSaveMenuItem = () => {
@@ -369,7 +389,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingOrder(order)}>
                               <Pencil className="h-3 w-3" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "order", id: order.id })}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "order", id: order.id, name: order.id.toUpperCase() })}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
@@ -434,7 +454,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingMenuItem(item)}>
                               <Pencil className="h-3 w-3" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "menuItem", id: item.id })}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "menuItem", id: item.id, name: item.name })}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
@@ -497,7 +517,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingTable(table)}>
                               <Pencil className="h-3 w-3" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "table", id: table.id })}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "table", id: table.id, name: `Table ${table.number}` })}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
@@ -554,7 +574,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingStaff(staff)}>
                               <Pencil className="h-3 w-3" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "staff", id: staff.id })}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "staff", id: staff.id, name: staff.name })}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
@@ -830,15 +850,35 @@ export function DataManager({ onBack }: DataManagerProps) {
       <AlertDialog open={!!showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {showDeleteConfirm?.type === "menuItem" ? "menu item" : showDeleteConfirm?.type}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the {showDeleteConfirm?.type}.
+              This action cannot be undone. This will permanently delete the {showDeleteConfirm?.type === "menuItem" ? "menu item" : showDeleteConfirm?.type}
+              {showDeleteConfirm?.name ? ` "${showDeleteConfirm.name}"` : ""}
+              {showDeleteConfirm?.type === "order" ? " and all associated data" : ""}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel/Void Order Confirmation */}
+      <AlertDialog open={showCancelOrderConfirm} onOpenChange={setShowCancelOrderConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to void order {editingOrder?.id.toUpperCase()}. This will mark the order as cancelled and cannot be easily undone. This action will be logged in the audit trail.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowCancelOrderConfirm(false)}>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmCancelOrder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Yes, Cancel Order
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

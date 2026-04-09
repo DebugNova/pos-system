@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePOSStore } from "@/lib/store";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,8 @@ export function AggregatorInbox() {
   const swiggyCount = aggregatorOrders.filter((o) => o.platform === "swiggy" && o.status !== "completed").length;
   const zomatoCount = aggregatorOrders.filter((o) => o.platform === "zomato" && o.status !== "completed").length;
 
+  const isOnline = useOnlineStatus();
+
   return (
     <div className="flex h-full flex-col p-6">
       {/* Header */}
@@ -73,8 +76,13 @@ export function AggregatorInbox() {
             Manage Swiggy and Zomato orders
           </p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <RefreshCw className="h-4 w-4" />
+        <Button 
+          variant="outline" 
+          className="gap-2" 
+          disabled={!isOnline}
+          title={!isOnline ? "Offline — cannot fetch new orders" : undefined}
+        >
+          <RefreshCw className={cn("h-4 w-4", !isOnline && "opacity-50")} />
           Refresh
         </Button>
       </div>

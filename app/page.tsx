@@ -15,6 +15,8 @@ import { Login } from "@/components/pos/login";
 import { TransitionOverlay } from "@/components/pos/transition-overlay";
 import { usePOSStore } from "@/lib/store";
 import { canAccessView, getDefaultView, type ViewId } from "@/lib/roles";
+import { SWRegister } from "@/components/sw-register";
+import { OfflineBanner } from "@/components/pos/offline-banner";
 
 export default function POSApp() {
   const { activeView, isLoggedIn, login, currentUser, setActiveView } = usePOSStore();
@@ -22,6 +24,8 @@ export default function POSApp() {
 
   // Enforce role-based access: if the current view isn't allowed, redirect to default
   useEffect(() => {
+    usePOSStore.getState().clearSyncedMutations();
+    
     if (isLoggedIn && currentUser) {
       if (!canAccessView(currentUser.role, activeView as ViewId)) {
         const defaultView = getDefaultView(currentUser.role);
@@ -59,10 +63,12 @@ export default function POSApp() {
   return (
     <div className="relative flex h-screen bg-background overflow-hidden w-full">
       {isLoggedIn && (
-        <div className="flex w-full h-full">
-          <POSSidebar />
-          <main className="flex-1 overflow-auto">
-            {activeView === "dashboard" && <Dashboard />}
+        <div className="flex w-full h-full flex-col">
+          <OfflineBanner />
+          <div className="flex w-full h-full overflow-hidden">
+            <POSSidebar />
+            <main className="flex-1 overflow-auto">
+              {activeView === "dashboard" && <Dashboard />}
             {activeView === "orders" && <NewOrder />}
             {activeView === "tables" && <TableManagement />}
             {activeView === "kitchen" && <KitchenDisplay />}
@@ -71,10 +77,12 @@ export default function POSApp() {
             {activeView === "billing" && <Billing />}
             {activeView === "history" && <OrderHistory />}
             {activeView === "settings" && <Settings />}
-          </main>
+            </main>
+          </div>
         </div>
       )}
       
+      <SWRegister />
       <TransitionOverlay
         isAnimating={animationState.isAnimating}
         origin={animationState.origin}

@@ -1,11 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Order, OrderItem, OrderType, Table, MenuItem, AuditEntry, Shift } from "./data";
+import type { Order, OrderItem, OrderType, Table, MenuItem, AuditEntry, Shift, QueuedMutation, MutationKind } from "./data";
 import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
 import { getDefaultView } from "./roles";
+import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 6;
+const STORE_VERSION = 7;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -37,6 +38,7 @@ interface CafeSettings {
   autoPrintKot: boolean;
   printCustomerCopy: boolean;
   sessionTimeoutMinutes: number;  // for Task 14
+  installPromptDismissed?: boolean;
 }
 
 interface POSState {
@@ -111,6 +113,16 @@ interface POSState {
   auditLog: AuditEntry[];
   addAuditEntry: (entry: Omit<AuditEntry, "id" | "timestamp">) => void;
 
+  // Sync / Offline Queue
+  syncQueue: QueuedMutation[];
+  isOnline: boolean;
+  isSyncing: boolean;
+  lastSyncedAt: string | null;
+  enqueueMutation: (kind: MutationKind, payload: Record<string, unknown>) => void;
+  markMutationSynced: (id: string) => void;
+  markMutationFailed: (id: string, error: string) => void;
+  clearSyncedMutations: () => void;
+
   // Cart Total
   getCartTotal: () => number;
 
@@ -140,6 +152,7 @@ const defaultSettings: CafeSettings = {
   autoPrintKot: true,
   printCustomerCopy: true,
   sessionTimeoutMinutes: 30,
+  installPromptDismissed: false,
 };
 
 export const usePOSStore = create<POSState>()(
@@ -147,16 +160,77 @@ export const usePOSStore = create<POSState>()(
     (set, get) => ({
       // Audit Log
       auditLog: [],
-      addAuditEntry: (entry) => set((state) => ({
-        auditLog: [
-          {
-            ...entry,
-            id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            timestamp: new Date()
-          },
-          ...state.auditLog
-        ]
-      })),
+      addAuditEntry: (entry) => {
+        const fullEntry = {
+          ...entry,
+          id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          timestamp: new Date()
+        };
+        set((state) => ({
+          auditLog: [fullEntry, ...state.auditLog]
+        }));
+        // Use timeout to prevent getting undefined `enqueueMutation` during initial store setup 
+        setTimeout(() => get().enqueueMutation("audit.append", { entry: fullEntry }), 0);
+      },
+
+      // Sync Queue
+      syncQueue: [],
+      isOnline: true,
+      isSyncing: false,
+      lastSyncedAt: null,
+
+      enqueueMutation: (kind, payload) => {
+        const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `mut-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const mutation: QueuedMutation = {
+          id,
+          kind,
+          payload,
+          createdAt: new Date().toISOString(),
+          attempts: 0,
+          status: "pending"
+        };
+        set((state) => ({
+          syncQueue: [...state.syncQueue, mutation]
+        }));
+        
+        // Mirror to IndexedDB for Background Sync (SW can replay even without an open page)
+        if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
+          writeMutationToIDB({ id, kind, payload, createdAt: mutation.createdAt }).catch(console.error);
+        }
+
+        if (typeof window !== "undefined" && "serviceWorker" in navigator && "SyncManager" in window) {
+          navigator.serviceWorker.ready.then((reg: any) => {
+            if (reg.sync) reg.sync.register("sync-mutations").catch(console.error);
+          });
+        }
+      },
+      markMutationSynced: (id) => {
+        set((state) => ({
+          syncQueue: state.syncQueue.map((m) =>
+            m.id === id ? { ...m, status: "synced" as const } : m
+          )
+        }));
+        // Remove from IndexedDB since it's been synced
+        if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
+          removeMutationFromIDB(id).catch(console.error);
+        }
+      },
+      markMutationFailed: (id, error) => {
+        set((state) => ({
+          syncQueue: state.syncQueue.map((m) =>
+            m.id === id ? { ...m, status: "failed" as const, lastError: error, attempts: m.attempts + 1, lastAttemptAt: new Date().toISOString() } : m
+          )
+        }));
+      },
+      clearSyncedMutations: () => {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        set((state) => ({
+          syncQueue: state.syncQueue.filter((m) =>
+            m.status !== "synced" || new Date(m.createdAt) >= sevenDaysAgo
+          )
+        }));
+      },
 
       // Auth
       isLoggedIn: false,
@@ -386,6 +460,8 @@ export const usePOSStore = create<POSState>()(
           orders: [newOrder, ...state.orders],
         }));
 
+        get().enqueueMutation("order.create", { order: newOrder });
+
         get().addAuditEntry({ action: "order_created", userId: newOrder.createdBy || "System", details: `Order ${id} created`, orderId: id });
 
         // Update table status if dine-in
@@ -403,6 +479,7 @@ export const usePOSStore = create<POSState>()(
             order.id === orderId ? { ...order, ...data } : order
           ),
         }));
+        get().enqueueMutation("order.update", { id: orderId, changes: data });
       },
 
       updateOrderStatus: (orderId, status) => {
@@ -411,6 +488,7 @@ export const usePOSStore = create<POSState>()(
             order.id === orderId ? { ...order, status } : order
           ),
         }));
+        get().enqueueMutation("order.update", { id: orderId, changes: { status } });
 
         // Update table status if order is completed
         if (status === "completed") {
@@ -429,6 +507,7 @@ export const usePOSStore = create<POSState>()(
         set((state) => ({
           orders: state.orders.filter((o) => o.id !== orderId)
         }));
+        get().enqueueMutation("order.delete", { id: orderId });
 
         get().addAuditEntry({
           action: "void",
@@ -455,6 +534,7 @@ export const usePOSStore = create<POSState>()(
               : table
           ),
         }));
+        get().enqueueMutation("table.update", { id: tableId, status, orderId });
       },
 
       deleteTable: (tableId) => set((state) => ({
@@ -649,6 +729,7 @@ export const usePOSStore = create<POSState>()(
           openingCash,
         };
         set({ currentShift: newShift });
+        get().enqueueMutation("shift.start", { shift: newShift });
         get().addAuditEntry({ action: "settings_changed", userId: staffName, details: `Shift started with opening cash ₹${openingCash}` }); // using settings_changed or login? Let's use login context if appropriate. We can just add custom text. Note: action is typed, "login" is probably better but we didn't add "shift_start" to action union.
       },
       endShift: (closingCash, notes) => {
@@ -675,6 +756,7 @@ export const usePOSStore = create<POSState>()(
           shifts: [completedShift, ...state.shifts],
           currentShift: null,
         }));
+        get().enqueueMutation("shift.end", { shift: completedShift });
         
         get().addAuditEntry({ action: "logout", userId: currentShift.staffName, details: `Shift ended. Total sales: ₹${totalSales}` });
       },
@@ -691,6 +773,8 @@ export const usePOSStore = create<POSState>()(
         auditLog: state.auditLog,
         shifts: state.shifts,
         currentShift: state.currentShift,
+        syncQueue: state.syncQueue,
+        lastSyncedAt: state.lastSyncedAt,
       }),
       migrate: (persistedState: any, version) => {
         // Reset tables and menuItems to default when version changes

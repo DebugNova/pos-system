@@ -1,16 +1,33 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, Fraunces } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
+import { InstallPrompt } from '@/components/pos/install-prompt'
 import './globals.css'
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: 'swap' });
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: 'swap' });
 
+export const viewport: Viewport = {
+  themeColor: '#0a0a0a',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+}
+
 export const metadata: Metadata = {
   title: 'SUHASHI POS',
   description: 'Touch-first Cafe Point-of-Sale System',
   generator: 'v0.app',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'SUHASHI POS',
+  },
   icons: {
     icon: [
       {
@@ -46,6 +63,8 @@ export default function RootLayout({
         >
           {children}
           {process.env.NODE_ENV === 'production' && <Analytics />}
+          <Toaster position="bottom-right" />
+          <InstallPrompt />
         </ThemeProvider>
       </body>
     </html>

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { usePOSStore } from "@/lib/store";
 import { canAccessView, type ViewId } from "@/lib/roles";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { CatLogo } from "@/components/ui/cat-logo";
 import { EndShiftDialog } from "./end-shift-dialog";
+import { SyncStatus } from "./sync-status";
 
 const navItems = [
   { id: "dashboard" as ViewId, label: "Dashboard", icon: LayoutDashboard },
@@ -40,6 +42,7 @@ export function POSSidebar() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showEndShift, setShowEndShift] = useState(false);
+  const isOnline = useOnlineStatus();
 
   useEffect(() => setMounted(true), []);
 
@@ -128,10 +131,22 @@ export function POSSidebar() {
             {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
         )}
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground lg:h-12 lg:w-12 lg:text-base">
+        <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground lg:h-12 lg:w-12 lg:text-base">
           {currentUser?.name.split(" ").map((n) => n[0]).join("").slice(0, 2) || "??"}
+          <div 
+            title={isOnline ? "Online" : "Offline"} 
+            className={cn(
+              "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-sidebar", 
+              isOnline ? "bg-green-500" : "bg-amber-500"
+            )} 
+          />
         </div>
         <span className="text-[10px] text-muted-foreground lg:text-xs">{currentUser?.role || "Guest"}</span>
+        
+        <div className="mt-1 mb-2">
+          <SyncStatus />
+        </div>
+
         <Button
           variant="ghost"
           size="icon"

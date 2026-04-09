@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { User, Lock, Clock, Wifi, ChevronRight, Fingerprint } from "lucide-react";
 import { CatLogo } from "@/components/ui/cat-logo";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 
 interface LoginProps {
   onLogin: (user: { name: string; role: string; pin: string }, origin?: {x: number, y: number}) => void;
@@ -29,6 +30,7 @@ export function Login({ onLogin }: LoginProps) {
   const [error, setError] = useState("");
   const [shiftStarted, setShiftStarted] = useState(false);
   const [openingCash, setOpeningCash] = useState("");
+  const isOnline = useOnlineStatus();
 
   const handlePinSubmit = () => {
     if (!selectedStaff) return;
@@ -84,18 +86,30 @@ export function Login({ onLogin }: LoginProps) {
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground bg-clip-text">SUHASHI Cafe</h1>
           <p className="text-xs font-medium text-muted-foreground mt-0.5">Point of Sale System</p>
           <div className="mt-2.5 flex items-center justify-center gap-2">
-            <Badge variant="outline" className="gap-1 px-2 py-0.5 text-[10px] sm:text-xs text-emerald-500 border-emerald-500/30 bg-emerald-500/10 font-semibold rounded-full shadow-sm">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-              </span>
-              System Online
-            </Badge>
+            {isOnline ? (
+              <Badge variant="outline" className="gap-1 px-2 py-0.5 text-[10px] sm:text-xs text-emerald-500 border-emerald-500/30 bg-emerald-500/10 font-semibold rounded-full shadow-sm">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                </span>
+                System Online
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 px-2 py-0.5 text-[10px] sm:text-xs text-amber-500 border-amber-500/30 bg-amber-500/10 font-semibold rounded-full shadow-sm">
+                System Offline
+              </Badge>
+            )}
             <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-secondary/80 backdrop-blur-md border-border/50">
               <Clock className="h-2.5 w-2.5" />
               {currentDate.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
             </Badge>
           </div>
+          {!isOnline && (
+            <div className="mt-3 text-xs font-medium text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 shadow-sm flex items-center gap-1.5 backdrop-blur-md">
+              <Wifi className="h-3 w-3" />
+              Offline mode — using saved staff credentials
+            </div>
+          )}
         </div>
 
         {!selectedStaff ? (

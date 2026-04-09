@@ -451,6 +451,7 @@ export function NewOrder() {
                       alt={item.name} 
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95" 
                       loading="lazy"
+                      onError={(e) => e.currentTarget.src = '/menu/_fallback.png'}
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-4xl opacity-50">{emoji}</div>

@@ -166,3 +166,25 @@ export interface AuditEntry {
   orderId?: string;
   metadata?: Record<string, unknown>;
 }
+
+export type MutationKind =
+  | "order.create"
+  | "order.update"
+  | "order.delete"
+  | "order.refund"
+  | "payment.record"
+  | "table.update"
+  | "shift.start"
+  | "shift.end"
+  | "audit.append";
+
+export interface QueuedMutation {
+  id: string;
+  kind: MutationKind;
+  payload: Record<string, unknown>;
+  createdAt: string;
+  attempts: number;
+  lastAttemptAt?: string;
+  lastError?: string;
+  status: "pending" | "syncing" | "synced" | "failed";
+}
