@@ -179,23 +179,23 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle className="text-base">Aggregator Orders</CardTitle>
           </CardHeader>
-          <CardContent className="flex gap-4">
-            <div className="flex flex-1 items-center gap-3 rounded-lg bg-[#fc8019]/10 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fc8019]">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 rounded-lg bg-[#fc8019]/10 p-4">
+              <div className="flex shrink-0 h-10 w-10 items-center justify-center rounded-lg bg-[#fc8019]">
                 <span className="text-sm font-bold text-white">S</span>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{swiggyOrders}</p>
-                <p className="text-xs text-muted-foreground">Swiggy</p>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold text-foreground truncate">{swiggyOrders}</p>
+                <p className="text-xs text-muted-foreground truncate">Swiggy</p>
               </div>
             </div>
-            <div className="flex flex-1 items-center gap-3 rounded-lg bg-[#e23744]/10 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e23744]">
+            <div className="flex items-center gap-3 rounded-lg bg-[#e23744]/10 p-4">
+              <div className="flex shrink-0 h-10 w-10 items-center justify-center rounded-lg bg-[#e23744]">
                 <span className="text-sm font-bold text-white">Z</span>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{zomatoOrders}</p>
-                <p className="text-xs text-muted-foreground">Zomato</p>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold text-foreground truncate">{zomatoOrders}</p>
+                <p className="text-xs text-muted-foreground truncate">Zomato</p>
               </div>
             </div>
           </CardContent>
@@ -237,24 +237,26 @@ export function Dashboard() {
             {recentOrders.map((order) => (
               <div
                 key={order.id}
-                className="flex items-center justify-between rounded-lg bg-secondary/50 p-3"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-lg bg-secondary/50 p-3"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex shrink-0 h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                     <ShoppingBag className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {order.id.toUpperCase()}
+                  <div className="min-w-0">
+                    <div className="flex items-center flex-wrap gap-2">
+                      <p className="font-medium text-foreground truncate max-w-[120px] sm:max-w-[200px]">
+                        {order.id.toUpperCase()}
+                      </p>
                       {order.tableId && (
-                        <span className="ml-2 text-muted-foreground">
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">
                           Table {order.tableId.replace("t", "")}
                         </span>
                       )}
                       {order.platform && (
                         <Badge
                           variant="outline"
-                          className="ml-2 text-xs"
+                          className="text-xs shrink-0"
                           style={{
                             borderColor:
                               order.platform === "swiggy" ? "#fc8019" : "#e23744",
@@ -264,14 +266,14 @@ export function Dashboard() {
                           {order.platform}
                         </Badge>
                       )}
-                    </p>
-                    <p className="text-sm text-muted-foreground" suppressHydrationWarning>
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate" suppressHydrationWarning>
                       {order.items.length} items &bull;{" "}
                       {formatDistanceToNow(order.createdAt, { addSuffix: true })}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-3 justify-end sm:justify-start">
                   <Badge
                     variant={
                       order.status === "new"
