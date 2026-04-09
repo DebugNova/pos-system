@@ -64,10 +64,10 @@ export function POSSidebar() {
             const y = rect.top + rect.height / 2;
             window.dispatchEvent(new CustomEvent("trigger-logo-animation", { detail: { x, y } }));
           }}
-          className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary lg:h-16 lg:w-16 hover:opacity-90 active:scale-95 transition-all outline-none animate-[pulse_3s_ease-in-out_infinite]"
+          className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary lg:h-16 lg:w-16 hover:opacity-90 active:scale-95 transition-all outline-none"
           title="Play Logo Animation"
         >
-          <CatLogo className="h-full w-full p-0.5" />
+          <CatLogo className="h-full w-full p-0.5" onlyBlink />
         </button>
       </div>
 

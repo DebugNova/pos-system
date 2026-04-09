@@ -151,16 +151,16 @@ export function TransitionOverlay({ isAnimating, origin, onComplete }: Transitio
 
             {/* SUHASHI Text Reveal */}
             <motion.div 
-              className="flex items-center overflow-hidden px-2 pt-2"
+              className="flex items-center overflow-visible px-2 pt-3 pb-2 min-h-[1.5em]"
               exit={{ opacity: 0, filter: "blur(8px)", transition: { duration: 0.4 } }}
             >
               {textChars.map((char, index) => (
                 <motion.span
                   key={index}
-                  className="relative text-5xl sm:text-7xl lg:text-[5rem] font-black text-[#18181A] leading-none tracking-tighter"
+                  className="relative text-5xl sm:text-7xl lg:text-[5rem] font-black text-[#18181A] leading-[1.2] tracking-normal"
                   style={{ 
                     fontFamily: "'Inter', 'Montserrat', 'Arial Black', sans-serif",
-                    marginRight: char === "I" ? "0" : "0.02em", 
+                    marginRight: char === "I" ? "0" : "0.02em",
                   }}
                   initial={{ y: "100%", opacity: 0, filter: "blur(10px)", rotateX: -90 }}
                   animate={{ y: 0, opacity: 1, filter: "blur(0px)", rotateX: 0 }}
