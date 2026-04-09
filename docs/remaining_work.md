@@ -24,7 +24,7 @@ These are items the blueprint marks as **MVP 1** deliverables that are either mi
 |---|------|--------|---------|
 | 1 | **Backend API (Node.js + PostgreSQL)** | 🔴 | The entire app runs client-side with Zustand `persist` to `localStorage`. There is no server, no database, and no API layer. |
 | 2 | **Proper Authentication & Session Control** | 🟡 | Login with PIN pad exists, but it's entirely client-side. No real auth tokens, session expiry, or password hashing. |
-| 3 | **Role-Based Access Control (RBAC)** | 🟡 | Roles are defined (Admin, Cashier, Server, Kitchen), but **no permissions are enforced**. All users can access all screens and perform all actions. |
+| 3 | **Role-Based Access Control (RBAC)** | 🟢 | Implemented in `lib/roles.ts`. Sidebar navigation, billing actions (refunds/discounts), and settings access are now restricted by user role. |
 | 4 | **Offline Mode & Sync Queue** | 🔴 | Blueprint requires offline-first with a local queue + auto-sync. Current app uses `localStorage` persistence but has **no offline queue, no sync mechanism, and no service worker / PWA setup**. |
 
 ### 1.2 Payments & Billing
@@ -34,14 +34,12 @@ These are items the blueprint marks as **MVP 1** deliverables that are either mi
 | 6 | **UPI QR Code Generation** | 🟡 | UPI payment screen shows a static `<QrCode>` icon placeholder. No actual QR code generated with UPI deep-link (`upi://pay?...`). |
 | 7 | **Partial Payment** | 🔴 | Blueprint lists partial payment as a core feature. Split payment exists, but there's no ability to collect a partial amount and keep an open balance on the order. |
 | 8 | **Payment Record Persistence** | 🔴 | No `Payment` data model. When an order is "paid," the status just flips to `completed`. No record of *how* it was paid (method, amount, transaction ID). |
-| 9 | **Refund Processing** | 🟡 | Refund dialog exists but `handleRefund` is a no-op: `setShowRefundDialog(false)`. No actual refund logic, no audit trail entry. |
+| 9 | **Refund Processing** | 🟡 | Refund dialog exists and access is restricted to Admin role, but `handleRefund` is still a no-op logic-wise. |
 | 10 | **Configurable Tax Rates** | 🟡 | Settings page has a tax rate input, but it uses **local `useState`** — the value is never saved or used by the billing module (which hardcodes `0.05`). |
 
-### 1.3 Kitchen
-| # | Item | Status | Details |
-|---|------|--------|---------|
-| 11 | **KOT (Kitchen Order Ticket) Generation** | 🟡 | Kitchen display shows orders, but no actual KOT ticket is generated or printed. The blueprint requires instant printed kitchen tickets. |
+| 11 | **KOT (Kitchen Order Ticket) Queue** | 🟢 | Implemented FIFO sorting, urgency-based color coding, and auto-refreshing timestamps to manage the kitchen queue effectively. |
 | 12 | **Item-Level Marking (Preparing / Ready)** | 🔴 | Kitchen can only change the **entire order** status. No per-item "preparing" / "ready" tracking, which is essential for multi-item orders. |
+| 48 | **Kitchen Filtering & Source Marking** | 🟢 | Added filters for Dine-In/Online/Takeaway and clear visual badges for Swiggy/Zomato to distinguish order sources instantly. |
 
 ### 1.4 Tables
 | # | Item | Status | Details |
@@ -70,7 +68,7 @@ These are MVP 2 deliverables from the blueprint and are expected eventually.
 | 21 | **External Order ID Mapping (`AggregatorOrderMap`)** | 🔴 | Blueprint requires mapping external order IDs to internal ones. Not in the data model. |
 | 22 | **Aggregator Status Flow (Packed, Handed Over)** | 🟡 | Blueprint requires: Received → Accepted → Preparing → Ready → Packed → Handed Over → Cancelled. Current implementation only uses: `new → preparing → ready → completed → cancelled`. Missing `packed` and `handed-over` statuses. |
 | 23 | **Menu Mapping (External → Internal)** | 🔴 | No mechanism to map Swiggy/Zomato menu items to internal menu items. |
-| 24 | **Advanced Reporting** | 🟡 | Reports page exists with charts, but uses **hardcoded mock data** (hourly revenue, payment breakdown, top items). Not driven by actual order data. |
+| 24 | **Advanced Reporting** | 🟡 | Reports page is now rendered in the main flow, but still uses **hardcoded mock data** (hourly revenue, payment breakdown, top items). |
 | 25 | **Staff Performance Reports** | 🔴 | No staff-linked metrics. Orders don't track which staff member created them. |
 | 26 | **Customer Profiles** | 🔴 | No customer database. The `customerName` field on orders is a free-text string. |
 | 27 | **Staff Shifts (Clock In / Clock Out)** | 🟡 | Login screen has a "Start Shift" flow with optional opening cash, but **no shift tracking**: no clock-out, no shift summary, no closing cash reconciliation. |
@@ -143,7 +141,7 @@ The blueprint specifies these entities. Here's what's missing:
 ### 🔥 Phase 1: Make MVP 1 Complete (Highest Priority)
 1. Persist settings to the store (#36)
 2. Connect Settings UI to actual store actions (staff CRUD, tax saving) (#38, #10)
-3. Implement RBAC — restrict screens/actions by role (#3)
+3. Implement RBAC — restrict screens/actions by role (#3) [DONE]
 4. Build `Payment` model + record payment method on billing (#8)
 5. Build `AuditLog` — log refunds, voids, deletes, discounts (#32)
 6. Implement actual refund logic (#9)
@@ -151,26 +149,27 @@ The blueprint specifies these entities. Here's what's missing:
 8. Implement split-bill logic (#13)
 9. Generate real UPI QR codes (#6)
 10. Drive reports from actual order data instead of mock data (#24, #42)
+11. Implement item-level status tracking in kitchen (#12)
 
 ### 🔧 Phase 2: Real Infrastructure
-11. Build backend API (Node.js + PostgreSQL) (#1)
-12. Move from localStorage to database with API calls
-13. Implement real auth with JWT/sessions (#2)
-14. Add WebSocket layer for multi-device real-time sync (#31)
-15. Implement offline queue + sync mechanism (#4)
-16. Set up PWA (manifest, service worker, install) (#30)
-17. Add receipt/KOT printing via ESC/POS or browser Print API (#5, #11)
+12. Build backend API (Node.js + PostgreSQL) (#1)
+13. Move from localStorage to database with API calls
+14. Implement real auth with JWT/sessions (#2)
+15. Add WebSocket layer for multi-device real-time sync (#31)
+16. Implement offline queue + sync mechanism (#4)
+17. Set up PWA (manifest, service worker, install) (#30)
+18. Add receipt/KOT printing via ESC/POS or browser Print API (#5, #11)
 
 ### 🚀 Phase 3: MVP 2 Features
-18. Swiggy/Zomato API integration (webhooks / polling) (#20, #21, #23)
-19. Extended aggregator status flow (Packed, Handed Over) (#22)
-20. Customer profiles & saved addresses (#26)
-21. Staff shift management (clock-in/out, closing cash) (#27)
-22. Staff performance & advanced analytics (#25, #28)
-23. Combos, time-based pricing, item favorites (#16, #17, #18)
-24. Multi-branch support (#Branch entity)
-25. Sound notification system (#34)
-26. Session timeout / auto-lock (#35)
+19. Swiggy/Zomato API integration (webhooks / polling) (#20, #21, #23)
+20. Extended aggregator status flow (Packed, Handed Over) (#22)
+21. Customer profiles & saved addresses (#26)
+22. Staff shift management (clock-in/out, closing cash) (#27)
+23. Staff performance & advanced analytics (#25, #28)
+24. Combos, time-based pricing, item favorites (#16, #17, #18)
+25. Multi-branch support (#Branch entity)
+26. Sound notification system (#34)
+27. Session timeout / auto-lock (#35)
 
 ---
 

@@ -30,7 +30,7 @@ Handles dine-in billing, table management, kitchen display, online orders (Swigg
 | **Dashboard** | Today's sales, active tables, pending orders, aggregator volume |
 | **New Order** | Category browse + search, cart, modifiers, order type selection |
 | **Tables** | Visual table map, open bills, move / merge / split table |
-| **Kitchen Display** | KOT queue, per-item status (preparing → ready), aggregator marking |
+| **Kitchen Display** | KOT queue (FIFO), per-item status (preparing → ready), aggregator marking, urgency alerts |
 | **Billing** | Cash / UPI / Card / Split payment, discounts, receipt printing |
 | **Aggregator Inbox** | Swiggy & Zomato orders, status flow, accept / reject |
 | **Order History** | Past orders, filters, refund access |
@@ -41,7 +41,8 @@ Handles dine-in billing, table management, kitchen display, online orders (Swigg
 `Select type → Choose table/customer → Add items + modifiers → Send to kitchen (KOT) → Take payment → Close & archive`
 
 ### Key Features Still Needed
-- **RBAC** — restrict screens & actions by role (Admin / Cashier / Server / Kitchen)
+- **RBAC** — restricted screens & actions by role (Admin / Cashier / Server / Kitchen) [DONE]
+- **Kitchen Flow** — FIFO sorting, urgency alerts, and aggregator source marking [DONE]
 - **Payment model** — record method, amount, transaction ID per order
 - **Audit log** — log refunds, voids, discounts
 - **Settings persistence** — save to store, not local `useState`
@@ -90,6 +91,7 @@ POS system/
 ├── lib/
 │   ├── data.ts             # Types: MenuItem, Order, Table, etc. + seed data
 │   ├── store.ts            # Zustand store (auth, cart, orders, tables, menu)
+│   ├── roles.ts            # RBAC configuration (permissions, role views)
 │   └── utils.ts            # cn() helper
 │
 ├── hooks/
@@ -102,8 +104,9 @@ POS system/
 ├── public/
 │   └── logo.png
 │
-├── cafe_pos_blueprint.md   # Full product spec
-├── remaining_work.md       # Gap analysis — 47 items tracked
+├── docs/
+│   ├── cafe_pos_blueprint.md   # Full product spec
+│   └── remaining_work.md       # Gap analysis — 47 items tracked
 ├── CLAUDE.md               # This file
 ├── next.config.mjs
 ├── tsconfig.json
@@ -125,9 +128,10 @@ npm run build    # Production build
 ## Notes for AI Agents
 
 - **State lives in `lib/store.ts`** — all components read/write via `usePOSStore()`.
+- **RBAC is centralized in `lib/roles.ts`** — use `canAccessView()` for navigation and `getPermissions(currentUser.role)` for action-level gates.
 - **Seed data is in `lib/data.ts`** — menu items, initial tables, default staff.
 - **Settings are currently not persisted** — they use component-level `useState`. Fix by adding them to the Zustand store.
-- **Reports use mock data** — `hourlyRevenue`, `paymentBreakdown`, `topItems` are static arrays in `reports.tsx`. Replace with computed values from `store.orders`.
+- **Kitchen Display is now optimized** — features FIFO sorting, status-based filters, and time-based urgency indicators.
 - **`splitTable` is a stub** — `console.log` only. Needs full implementation.
 - **Print buttons are no-ops** — implement via `window.print()` or ESC/POS when backend is ready.
 - Keep components focused; avoid putting business logic in JSX — extract to store actions or utility functions.
