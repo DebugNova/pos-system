@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 import { usePOSStore } from "@/lib/store";
 import { categories, type MenuItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -433,25 +432,15 @@ export function NewOrder() {
                 {/* Image or Gradient Placeholder */}
                 <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
                   {item.image_url ? (
-                    <Image 
+                    <img 
                       src={item.image_url} 
                       alt={item.name} 
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95" 
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                      onError={(e) => {
-                        // Fallback handling if image fails
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement?.classList.add('fallback-shown');
-                      }}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95" 
+                      loading="lazy"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-4xl opacity-50">{emoji}</div>
                   )}
-                  {/* Fallback container shown on error via CSS */}
-                  <div className="hidden absolute inset-0 items-center justify-center text-4xl opacity-50 [.fallback-shown_&]:flex">
-                    {emoji}
-                  </div>
                   
                   {/* Ribbons */}
                   {item.bestseller && (

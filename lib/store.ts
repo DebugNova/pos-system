@@ -5,7 +5,7 @@ import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
 import { getDefaultView } from "./roles";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 4;
+const STORE_VERSION = 5;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
