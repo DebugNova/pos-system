@@ -483,17 +483,17 @@ export function NewOrder() {
 
       {/* Cart Section */}
       <div className="flex w-72 shrink-0 flex-col bg-card shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 border-l border-border/50 sm:w-80 lg:w-80 xl:w-96">
-        <CardHeader className="flex flex-col justify-center border-b border-border h-20 lg:h-24 px-4 py-2 shrink-0 space-y-0.5">
+        <CardHeader className="flex flex-col justify-center border-b border-border h-20 lg:h-24 px-5 py-3 shrink-0 bg-background/50 backdrop-blur-sm space-y-1">
           {isEditing && (
-            <div className="mb-0.5 flex items-center gap-2 rounded-lg bg-primary/10 px-2 py-1">
-              <Pencil className="h-3 w-3 text-primary" />
-              <span className="text-[10px] font-medium text-primary">
+            <div className="mb-1 flex items-center gap-2 rounded-md bg-primary/10 px-2.5 py-1.5 shadow-sm">
+              <Pencil className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-semibold text-primary">
                 Editing {editingOrderId?.toUpperCase()}
               </span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-auto h-5 px-1.5 text-[10px] text-muted-foreground hover:text-destructive"
+                className="ml-auto h-6 px-2 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 onClick={cancelEditOrder}
               >
                 Cancel
@@ -501,7 +501,7 @@ export function NewOrder() {
             </div>
           )}
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base lg:text-lg font-serif">
+            <CardTitle className="text-lg font-bold tracking-tight lg:text-xl text-foreground">
               {isEditing ? "Edit Order" : "Current Order"}
             </CardTitle>
             {cart.length > 0 && (
@@ -509,24 +509,35 @@ export function NewOrder() {
                 variant="ghost"
                 size="sm"
                 onClick={isEditing ? cancelEditOrder : clearCart}
-                className="text-destructive hover:text-destructive h-7 w-7"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8 rounded-full transition-colors"
+                title="Clear Cart"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-            <Badge variant="outline" className="text-[10px] h-5">{orderType}</Badge>
+          <div className="flex flex-wrap items-center gap-2 mt-0.5">
+            <Badge 
+              variant="secondary" 
+              className="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary hover:bg-primary/20 border-transparent transition-colors"
+            >
+              {orderType.replace("-", " ")}
+            </Badge>
             {selectedTable && (
-              <Badge variant="secondary" className="text-[10px] h-5">
+              <Badge 
+                variant="secondary" 
+                className="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-secondary border-transparent text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              >
                 Table {selectedTable.replace("t", "")}
               </Badge>
             )}
             {customerName && (
-              <Badge variant="secondary" className="text-[10px] h-5">{customerName}</Badge>
+              <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-border/80 text-foreground">
+                {customerName}
+              </Badge>
             )}
             {orderNotes && (
-              <Badge variant="outline" className="max-w-[100px] truncate text-[10px] h-5">
+              <Badge variant="outline" className="px-2 py-0.5 max-w-[100px] truncate text-[10px] font-medium border-dashed border-border/80 text-muted-foreground">
                 {orderNotes}
               </Badge>
             )}
