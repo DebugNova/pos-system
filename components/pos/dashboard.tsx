@@ -78,22 +78,20 @@ export function Dashboard() {
         </div>
         <div className="flex items-center gap-2 lg:gap-3">
           <Button
-            variant="outline"
             size="sm"
-            className="gap-1.5 h-9 lg:h-10 lg:gap-2"
+            className="gap-1.5 h-9 lg:h-10 lg:gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow border-0"
             onClick={() => setShowReports(true)}
           >
             <BarChart3 className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
-            <span className="text-xs lg:text-sm">Reports</span>
+            <span className="text-xs lg:text-sm font-semibold">Reports</span>
           </Button>
           <Button
-            variant="outline"
             size="sm"
-            className="gap-1.5 h-9 lg:h-10 lg:gap-2"
+            className="gap-1.5 h-9 lg:h-10 lg:gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow border-0"
             onClick={() => setShowDataManager(true)}
           >
             <Database className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
-            <span className="text-xs lg:text-sm">Data</span>
+            <span className="text-xs lg:text-sm font-semibold">Data</span>
           </Button>
           <Badge variant="outline" className="gap-1 py-1 text-xs text-success border-success/30 bg-success/10 lg:gap-1.5 lg:py-1.5">
             <Wifi className="h-2.5 w-2.5 lg:h-3 lg:w-3" />

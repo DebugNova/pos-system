@@ -1,7 +1,7 @@
 # SUHASHI Cafe POS — Remaining Work
 
 > Gap analysis: **Blueprint** vs. **Current Implementation**
-> Generated: 2026-04-09
+> Generated: 2026-04-09 (Updated after Dashboard & Settings Enhancements)
 
 ---
 
@@ -35,7 +35,7 @@ These are items the blueprint marks as **MVP 1** deliverables that are either mi
 | 7 | **Partial Payment** | 🔴 | Blueprint lists partial payment as a core feature. Split payment exists, but there's no ability to collect a partial amount and keep an open balance on the order. |
 | 8 | **Payment Record Persistence** | 🔴 | No `Payment` data model. When an order is "paid," the status just flips to `completed`. No record of *how* it was paid (method, amount, transaction ID). |
 | 9 | **Refund Processing** | 🟡 | Refund dialog exists and access is restricted to Admin role, but `handleRefund` is still a no-op logic-wise. |
-| 10 | **Configurable Tax Rates** | 🟡 | Settings page has a tax rate input, but it uses **local `useState`** — the value is never saved or used by the billing module (which hardcodes `0.05`). |
+| 10 | **Configurable Tax Rates** | 🟡 | Revamped UI with a professional **iPad-optimized slider** and **GST presets** (0, 5, 12, 18, 28%). However, still uses **local `useState`** — the value is not yet saved to the store or used by the billing module. |
 
 | 11 | **KOT (Kitchen Order Ticket) Queue** | 🟢 | Implemented FIFO sorting, urgency-based color coding, and auto-refreshing timestamps to manage the kitchen queue effectively. |
 | 12 | **Item-Level Marking (Preparing / Ready)** | 🔴 | Kitchen can only change the **entire order** status. No per-item "preparing" / "ready" tracking, which is essential for multi-item orders. |
@@ -68,7 +68,7 @@ These are MVP 2 deliverables from the blueprint and are expected eventually.
 | 21 | **External Order ID Mapping (`AggregatorOrderMap`)** | 🔴 | Blueprint requires mapping external order IDs to internal ones. Not in the data model. |
 | 22 | **Aggregator Status Flow (Packed, Handed Over)** | 🟡 | Blueprint requires: Received → Accepted → Preparing → Ready → Packed → Handed Over → Cancelled. Current implementation only uses: `new → preparing → ready → completed → cancelled`. Missing `packed` and `handed-over` statuses. |
 | 23 | **Menu Mapping (External → Internal)** | 🔴 | No mechanism to map Swiggy/Zomato menu items to internal menu items. |
-| 24 | **Advanced Reporting** | 🟡 | Reports page is now rendered in the main flow, but still uses **hardcoded mock data** (hourly revenue, payment breakdown, top items). |
+| 24 | **Advanced Reporting** | 🟡 | Reports page is rendered in the main flow. Fixed **visual contrast** and legibility for charts/tooltips, but still uses **hardcoded mock data**. |
 | 25 | **Staff Performance Reports** | 🔴 | No staff-linked metrics. Orders don't track which staff member created them. |
 | 26 | **Customer Profiles** | 🔴 | No customer database. The `customerName` field on orders is a free-text string. |
 | 27 | **Staff Shifts (Clock In / Clock Out)** | 🟡 | Login screen has a "Start Shift" flow with optional opening cash, but **no shift tracking**: no clock-out, no shift summary, no closing cash reconciliation. |
@@ -100,11 +100,11 @@ The blueprint specifies these entities. Here's what's missing:
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
-| 29 | **iPad-First Touch Optimization** | 🟡 | Design uses large touch targets, but hasn't been tested/optimized for iPad Safari specifically. No PWA manifest or icon set. |
+| 29 | **iPad-First Touch Optimization** | 🟡 | Improved touch-friendliness for **Tax Settings** (presets and slider). Design uses large touch targets but lacks PWA manifest/icons. |
 | 30 | **PWA / Installable App** | 🔴 | No `manifest.json`, no service worker, no install prompt. Blueprint says it should work as a web app / PWA on iPad. |
 | 31 | **WebSocket Realtime Updates** | 🔴 | Blueprint requires WebSockets for live order/kitchen/aggregator updates. Currently all state is local — multi-device sync is impossible. |
 | 32 | **Audit Logging** | 🔴 | Critical actions (refunds, voids, discounts, order deletions) are not logged anywhere. |
-| 33 | **Low-Light Readability** | 🟡 | Dark mode is implemented, which helps. But no explicit contrast testing or font-size adjustments for busy/low-light environments. |
+| 33 | **Low-Light Readability** | 🟢 | Fixed **chart contrast issues** where text was illegible. Dark mode is now fully readable and high-contrast for busy/low-light environments. |
 | 34 | **Sound Notifications** | 🔴 | Settings has toggles for "Order Alerts" and "Kitchen Ready Alerts," but no actual audio notification system exists. |
 | 35 | **Session Timeout / Auto-Lock** | 🔴 | No session timeout. Once logged in, the user stays logged in indefinitely (even across browser restarts due to `localStorage`). |
 

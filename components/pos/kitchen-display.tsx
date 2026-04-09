@@ -21,6 +21,7 @@ import {
   Timer,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Pencil } from "lucide-react";
 import type { Order } from "@/lib/data";
 
 const orderTypeIcons = {
@@ -80,7 +81,7 @@ function sortOrders(orders: Order[], sort: SortType): Order[] {
 }
 
 export function KitchenDisplay() {
-  const { orders, updateOrderStatus } = usePOSStore();
+  const { orders, updateOrderStatus, startEditOrder } = usePOSStore();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortType>("oldest");
@@ -232,6 +233,7 @@ export function KitchenDisplay() {
                 order={order}
                 column="new"
                 onAction={() => handleAccept(order.id)}
+                onEdit={() => startEditOrder(order.id)}
               />
             ))}
             {newOrders.length === 0 && (
@@ -261,6 +263,7 @@ export function KitchenDisplay() {
                 order={order}
                 column="preparing"
                 onAction={() => handleReady(order.id)}
+                onEdit={() => startEditOrder(order.id)}
               />
             ))}
             {preparingOrders.length === 0 && (
@@ -290,6 +293,7 @@ export function KitchenDisplay() {
                 order={order}
                 column="ready"
                 onAction={() => handleComplete(order.id)}
+                onEdit={() => startEditOrder(order.id)}
               />
             ))}
             {readyOrders.length === 0 && (
@@ -313,9 +317,10 @@ interface KitchenOrderCardProps {
   order: Order;
   column: "new" | "preparing" | "ready";
   onAction: () => void;
+  onEdit: () => void;
 }
 
-function KitchenOrderCard({ order, column, onAction }: KitchenOrderCardProps) {
+function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardProps) {
   const TypeIcon = orderTypeIcons[order.type];
   const elapsed = getElapsedMinutes(order.createdAt);
   const urgency = getUrgency(elapsed);
@@ -455,16 +460,27 @@ function KitchenOrderCard({ order, column, onAction }: KitchenOrderCardProps) {
           ))}
         </ul>
 
-        {/* Action button */}
-        <Button
-          size="sm"
-          variant={action.variant}
-          className={action.className}
-          onClick={onAction}
-        >
-          <ActionIcon className="h-4 w-4" />
-          {action.label}
-        </Button>
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={onEdit}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant={action.variant}
+            className={cn("flex-1", action.className)}
+            onClick={onAction}
+          >
+            <ActionIcon className="h-4 w-4" />
+            {action.label}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

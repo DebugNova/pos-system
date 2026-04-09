@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
 import {
   Store,
   Printer,
@@ -112,26 +113,61 @@ export function Settings() {
                 Configure tax rates for billing
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Enable GST</Label>
+                  <Label className="text-base">Enable GST</Label>
                   <p className="text-sm text-muted-foreground">
                     Apply GST to all orders
                   </p>
                 </div>
                 <Switch defaultChecked />
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="taxRate">Tax Rate (%)</Label>
-                  <Input
-                    id="taxRate"
-                    type="number"
-                    value={taxRate}
-                    onChange={(e) => setTaxRate(e.target.value)}
-                    className="bg-secondary border-none"
+              
+              <div className="space-y-4 pt-4 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Applicable Tax Rate</Label>
+                    <p className="text-xs text-muted-foreground lg:text-sm">
+                      Slide or select a preset rate
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center bg-primary/10 text-primary border border-primary/20 px-5 py-2 rounded-xl font-bold text-2xl shadow-inner min-w-[5rem]">
+                    {taxRate}%
+                  </div>
+                </div>
+                
+                <div className="px-2 pt-6 pb-4">
+                  <Slider
+                    value={[parseFloat(taxRate) || 0]}
+                    max={28}
+                    step={1}
+                    onValueChange={(vals) => setTaxRate(vals[0].toString())}
+                    className="w-full cursor-pointer"
                   />
+                  <div className="flex justify-between mt-2 text-xs text-muted-foreground font-medium px-1">
+                    <span>0%</span>
+                    <span>14%</span>
+                    <span>28%</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-5 gap-2 pt-2">
+                  {[0, 5, 12, 18, 28].map((rate) => (
+                    <Button
+                      key={rate}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTaxRate(rate.toString())}
+                      className={`rounded-lg transition-all h-10 ${
+                        parseFloat(taxRate) === rate
+                          ? "bg-primary text-primary-foreground border-primary shadow ring-2 ring-primary/20"
+                          : "hover:bg-secondary/80 bg-secondary/30"
+                      }`}
+                    >
+                      {rate}%
+                    </Button>
+                  ))}
                 </div>
               </div>
             </CardContent>

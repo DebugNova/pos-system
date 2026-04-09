@@ -130,7 +130,10 @@ npm run build    # Production build
 - **State lives in `lib/store.ts`** — all components read/write via `usePOSStore()`.
 - **RBAC is centralized in `lib/roles.ts`** — use `canAccessView()` for navigation and `getPermissions(currentUser.role)` for action-level gates.
 - **Seed data is in `lib/data.ts`** — menu items, initial tables, default staff.
-- **Settings are currently not persisted** — they use component-level `useState`. Fix by adding them to the Zustand store.
+- **Settings are currently partially persisted** — Tax settings and cafe info use component-level `useState`. Fix by adding them to the Zustand store.
+- **Reports and Data Manager are now accessed via Dashboard** — Removed Reports from sidebar to reduce clutter; used high-contrast distinct buttons on Dashboard.
+- **Tax Settings are iPad-optimized** — Implemented a professional slider and GST presets (0%, 5%, 12%, 18%, 28%) for quick touch-based configuration.
+- **Chart Contrast fixed for low-light** — Reports charts now use full foreground color for labels and tooltips, ensuring legibility on dark themes.
 - **Kitchen Display is now optimized** — features FIFO sorting, status-based filters, and time-based urgency indicators.
 - **`splitTable` is a stub** — `console.log` only. Needs full implementation.
 - **Print buttons are no-ops** — implement via `window.print()` or ESC/POS when backend is ready.

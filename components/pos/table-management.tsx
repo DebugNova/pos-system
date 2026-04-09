@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Users, Clock, CreditCard, Plus, MoreVertical, ArrowRight, Merge, Split, Eye } from "lucide-react";
+import { Users, Clock, CreditCard, Plus, MoreVertical, ArrowRight, Merge, Split, Eye, Pencil } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const statusColors: Record<string, string> = {
@@ -36,7 +36,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export function TableManagement() {
-  const { tables, orders, setActiveView, setSelectedTable, setOrderType, moveTable, mergeTable } =
+  const { tables, orders, setActiveView, setSelectedTable, setOrderType, moveTable, mergeTable, startEditOrder } =
     usePOSStore();
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
@@ -177,6 +177,13 @@ export function TableManagement() {
                           }}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Order
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            startEditOrder(order.id);
+                          }}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Order
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={(e) => {
@@ -382,13 +389,26 @@ export function TableManagement() {
                   </span>
                 </div>
               </div>
-              <Button className="w-full" onClick={() => {
-                setShowOrderDialog(false);
-                setActiveView("billing");
-              }}>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Process Payment
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowOrderDialog(false);
+                    startEditOrder(selectedOrder.id);
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Order
+                </Button>
+                <Button className="flex-1" onClick={() => {
+                  setShowOrderDialog(false);
+                  setActiveView("billing");
+                }}>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Payment
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

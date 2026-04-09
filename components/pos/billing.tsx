@@ -30,13 +30,14 @@ import {
   Percent,
   RotateCcw,
   QrCode,
+  Pencil,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type PaymentMethod = "cash" | "upi" | "card" | "split";
 
 export function Billing() {
-  const { orders, updateOrderStatus, setActiveView, currentUser } = usePOSStore();
+  const { orders, updateOrderStatus, setActiveView, currentUser, startEditOrder } = usePOSStore();
   const permissions = getPermissions(currentUser?.role || "Kitchen");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -183,11 +184,20 @@ export function Billing() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{order.id.toUpperCase()}</CardTitle>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     {order.tableId && (
                       <Badge variant="secondary">Table {order.tableId.replace("t", "")}</Badge>
                     )}
                     <Badge variant="outline">{order.type}</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-1 gap-1.5"
+                      onClick={() => startEditOrder(order.id)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </Button>
                   </div>
                 </div>
               </CardHeader>

@@ -46,6 +46,7 @@ interface POSState {
   selectedTable: string | null;
   customerName: string;
   orderNotes: string;
+  editingOrderId: string | null;
   addToCart: (item: Omit<CartItem, "tempId">) => void;
   removeFromCart: (tempId: string) => void;
   updateQuantity: (tempId: string, quantity: number) => void;
@@ -56,6 +57,9 @@ interface POSState {
   setSelectedTable: (tableId: string | null) => void;
   setCustomerName: (name: string) => void;
   setOrderNotes: (notes: string) => void;
+  startEditOrder: (orderId: string) => void;
+  saveEditOrder: () => void;
+  cancelEditOrder: () => void;
 
   // Menu Items
   menuItems: MenuItem[];
@@ -127,6 +131,7 @@ export const usePOSStore = create<POSState>()(
       selectedTable: null,
       customerName: "",
       orderNotes: "",
+      editingOrderId: null,
 
       addToCart: (item) => {
         const tempId = `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -169,7 +174,95 @@ export const usePOSStore = create<POSState>()(
         }));
       },
 
-      clearCart: () => set({ cart: [], selectedTable: null, customerName: "", orderNotes: "" }),
+      clearCart: () => set({ cart: [], selectedTable: null, customerName: "", orderNotes: "", editingOrderId: null }),
+
+      startEditOrder: (orderId) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order) return;
+
+        // Load order items into cart
+        const cartItems: CartItem[] = order.items.map((item) => ({
+          tempId: `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          menuItemId: item.menuItemId,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          variant: item.variant,
+          notes: item.notes,
+        }));
+
+        set({
+          editingOrderId: orderId,
+          cart: cartItems,
+          orderType: order.type,
+          selectedTable: order.tableId || null,
+          customerName: order.customerName || "",
+          orderNotes: order.orderNotes || "",
+          activeView: "orders",
+        });
+      },
+
+      saveEditOrder: () => {
+        const { editingOrderId, cart, orderType, selectedTable, customerName, orderNotes } = get();
+        if (!editingOrderId || cart.length === 0) return;
+
+        const newTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const newItems = cart.map((item, index) => ({
+          id: `oi-${Date.now()}-${index}`,
+          menuItemId: item.menuItemId,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          variant: item.variant,
+          notes: item.notes,
+        }));
+
+        // Get old order to check if table changed
+        const oldOrder = get().orders.find((o) => o.id === editingOrderId);
+        const oldTableId = oldOrder?.tableId;
+        const newTableId = orderType === "dine-in" ? selectedTable || undefined : undefined;
+
+        set((state) => ({
+          orders: state.orders.map((order) =>
+            order.id === editingOrderId
+              ? {
+                  ...order,
+                  items: newItems,
+                  total: newTotal,
+                  type: orderType,
+                  tableId: newTableId,
+                  customerName: customerName || undefined,
+                  orderNotes: orderNotes || undefined,
+                }
+              : order
+          ),
+          cart: [],
+          editingOrderId: null,
+          selectedTable: null,
+          customerName: "",
+          orderNotes: "",
+        }));
+
+        // Update table assignments if table changed
+        if (oldTableId !== newTableId) {
+          if (oldTableId) {
+            get().updateTableStatus(oldTableId, "available");
+          }
+          if (newTableId) {
+            get().updateTableStatus(newTableId, "occupied", editingOrderId);
+          }
+        }
+      },
+
+      cancelEditOrder: () => {
+        set({
+          editingOrderId: null,
+          cart: [],
+          selectedTable: null,
+          customerName: "",
+          orderNotes: "",
+        });
+      },
 
       setOrderType: (type) => set({ orderType: type }),
       setSelectedTable: (tableId) => set({ selectedTable: tableId }),

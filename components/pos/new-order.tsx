@@ -34,6 +34,9 @@ import {
   User,
   Edit3,
   X,
+  ArrowLeft,
+  Save,
+  Pencil,
 } from "lucide-react";
 
 const orderTypes = [
@@ -72,6 +75,7 @@ export function NewOrder() {
     selectedTable,
     customerName,
     orderNotes,
+    editingOrderId,
     tables,
     menuItems,
     addToCart,
@@ -85,9 +89,13 @@ export function NewOrder() {
     setCustomerName,
     setOrderNotes,
     addOrder,
+    saveEditOrder,
+    cancelEditOrder,
     getCartTotal,
     setActiveView,
   } = usePOSStore();
+
+  const isEditing = !!editingOrderId;
 
   const filteredItems = menuItems.filter((item) => {
     const matchesSearch = item.name
@@ -98,7 +106,11 @@ export function NewOrder() {
     return matchesSearch && matchesCategory && item.available;
   });
 
-  const availableTables = tables.filter((t) => t.status === "available");
+  // When editing, include the table currently assigned to this order as available
+  const editingOrder = isEditing ? usePOSStore.getState().orders.find((o) => o.id === editingOrderId) : null;
+  const availableTables = tables.filter((t) =>
+    t.status === "available" || (isEditing && editingOrder?.tableId === t.id)
+  );
 
   const handleAddItem = (item: MenuItem) => {
     if (item.variants && item.variants.length > 0) {
@@ -364,13 +376,29 @@ export function NewOrder() {
       {/* Cart Section */}
       <div className="flex w-72 shrink-0 flex-col bg-card sm:w-80 lg:w-80 xl:w-96">
         <CardHeader className="border-b border-border">
+          {isEditing && (
+            <div className="mb-2 flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">
+              <Pencil className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium text-primary">
+                Editing {editingOrderId?.toUpperCase()}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={cancelEditOrder}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Current Order</CardTitle>
+            <CardTitle className="text-lg">{isEditing ? "Edit Order" : "Current Order"}</CardTitle>
             {cart.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={clearCart}
+                onClick={isEditing ? cancelEditOrder : clearCart}
                 className="text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
@@ -512,30 +540,59 @@ export function NewOrder() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                className="flex-1 h-14"
-                disabled={cart.length === 0}
-                onClick={handleSendToKitchen}
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                KOT
-              </Button>
-              <Button
-                size="lg"
-                className="flex-1 h-14 bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={
-                  cart.length === 0 ||
-                  (orderType === "dine-in" && !selectedTable)
-                }
-                onClick={handlePlaceOrder}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Place Order
-              </Button>
-            </div>
+            {isEditing ? (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 h-14"
+                  onClick={cancelEditOrder}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Cancel
+                </Button>
+                <Button
+                  size="lg"
+                  className="flex-1 h-14 bg-primary text-primary-foreground hover:bg-primary/90"
+                  disabled={
+                    cart.length === 0 ||
+                    (orderType === "dine-in" && !selectedTable)
+                  }
+                  onClick={() => {
+                    saveEditOrder();
+                    setActiveView("tables");
+                  }}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Update Order
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 h-14"
+                  disabled={cart.length === 0}
+                  onClick={handleSendToKitchen}
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  KOT
+                </Button>
+                <Button
+                  size="lg"
+                  className="flex-1 h-14 bg-primary text-primary-foreground hover:bg-primary/90"
+                  disabled={
+                    cart.length === 0 ||
+                    (orderType === "dine-in" && !selectedTable)
+                  }
+                  onClick={handlePlaceOrder}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Place Order
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </div>

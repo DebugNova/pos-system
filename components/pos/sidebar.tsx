@@ -26,7 +26,6 @@ const navItems = [
   { id: "aggregator" as ViewId, label: "Online", icon: Store, showBadge: true },
   { id: "billing" as ViewId, label: "Billing", icon: CreditCard },
   { id: "history" as ViewId, label: "History", icon: ClipboardList },
-  { id: "reports" as ViewId, label: "Reports", icon: BarChart3 },
   { id: "settings" as ViewId, label: "Settings", icon: Settings },
 ] as const;
 

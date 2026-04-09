@@ -163,11 +163,13 @@ export function ReportsContent() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="hour"
-                    stroke="hsl(var(--muted-foreground))"
+                    stroke="hsl(var(--border))"
+                    tick={{ fill: "hsl(var(--foreground))" }}
                     fontSize={12}
                   />
                   <YAxis
-                    stroke="hsl(var(--muted-foreground))"
+                    stroke="hsl(var(--border))"
+                    tick={{ fill: "hsl(var(--foreground))" }}
                     fontSize={12}
                     tickFormatter={(value) => `₹${value}`}
                   />
@@ -176,6 +178,7 @@ export function ReportsContent() {
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
+                      color: "hsl(var(--foreground))"
                     }}
                     formatter={(value: number) => [`₹${value}`, "Revenue"]}
                   />
@@ -220,6 +223,7 @@ export function ReportsContent() {
                         backgroundColor: "hsl(var(--card))",
                         border: "1px solid hsl(var(--border))",
                         borderRadius: "8px",
+                        color: "hsl(var(--foreground))"
                       }}
                       formatter={(value: number) => [`${value}%`, "Share"]}
                     />
@@ -271,13 +275,15 @@ export function ReportsContent() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   type="number"
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="hsl(var(--border))"
+                  tick={{ fill: "hsl(var(--foreground))" }}
                   fontSize={12}
                 />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="hsl(var(--border))"
+                  tick={{ fill: "hsl(var(--foreground))" }}
                   fontSize={12}
                   width={100}
                 />
@@ -286,6 +292,7 @@ export function ReportsContent() {
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
+                    color: "hsl(var(--foreground))"
                   }}
                   formatter={(value: number, name: string) => [
                     name === "orders" ? `${value} orders` : `₹${value}`,
