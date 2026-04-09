@@ -299,7 +299,7 @@ export function NewOrder() {
               placeholder="Search menu..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10 bg-secondary border-none text-sm lg:h-12"
+              className="pl-10 h-10 bg-background border border-border rounded-full text-sm lg:h-12 shadow-sm focus-visible:ring-primary"
             />
           </div>
         </div>
@@ -307,10 +307,10 @@ export function NewOrder() {
         {/* Category Tabs */}
         <div className="flex gap-1.5 overflow-x-auto border-b border-border px-3 py-2.5 lg:gap-2 lg:px-4 lg:py-3">
           <Button
-            variant={activeCategory === "all" ? "default" : "ghost"}
+            variant={activeCategory === "all" ? "default" : "secondary"}
             size="sm"
             onClick={() => setActiveCategory("all")}
-            className="shrink-0"
+            className="shrink-0 rounded-full font-medium"
           >
             All Items
           </Button>
@@ -319,10 +319,10 @@ export function NewOrder() {
             return (
               <Button
                 key={cat.id}
-                variant={activeCategory === cat.id ? "default" : "ghost"}
+                variant={activeCategory === cat.id ? "default" : "secondary"}
                 size="sm"
                 onClick={() => setActiveCategory(cat.id)}
-                className="shrink-0 gap-1.5"
+                className="shrink-0 gap-1.5 rounded-full font-medium"
               >
                 {Icon && <Icon className="h-4 w-4" />}
                 {cat.name}
@@ -338,7 +338,7 @@ export function NewOrder() {
               <button
                 key={item.id}
                 onClick={() => handleAddItem(item)}
-                className="group relative flex flex-col items-start overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-card to-secondary/30 p-3.5 text-left transition-all duration-200 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.97] lg:p-4"
+                className="group relative flex flex-col items-start overflow-hidden rounded-2xl border border-border/40 bg-card shadow-sm p-3.5 text-left transition-all duration-200 hover:shadow-md hover:border-primary/40 active:scale-[0.97] lg:p-4"
               >
                 {/* Subtle glow effect on hover */}
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/0 transition-all duration-300 group-hover:from-primary/5 group-hover:to-primary/10" />
@@ -374,7 +374,7 @@ export function NewOrder() {
       </div>
 
       {/* Cart Section */}
-      <div className="flex w-72 shrink-0 flex-col bg-card sm:w-80 lg:w-80 xl:w-96">
+      <div className="flex w-72 shrink-0 flex-col bg-card shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 border-l border-border/50 sm:w-80 lg:w-80 xl:w-96">
         <CardHeader className="border-b border-border">
           {isEditing && (
             <div className="mb-2 flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">

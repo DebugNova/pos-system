@@ -95,10 +95,10 @@ SUHASHI Cafe POS is a **touch-first Point of Sale system** designed for a cafe, 
 
 | Feature | Details |
 |---------|---------|
-| **Backend / API** | No Node.js server, no Express/Fastify, no API routes |
-| **Database** | No PostgreSQL, no schema, no migrations. Everything is localStorage. |
-| **Authentication** | No JWT/sessions, no password hashing. PIN stored in plain text. |
-| **Real-time Sync** | No WebSockets. Multi-device/multi-terminal is impossible. |
+| **Backend / API** | No Supabase project configured. No database-backed API. Everything runs client-side only. |
+| **Database** | No Supabase PostgreSQL database, no schema, no migrations. Everything is localStorage. |
+| **Authentication** | No Supabase Auth. PIN stored in plain text in localStorage. No proper session management. |
+| **Real-time Sync** | No Supabase Realtime. Multi-device/multi-terminal is impossible. |
 | **Offline Mode** | No service worker, no background sync, no offline queue |
 | **PWA** | No manifest.json, no service worker. Can't install on iPad. |
 
@@ -148,7 +148,7 @@ SUHASHI Cafe POS is a **touch-first Point of Sale system** designed for a cafe, 
 | Reports | 30% | Mostly mock data |
 | Settings | 20% | Renders but nothing persists |
 | Aggregator Integration | 40% | UI only, no real API |
-| Backend / Database | 0% | Doesn't exist |
+| Backend / Supabase | 0% | No Supabase project configured |
 | Offline / PWA | 0% | Doesn't exist |
 | Audit & Compliance | 0% | Doesn't exist |
 | **Overall** | **~45%** | **Frontend prototype, not production-ready** |
@@ -183,23 +183,26 @@ These can all be done with just the Zustand store and client-side code:
 17. **Add service worker** — cache static assets, enable iPad "Add to Home Screen" install
 18. **Build offline queue** — queue orders when offline, sync when back online
 
-### Phase 3 — Backend & Real Integrations
+### Phase 3 — Supabase Backend & Real Integrations
 
-19. **Build Node.js + PostgreSQL backend** — API routes, JWT auth, data persistence
-20. **Add WebSocket support** — real-time sync across multiple terminals
-21. **Integrate Swiggy/Zomato APIs** — real order ingestion via webhooks
-22. **Implement ESC/POS printing** — thermal printer support via USB or network
-23. **Customer profiles** — save customer data, order history, preferences
-24. **Multi-branch support** — branch entity, branch-level data isolation
+19. **Set up Supabase project** — create database schema (tables for orders, menu, staff, tables, audit log, shifts, payments), configure Row Level Security (RLS) policies, set up Supabase Auth for staff login (replace PIN-only localStorage auth)
+20. **Migrate client state to Supabase** — replace Zustand localStorage persistence with Supabase PostgreSQL as the source of truth. Keep Zustand for local UI state but sync reads/writes through Supabase client SDK (`@supabase/supabase-js`)
+21. **Enable Supabase Realtime** — subscribe to order, kitchen, and table changes for real-time sync across multiple terminals (replaces the need for a custom WebSocket server)
+22. **Add Supabase Edge Functions** — serverless functions for business logic that shouldn't run client-side: aggregator webhook handlers, receipt PDF generation, scheduled report jobs
+23. **Integrate Swiggy/Zomato APIs** — real order ingestion via Supabase Edge Functions as webhook receivers, mapping external orders to internal schema
+24. **Implement ESC/POS printing** — thermal printer support via USB or network
+25. **Customer profiles** — Supabase table for customers with order history, preferences, saved addresses
+26. **Multi-branch support** — branch entity in Supabase, RLS policies for branch-level data isolation
 
 ### Phase 4 — Polish & Scale
 
-25. **Advanced reporting** — trend analysis, forecasting, export to CSV/PDF
-26. **Time-based pricing** — happy hour, scheduled specials
-27. **Combos & deals** — grouped items with combo pricing
-28. **Inventory tracking** — stock levels, low-stock alerts, wastage tracking
-29. **Loyalty program** — points, rewards, customer tiers
-30. **Multi-language support** — Hindi, regional languages
+27. **Advanced reporting** — Supabase SQL views + Edge Functions for trend analysis, forecasting, export to CSV/PDF
+28. **Time-based pricing** — happy hour, scheduled specials (Supabase cron via pg_cron)
+29. **Combos & deals** — grouped items with combo pricing
+30. **Inventory tracking** — stock levels, low-stock alerts, wastage tracking
+31. **Loyalty program** — points, rewards, customer tiers (Supabase table + RLS)
+32. **Multi-language support** — Hindi, regional languages
+33. **Supabase Storage** — for receipt PDFs, menu item images, brand assets
 
 ---
 

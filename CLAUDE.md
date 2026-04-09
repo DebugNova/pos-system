@@ -51,7 +51,7 @@ Handles dine-in billing, table management, kitchen display, online orders (Swigg
 - **Split bill** — fully implement `splitTable` (currently a stub)
 - **Modifiers** — add-ons (spice level, toppings, extra shot) on menu items
 - **PWA** — `manifest.json` + service worker for iPad install
-- **Backend** (Phase 2) — Node.js + PostgreSQL, JWT auth, WebSockets, offline sync queue, printer ESC/POS, Swiggy/Zomato API
+- **Backend** (Phase 3) — **Supabase** (PostgreSQL, Auth, Realtime, Edge Functions). No custom Node.js server. Supabase handles database, authentication, real-time sync, and serverless functions. ESC/POS printing, Swiggy/Zomato webhook integration via Edge Functions.
 
 ### User Roles
 | Role | Access |

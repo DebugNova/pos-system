@@ -1,5 +1,7 @@
 "use client";
 
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { usePOSStore } from "@/lib/store";
 import { canAccessView, type ViewId } from "@/lib/roles";
@@ -16,6 +18,8 @@ import {
   ClipboardList,
   LogOut,
   BarChart3,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { CatLogo } from "@/components/ui/cat-logo";
 
@@ -32,6 +36,10 @@ const navItems = [
 
 export function POSSidebar() {
   const { activeView, setActiveView, orders, currentUser, logout } = usePOSStore();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const userRole = currentUser?.role || "Kitchen"; // Most restrictive fallback
 
@@ -45,7 +53,7 @@ export function POSSidebar() {
   ).length;
 
   return (
-    <aside className="flex h-full w-[72px] flex-col bg-sidebar border-r border-sidebar-border lg:w-20">
+    <aside className="flex h-full w-[72px] flex-col bg-sidebar border-r border-sidebar-border lg:w-20 shadow-sm z-10 relative">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border lg:h-20">
         <button 
@@ -77,11 +85,11 @@ export function POSSidebar() {
               className={cn(
                 "relative flex h-12 w-full flex-col items-center justify-center rounded-lg transition-all active:scale-95 lg:h-14 lg:rounded-xl",
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
             >
-              <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
+              <Icon className={cn("h-4 w-4 lg:h-5 lg:w-5", isActive ? "text-sidebar-accent-foreground" : "")} />
               <span className="mt-0.5 text-[8px] font-medium leading-tight lg:mt-1 lg:text-[9px]">{item.label}</span>
               {showBadge && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground lg:-top-1 lg:-right-1 lg:h-5 lg:w-5 lg:text-[10px]">
@@ -93,8 +101,19 @@ export function POSSidebar() {
         })}
       </nav>
 
-      {/* User */}
+      {/* Theme Toggle & User */}
       <div className="flex flex-col items-center border-t border-sidebar-border py-2 gap-1.5 lg:py-3 lg:gap-2">
+        {mounted && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:bg-secondary hover:text-foreground mb-1 lg:h-10 lg:w-10 rounded-full"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            title="Toggle theme"
+          >
+            {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        )}
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground lg:h-10 lg:w-10 lg:text-sm">
           {currentUser?.name.split(" ").map((n) => n[0]).join("").slice(0, 2) || "??"}
         </div>
