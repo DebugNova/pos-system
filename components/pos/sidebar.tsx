@@ -17,6 +17,7 @@ import {
   LogOut,
   BarChart3,
 } from "lucide-react";
+import { CatLogo } from "@/components/ui/cat-logo";
 
 const navItems = [
   { id: "dashboard" as ViewId, label: "Dashboard", icon: LayoutDashboard },
@@ -48,7 +49,7 @@ export function POSSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border lg:h-20">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary lg:h-12 lg:w-12">
-          <img src="/logo.png" alt="Logo" className="h-full w-full object-contain p-1" />
+          <CatLogo className="h-full w-full p-0.5" />
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Coffee, User, Lock, Clock, Wifi } from "lucide-react";
+import { CatLogo } from "@/components/ui/cat-logo";
 
 interface LoginProps {
   onLogin: (user: { name: string; role: string; pin: string }) => void;
@@ -64,7 +65,7 @@ export function Login({ onLogin }: LoginProps) {
         {/* Logo and Header */}
         <div className="mb-4 text-center">
           <div className="mx-auto mb-2 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-primary overflow-hidden shadow-sm">
-            <img src="/logo.png" alt="Logo" className="h-full w-full object-contain p-1.5" />
+            <CatLogo className="p-1.5" />
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">SUHASHI Cafe</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">Point of Sale System</p>
