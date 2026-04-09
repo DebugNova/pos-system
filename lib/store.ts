@@ -1,11 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Order, OrderItem, OrderType, Table, MenuItem } from "./data";
+import type { Order, OrderItem, OrderType, Table, MenuItem, AuditEntry } from "./data";
 import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
 import { getDefaultView } from "./roles";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 5;
+const STORE_VERSION = 6;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -25,6 +25,20 @@ interface StaffMember {
   initials: string;
 }
 
+interface CafeSettings {
+  cafeName: string;
+  gstNumber: string;
+  address: string;
+  taxRate: number;          // stored as percentage (e.g. 5 means 5%)
+  gstEnabled: boolean;
+  upiId: string;            // for UPI QR generation later (Task 5)
+  orderAlerts: boolean;
+  kitchenReadyAlerts: boolean;
+  autoPrintKot: boolean;
+  printCustomerCopy: boolean;
+  sessionTimeoutMinutes: number;  // for Task 14
+}
+
 interface POSState {
   // Auth
   isLoggedIn: boolean;
@@ -39,6 +53,10 @@ interface POSState {
   // Navigation
   activeView: "dashboard" | "orders" | "tables" | "kitchen" | "reports" | "settings" | "aggregator" | "billing" | "history";
   setActiveView: (view: POSState["activeView"]) => void;
+
+  // Settings
+  settings: CafeSettings;
+  updateSettings: (settings: Partial<CafeSettings>) => void;
 
   // Cart
   cart: CartItem[];
@@ -89,6 +107,10 @@ interface POSState {
   exportData: () => string;
   importData: (data: string) => boolean;
 
+  // Audit Log
+  auditLog: AuditEntry[];
+  addAuditEntry: (entry: Omit<AuditEntry, "id" | "timestamp">) => void;
+
   // Cart Total
   getCartTotal: () => number;
 }
@@ -100,30 +122,82 @@ const defaultStaffMembers: StaffMember[] = [
   { id: "4", name: "Amit K.", role: "Kitchen", pin: "1111", initials: "AK" },
 ];
 
+const defaultSettings: CafeSettings = {
+  cafeName: "SUHASHI Cafe",
+  gstNumber: "27AABCT1234F1ZH",
+  address: "",
+  taxRate: 5,
+  gstEnabled: true,
+  upiId: "cafe@upi",
+  orderAlerts: true,
+  kitchenReadyAlerts: true,
+  autoPrintKot: true,
+  printCustomerCopy: true,
+  sessionTimeoutMinutes: 30,
+};
+
 export const usePOSStore = create<POSState>()(
   persist(
     (set, get) => ({
+      // Audit Log
+      auditLog: [],
+      addAuditEntry: (entry) => set((state) => ({
+        auditLog: [
+          {
+            ...entry,
+            id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: new Date()
+          },
+          ...state.auditLog
+        ]
+      })),
+
       // Auth
       isLoggedIn: false,
       currentUser: null,
       staffMembers: defaultStaffMembers,
-      login: (user) => set({
-        isLoggedIn: true,
-        currentUser: user,
-        activeView: getDefaultView(user.role) as POSState["activeView"],
-      }),
-      logout: () => set({ isLoggedIn: false, currentUser: null, activeView: "dashboard" }),
-      addStaffMember: (staff) => set((state) => ({ staffMembers: [...state.staffMembers, staff] })),
+      login: (user) => {
+        set({
+          isLoggedIn: true,
+          currentUser: user,
+          activeView: getDefaultView(user.role) as POSState["activeView"],
+        });
+        get().addAuditEntry({ action: "login", userId: user.name, details: `${user.name} logged in` });
+      },
+      logout: () => {
+        const userName = get().currentUser?.name || "Unknown";
+        set({ isLoggedIn: false, currentUser: null, activeView: "dashboard" });
+        get().addAuditEntry({ action: "logout", userId: userName, details: `${userName} logged out` });
+      },
+      addStaffMember: (staff) => {
+        set((state) => ({ staffMembers: [...state.staffMembers, staff] }));
+        get().addAuditEntry({ action: "staff_added", userId: get().currentUser?.name || "System", details: `Staff member ${staff.name} added` });
+      },
       updateStaffMember: (id, data) => set((state) => ({
         staffMembers: state.staffMembers.map((s) => s.id === id ? { ...s, ...data } : s)
       })),
-      deleteStaffMember: (id) => set((state) => ({
-        staffMembers: state.staffMembers.filter((s) => s.id !== id)
-      })),
+      deleteStaffMember: (id) => {
+        const staff = get().staffMembers.find((s) => s.id === id);
+        set((state) => ({
+          staffMembers: state.staffMembers.filter((s) => s.id !== id)
+        }));
+        if (staff) {
+          get().addAuditEntry({ action: "staff_deleted", userId: get().currentUser?.name || "System", details: `Staff member ${staff.name} deleted` });
+        }
+      },
 
       // Navigation
       activeView: "dashboard",
       setActiveView: (view) => set({ activeView: view }),
+
+      // Settings
+      settings: defaultSettings,
+      updateSettings: (newSettings) => {
+        set((state) => ({
+          settings: { ...state.settings, ...newSettings }
+        }));
+        get().addAuditEntry({ action: "settings_changed", userId: get().currentUser?.name || "System", details: "Settings updated" });
+      },
 
       // Cart
       cart: [],
@@ -189,6 +263,7 @@ export const usePOSStore = create<POSState>()(
           quantity: item.quantity,
           variant: item.variant,
           notes: item.notes,
+          modifiers: item.modifiers,
         }));
 
         set({
@@ -206,7 +281,10 @@ export const usePOSStore = create<POSState>()(
         const { editingOrderId, cart, orderType, selectedTable, customerName, orderNotes } = get();
         if (!editingOrderId || cart.length === 0) return;
 
-        const newTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const newTotal = cart.reduce((sum, item) => {
+          const modsTotal = item.modifiers?.reduce((modSum, mod) => modSum + mod.price, 0) || 0;
+          return sum + (item.price + modsTotal) * item.quantity;
+        }, 0);
         const newItems = cart.map((item, index) => ({
           id: `oi-${Date.now()}-${index}`,
           menuItemId: item.menuItemId,
@@ -215,6 +293,7 @@ export const usePOSStore = create<POSState>()(
           quantity: item.quantity,
           variant: item.variant,
           notes: item.notes,
+          modifiers: item.modifiers,
         }));
 
         // Get old order to check if table changed
@@ -252,6 +331,13 @@ export const usePOSStore = create<POSState>()(
             get().updateTableStatus(newTableId, "occupied", editingOrderId);
           }
         }
+
+        get().addAuditEntry({
+          action: "order_edited",
+          userId: get().currentUser?.name || "System",
+          details: `Order ${editingOrderId.toUpperCase()} was edited`,
+          orderId: editingOrderId,
+        });
       },
 
       cancelEditOrder: () => {
@@ -288,10 +374,13 @@ export const usePOSStore = create<POSState>()(
           ...orderData,
           id,
           createdAt: new Date(),
+          createdBy: get().currentUser?.name || "System",
         };
         set((state) => ({
           orders: [newOrder, ...state.orders],
         }));
+
+        get().addAuditEntry({ action: "order_created", userId: newOrder.createdBy || "System", details: `Order ${id} created`, orderId: id });
 
         // Update table status if dine-in
         if (orderData.type === "dine-in" && orderData.tableId) {
@@ -334,6 +423,13 @@ export const usePOSStore = create<POSState>()(
         set((state) => ({
           orders: state.orders.filter((o) => o.id !== orderId)
         }));
+
+        get().addAuditEntry({
+          action: "void",
+          userId: get().currentUser?.name || "System",
+          details: `Order ${orderId.toUpperCase()} was voided/deleted`,
+          orderId: orderId,
+        });
       },
 
       // Tables
@@ -415,15 +511,19 @@ export const usePOSStore = create<POSState>()(
       },
 
       // Data Management
-      clearAllData: () => set({
-        orders: [],
-        tables: initialTables,
-        menuItems: defaultMenuItems,
-        staffMembers: defaultStaffMembers,
-        cart: [],
-        isLoggedIn: false,
-        currentUser: null,
-      }),
+      clearAllData: () => {
+        const userName = get().currentUser?.name || "System";
+        set({
+          orders: [],
+          tables: initialTables,
+          menuItems: defaultMenuItems,
+          staffMembers: defaultStaffMembers,
+          cart: [],
+          isLoggedIn: false,
+          currentUser: null,
+        });
+        get().addAuditEntry({ action: "data_clear", userId: userName, details: "All data cleared" });
+      },
 
       exportData: () => {
         const state = get();
@@ -432,6 +532,8 @@ export const usePOSStore = create<POSState>()(
           tables: state.tables,
           menuItems: state.menuItems,
           staffMembers: state.staffMembers,
+          settings: state.settings,
+          auditLog: state.auditLog,
           exportedAt: new Date().toISOString(),
         };
         return JSON.stringify(exportObj, null, 2);
@@ -444,7 +546,20 @@ export const usePOSStore = create<POSState>()(
             // Convert date strings back to Date objects
             data.orders = data.orders.map((o: Order) => ({
               ...o,
-              createdAt: new Date(o.createdAt)
+              createdAt: new Date(o.createdAt),
+              ...(o.paidAt && { paidAt: new Date(o.paidAt) }),
+              ...(o.refund && {
+                refund: {
+                  ...o.refund,
+                  refundedAt: new Date(o.refund.refundedAt)
+                }
+              })
+            }));
+          }
+          if (data.auditLog) {
+            data.auditLog = data.auditLog.map((a: AuditEntry) => ({
+              ...a,
+              timestamp: new Date(a.timestamp),
             }));
           }
           set({
@@ -452,16 +567,21 @@ export const usePOSStore = create<POSState>()(
             tables: data.tables || initialTables,
             menuItems: data.menuItems || defaultMenuItems,
             staffMembers: data.staffMembers || defaultStaffMembers,
+            settings: data.settings || defaultSettings,
+            auditLog: data.auditLog || [],
           });
+          get().addAuditEntry({ action: "data_import", userId: get().currentUser?.name || "System", details: "Data imported" });
           return true;
         } catch {
           return false;
         }
       },
 
-      // Cart Total
       getCartTotal: () => {
-        return get().cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        return get().cart.reduce((sum, item) => {
+          const modsTotal = item.modifiers?.reduce((mSum, mod) => mSum + mod.price, 0) || 0;
+          return sum + (item.price + modsTotal) * item.quantity;
+        }, 0);
       },
     }),
     {
@@ -472,25 +592,40 @@ export const usePOSStore = create<POSState>()(
         tables: state.tables,
         menuItems: state.menuItems,
         staffMembers: state.staffMembers,
+        settings: state.settings,
+        auditLog: state.auditLog,
       }),
-      migrate: (persistedState, version) => {
+      migrate: (persistedState: any, version) => {
         // Reset tables and menuItems to default when version changes
         if (version < STORE_VERSION) {
-          const state = persistedState as Partial<POSState>;
+          const state = persistedState as any;
           return {
             ...state,
             tables: initialTables,
             menuItems: defaultMenuItems,
-          };
+          } as any;
         }
-        return persistedState as POSState;
+        return persistedState as any;
       },
       onRehydrateStorage: () => (state) => {
         // Convert date strings back to Date objects after rehydration
         if (state?.orders) {
           state.orders = state.orders.map((o) => ({
             ...o,
-            createdAt: new Date(o.createdAt)
+            createdAt: new Date(o.createdAt),
+            ...(o.paidAt && { paidAt: new Date(o.paidAt) }),
+            ...(o.refund && {
+              refund: {
+                ...o.refund,
+                refundedAt: new Date(o.refund.refundedAt)
+              }
+            })
+          }));
+        }
+        if (state?.auditLog) {
+          state.auditLog = state.auditLog.map((a) => ({
+            ...a,
+            timestamp: new Date(a.timestamp)
           }));
         }
       },

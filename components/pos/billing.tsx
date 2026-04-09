@@ -33,11 +33,14 @@ import {
   Pencil,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
+import { ReceiptTemplate } from "./receipt-template";
 
-type PaymentMethod = "cash" | "upi" | "card" | "split";
+import type { PaymentMethod, PaymentRecord } from "@/lib/data";
 
 export function Billing() {
-  const { orders, updateOrderStatus, setActiveView, currentUser, startEditOrder } = usePOSStore();
+  const { orders, updateOrder, updateOrderStatus, updateTableStatus, setActiveView, currentUser, startEditOrder, settings, addAuditEntry } = usePOSStore();
   const permissions = getPermissions(currentUser?.role || "Kitchen");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -47,6 +50,8 @@ export function Billing() {
   const [discountType, setDiscountType] = useState<"percent" | "amount">("percent");
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
 
   const pendingPaymentOrders = orders.filter(
     (o) => o.status === "ready" || o.status === "preparing"
@@ -60,7 +65,7 @@ export function Billing() {
       ? (subtotal * parseFloat(discount)) / 100
       : parseFloat(discount)
     : 0;
-  const taxRate = 0.05;
+  const taxRate = settings.gstEnabled ? settings.taxRate / 100 : 0;
   const taxableAmount = subtotal - discountAmount;
   const tax = taxableAmount * taxRate;
   const grandTotal = taxableAmount + tax;
@@ -69,6 +74,48 @@ export function Billing() {
 
   const handlePayment = () => {
     if (!selectedOrder || !paymentMethod) return;
+
+    const payment: PaymentRecord = {
+      method: paymentMethod,
+      amount: grandTotal,
+      transactionId: `txn-${Date.now()}`,
+      ...(paymentMethod === "cash" && cashReceived && {
+        cashReceived: parseFloat(cashReceived),
+        change: cashChange
+      }),
+      ...(paymentMethod === "split" && {
+        splitDetails: {
+          cash: parseFloat(splitAmounts.cash || "0"),
+          upi: parseFloat(splitAmounts.upi || "0"),
+          card: parseFloat(splitAmounts.card || "0")
+        }
+      })
+    };
+
+    updateOrder(selectedOrder, {
+      payment,
+      subtotal,
+      discount: discountAmount > 0 ? {
+        type: discountType,
+        amount: discountAmount,
+        value: parseFloat(discount)
+      } : undefined,
+      taxRate: settings.gstEnabled ? settings.taxRate : 0,
+      taxAmount: tax,
+      grandTotal,
+      paidAt: new Date(),
+      paidBy: currentUser?.name || "Unknown"
+    });
+
+    if (discountAmount > 0) {
+      addAuditEntry({
+        action: "discount",
+        userId: currentUser?.name || "Unknown",
+        details: `Discount of ${discountAmount} applied to order ${selectedOrder.toUpperCase()}`,
+        orderId: selectedOrder
+      });
+    }
+
     setPaymentComplete(true);
   };
 
@@ -84,8 +131,39 @@ export function Billing() {
   };
 
   const handleRefund = () => {
-    // In a real app, this would process a refund
+    if (!selectedOrder) return;
+    const amount = refundAmount ? parseFloat(refundAmount) : grandTotal;
+
+    updateOrder(selectedOrder, {
+      refund: {
+        amount,
+        reason: refundReason,
+        refundedAt: new Date(),
+        refundedBy: currentUser?.name || "Unknown",
+      },
+      status: "cancelled", // Just in case, updating status here too
+    });
+
+    updateOrderStatus(selectedOrder, "cancelled");
+
+    if (order?.tableId) {
+      updateTableStatus(order.tableId, "available");
+    }
+
+    addAuditEntry({
+      action: "refund",
+      userId: currentUser?.name || "Unknown",
+      details: `Refund of ${amount} on order ${selectedOrder.toUpperCase()}${refundReason ? ` - Reason: ${refundReason}` : ''}`,
+      orderId: selectedOrder
+    });
+
     setShowRefundDialog(false);
+    setRefundReason("");
+    setRefundAmount("");
+
+    toast.success("Refund processed successfully", {
+      description: `Refunded ${amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })} for order ${selectedOrder.toUpperCase()}`
+    });
   };
 
   const quickCashAmounts = [100, 200, 500, 1000, 2000];
@@ -161,12 +239,13 @@ export function Billing() {
               <div className="mb-6 rounded-lg bg-warning/10 p-4 text-center">
                 <p className="text-sm text-muted-foreground">Return Change</p>
                 <p className="text-2xl font-bold text-warning">
-                  {cashChange.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                  {order?.payment?.change?.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }) ||
+                    cashChange.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                 </p>
               </div>
             )}
             <div className="flex gap-3">
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={() => window.print()}>
                 <Printer className="h-4 w-4" />
                 Print Receipt
               </Button>
@@ -189,6 +268,9 @@ export function Billing() {
                       <Badge variant="secondary">Table {order.tableId.replace("t", "")}</Badge>
                     )}
                     <Badge variant="outline">{order.type}</Badge>
+                    {order.createdBy && (
+                      <Badge variant="outline" className="opacity-70 font-normal">By {order.createdBy}</Badge>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -202,15 +284,25 @@ export function Billing() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {order.items.map((item) => (
-                    <li key={item.id} className="flex justify-between text-sm">
-                      <span className="text-foreground">{item.quantity}x {item.name}</span>
-                      <span className="text-muted-foreground">
-                        {(item.price * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                      </span>
+                <ul className="space-y-3">
+                  {order.items.map((item) => {
+                    const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                    return (
+                    <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                      <div className="flex justify-between">
+                        <span className="text-foreground font-medium">{item.quantity}x {item.name}</span>
+                        <span className="text-muted-foreground">
+                          {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                      {item.variant && <span className="text-xs text-muted-foreground ml-4 mt-0.5">{item.variant}</span>}
+                      {item.modifiers && item.modifiers.length > 0 && (
+                        <span className="text-xs text-muted-foreground ml-4 mt-0.5">
+                          + {item.modifiers.map(m => m.name).join(", ")}
+                        </span>
+                      )}
                     </li>
-                  ))}
+                  )})}
                 </ul>
               </CardContent>
             </Card>
@@ -264,7 +356,7 @@ export function Billing() {
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax (5% GST)</span>
+                <span className="text-muted-foreground">Tax ({settings.gstEnabled ? `${settings.taxRate}% GST` : "disabled"})</span>
                 <span className="text-foreground">
                   {tax.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                 </span>
@@ -368,11 +460,14 @@ export function Billing() {
             {/* UPI QR */}
             {paymentMethod === "upi" && (
               <div className="mb-6 flex flex-col items-center gap-4">
-                <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-white p-4">
-                  <QrCode className="h-32 w-32 text-foreground" />
+                <div className="rounded-xl bg-white p-4">
+                  <QRCodeSVG 
+                    value={`upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.cafeName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${order.id}`)}`} 
+                    size={192} 
+                  />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Scan QR code or enter UPI ID: cafe@upi
+                  Scan QR code or enter UPI ID: {settings.upiId}
                 </p>
               </div>
             )}
@@ -447,12 +542,25 @@ export function Billing() {
                   </DialogHeader>
                   <div className="space-y-4 pt-4">
                     <div className="rounded-lg bg-secondary p-4">
-                      <p className="text-sm text-muted-foreground">Refund Amount</p>
-                      <p className="text-2xl font-bold text-foreground">
-                        {grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                      </p>
+                      <p className="mb-2 text-sm text-muted-foreground">Refund Amount</p>
+                      <Input
+                        type="number"
+                        placeholder={grandTotal.toString()}
+                        value={refundAmount}
+                        onChange={(e) => setRefundAmount(e.target.value)}
+                        className="bg-background text-lg font-bold"
+                      />
                     </div>
-                    <div className="flex gap-2">
+                    <div>
+                      <Label className="text-sm">Reason (Optional)</Label>
+                      <Input
+                        placeholder="e.g., Customer requested, overcharged..."
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                        className="mt-1 bg-secondary border-none"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-2">
                       <Button variant="outline" className="flex-1" onClick={() => setShowRefundDialog(false)}>
                         Cancel
                       </Button>
@@ -464,7 +572,7 @@ export function Billing() {
                 </DialogContent>
               </Dialog>
               )}
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={() => window.print()}>
                 <Printer className="h-4 w-4" />
                 Print Bill
               </Button>
@@ -480,6 +588,10 @@ export function Billing() {
           </div>
         )}
       </div>
+
+      {order && (
+        <ReceiptTemplate order={order} settings={settings} />
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePOSStore } from "@/lib/store";
-import { categories, type MenuItem } from "@/lib/data";
+import { categories, type MenuItem, defaultModifiers, type Modifier } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,13 +53,7 @@ const categoryIcons: Record<string, React.ElementType> = {
   drinks: CupSoda,
 };
 
-const modifiers = [
-  { id: "extra-shot", name: "Extra Shot", price: 30 },
-  { id: "oat-milk", name: "Oat Milk", price: 40 },
-  { id: "sugar-free", name: "Sugar Free", price: 0 },
-  { id: "less-ice", name: "Less Ice", price: 0 },
-  { id: "extra-hot", name: "Extra Hot", price: 0 },
-];
+
 
 export function NewOrder() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,6 +61,7 @@ export function NewOrder() {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [itemNotes, setItemNotes] = useState("");
   const [selectedVariant, setSelectedVariant] = useState<string>("");
+  const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
   const [showModifierDialog, setShowModifierDialog] = useState(false);
   const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
   const [showCustomerNote, setShowCustomerNote] = useState(false);
@@ -95,6 +90,7 @@ export function NewOrder() {
     cancelEditOrder,
     getCartTotal,
     setActiveView,
+    settings,
   } = usePOSStore();
 
   const isEditing = !!editingOrderId;
@@ -117,9 +113,7 @@ export function NewOrder() {
 
   const handleAddItem = (item: MenuItem) => {
     if (item.variants && item.variants.length > 0) {
-      setCurrentMenuItem(item);
-      setSelectedVariant(item.variants[0].name);
-      setShowModifierDialog(true);
+      openModifierDialog(item);
     } else {
       addToCart({
         menuItemId: item.id,
@@ -128,6 +122,14 @@ export function NewOrder() {
         quantity: 1,
       });
     }
+  };
+
+  const openModifierDialog = (item: MenuItem) => {
+    setCurrentMenuItem(item);
+    setSelectedVariant(item.variants && item.variants.length > 0 ? item.variants[0].name : "");
+    setSelectedModifiers([]);
+    setItemNotes("");
+    setShowModifierDialog(true);
   };
 
   const handleAddWithModifiers = () => {
@@ -143,12 +145,14 @@ export function NewOrder() {
       quantity: 1,
       variant: selectedVariant || undefined,
       notes: itemNotes || undefined,
+      modifiers: selectedModifiers.length > 0 ? selectedModifiers : undefined,
     });
 
     setShowModifierDialog(false);
     setCurrentMenuItem(null);
     setSelectedVariant("");
     setItemNotes("");
+    setSelectedModifiers([]);
   };
 
   const handlePlaceOrder = () => {
@@ -169,6 +173,7 @@ export function NewOrder() {
         quantity: item.quantity,
         variant: item.variant,
         notes: item.notes,
+        modifiers: item.modifiers,
       })),
       total: getCartTotal(),
     });
@@ -194,6 +199,7 @@ export function NewOrder() {
         quantity: item.quantity,
         variant: item.variant,
         notes: item.notes,
+        modifiers: item.modifiers,
       })),
       total: getCartTotal(),
     });
@@ -423,11 +429,19 @@ export function NewOrder() {
               const emoji = isCoffee ? "☕" : isTea ? "🍵" : "🥤";
               
               return (
-              <motion.button
+              <motion.div
                 whileTap={{ scale: 0.96 }}
                 key={item.id}
                 onClick={() => handleAddItem(item)}
-                className="group relative flex flex-col items-start overflow-hidden rounded-2xl bg-card shadow-sm border border-border/40 text-left transition-all duration-200 hover:shadow-md hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleAddItem(item);
+                  }
+                }}
+                className="group cursor-pointer relative flex flex-col items-start overflow-hidden rounded-2xl bg-card shadow-sm border border-border/40 text-left transition-all duration-200 hover:shadow-md hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               >
                 {/* Image or Gradient Placeholder */}
                 <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
@@ -469,13 +483,21 @@ export function NewOrder() {
                         Options
                       </Badge>
                     ) : (
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 transition-all group-hover:opacity-100 group-focus:opacity-100">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 transition-all group-hover:opacity-100 group-focus:opacity-100 hidden">
                         <Plus className="h-4 w-4" />
                       </div>
                     )}
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="h-7 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
+                    >
+                      Customize
+                    </Button>
                   </div>
                 </div>
-              </motion.button>
+              </motion.div>
             )})}
           </div>
         </div>
@@ -580,6 +602,11 @@ export function NewOrder() {
                           {item.variant && (
                             <p className="text-xs text-muted-foreground">{item.variant}</p>
                           )}
+                          {item.modifiers && item.modifiers.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              {item.modifiers.map(m => m.name).join(", ")}
+                            </p>
+                          )}
                           <p className="text-sm font-semibold text-primary">
                             {item.price.toLocaleString("en-IN", {
                               style: "currency",
@@ -631,7 +658,7 @@ export function NewOrder() {
                           <Plus className="h-3 w-3" />
                         </Button>
                         <span className="ml-auto font-bold text-foreground">
-                          {(item.price * item.quantity).toLocaleString("en-IN", {
+                          {((item.price + (item.modifiers?.reduce((s, m) => s + m.price, 0) || 0)) * item.quantity).toLocaleString("en-IN", {
                             style: "currency",
                             currency: "INR",
                             minimumFractionDigits: 0,
@@ -659,9 +686,9 @@ export function NewOrder() {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax (5%)</span>
+                <span className="text-muted-foreground">Tax ({settings.gstEnabled ? `${settings.taxRate}%` : "disabled"})</span>
                 <span className="text-foreground">
-                  {(getCartTotal() * 0.05).toLocaleString("en-IN", {
+                  {(getCartTotal() * (settings.gstEnabled ? settings.taxRate / 100 : 0)).toLocaleString("en-IN", {
                     style: "currency",
                     currency: "INR",
                     minimumFractionDigits: 0,
@@ -671,7 +698,7 @@ export function NewOrder() {
               <div className="flex justify-between text-lg font-bold">
                 <span className="text-foreground">Total</span>
                 <span className="text-primary">
-                  {(getCartTotal() * 1.05).toLocaleString("en-IN", {
+                  {(getCartTotal() * (1 + (settings.gstEnabled ? settings.taxRate / 100 : 0))).toLocaleString("en-IN", {
                     style: "currency",
                     currency: "INR",
                     minimumFractionDigits: 0,
@@ -780,21 +807,29 @@ export function NewOrder() {
               />
             </div>
 
-            {/* Quick modifiers */}
+            {/* Modifiers */}
             <div className="space-y-2">
-              <Label>Quick Options</Label>
+              <Label>Add-ons</Label>
               <div className="flex flex-wrap gap-2">
-                {modifiers.map((mod) => (
+                {defaultModifiers.map((mod) => {
+                  const isSelected = selectedModifiers.some(m => m.id === mod.id);
+                  return (
                   <Button
                     key={mod.id}
-                    variant="outline"
+                    variant={isSelected ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setItemNotes((prev) => prev ? `${prev}, ${mod.name}` : mod.name)}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedModifiers(selectedModifiers.filter(m => m.id !== mod.id));
+                      } else {
+                        setSelectedModifiers([...selectedModifiers, mod]);
+                      }
+                    }}
                   >
                     {mod.name}
                     {mod.price > 0 && ` (+₹${mod.price})`}
                   </Button>
-                ))}
+                )})}
               </div>
             </div>
 

@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { usePOSStore } from "@/lib/store";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -37,6 +39,7 @@ import {
   Eye,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { ReceiptTemplate } from "./receipt-template";
 
 const statusFilters = [
   { id: "all", label: "All Orders", icon: null },
@@ -63,11 +66,15 @@ const orderTypeIcons = {
 };
 
 export function OrderHistory() {
-  const { orders } = usePOSStore();
+  const { orders, updateOrder, updateOrderStatus, updateTableStatus, currentUser, settings } = usePOSStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  
+  const [showRefundDialog, setShowRefundDialog] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -95,6 +102,34 @@ export function OrderHistory() {
       default:
         return "bg-secondary text-muted-foreground";
     }
+  };
+
+  const handleRefund = () => {
+    if (!order) return;
+    const amount = refundAmount ? parseFloat(refundAmount) : order.grandTotal || order.total;
+
+    updateOrder(order.id, {
+      refund: {
+        amount,
+        reason: refundReason,
+        refundedAt: new Date(),
+        refundedBy: currentUser?.name || "Unknown",
+      },
+    });
+
+    updateOrderStatus(order.id, "cancelled");
+
+    if (order.tableId) {
+      updateTableStatus(order.tableId, "available");
+    }
+
+    setShowRefundDialog(false);
+    setRefundReason("");
+    setRefundAmount("");
+
+    toast.success("Refund processed successfully", {
+      description: `Refunded ${amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })} for order ${order.id.toUpperCase()}`
+    });
   };
 
   return (
@@ -223,6 +258,12 @@ export function OrderHistory() {
                               <span>{o.customerName}</span>
                             </>
                           )}
+                          {o.createdBy && (
+                            <>
+                              <span>&bull;</span>
+                              <span>by {o.createdBy}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -287,11 +328,21 @@ export function OrderHistory() {
                 )}
               </div>
 
-              {/* Customer Info */}
-              {order.customerName && (
-                <div className="rounded-lg bg-secondary/50 p-3">
-                  <p className="text-sm text-muted-foreground">Customer</p>
-                  <p className="font-medium text-foreground">{order.customerName}</p>
+              {/* Customer and Staff Info */}
+              {(order.customerName || order.createdBy) && (
+                <div className="rounded-lg bg-secondary/50 p-3 flex justify-between">
+                  {order.customerName && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Customer</p>
+                      <p className="font-medium text-foreground">{order.customerName}</p>
+                    </div>
+                  )}
+                  {order.createdBy && (
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Created By</p>
+                      <p className="font-medium text-foreground">{order.createdBy}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -306,29 +357,30 @@ export function OrderHistory() {
               {/* Order Items */}
               <div className="rounded-lg bg-secondary/50 p-3">
                 <p className="mb-2 text-sm text-muted-foreground">Items</p>
-                <ul className="space-y-2">
-                  {order.items.map((item) => (
-                    <li key={item.id} className="flex justify-between text-sm">
-                      <span className="text-foreground">
-                        {item.quantity}x {item.name}
-                        {item.variant && (
-                          <span className="text-muted-foreground"> ({item.variant})</span>
-                        )}
-                        {item.notes && (
-                          <span className="block text-xs text-muted-foreground">
-                            Note: {item.notes}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {(item.price * item.quantity).toLocaleString("en-IN", {
-                          style: "currency",
-                          currency: "INR",
-                          minimumFractionDigits: 0,
-                        })}
-                      </span>
+                <ul className="space-y-3">
+                  {order.items.map((item) => {
+                    const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                    return (
+                    <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                      <div className="flex justify-between">
+                        <span className="text-foreground font-medium">{item.quantity}x {item.name}</span>
+                        <span className="text-muted-foreground">
+                          {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                      {item.variant && <span className="text-xs text-muted-foreground ml-4 mt-0.5">({item.variant})</span>}
+                      {item.modifiers && item.modifiers.length > 0 && (
+                        <span className="text-xs text-muted-foreground ml-4 mt-0.5">
+                          + {item.modifiers.map(m => m.name).join(", ")}
+                        </span>
+                      )}
+                      {item.notes && (
+                        <span className="block text-xs text-muted-foreground mt-0.5 ml-4">
+                          Note: {item.notes}
+                        </span>
+                      )}
                     </li>
-                  ))}
+                  )})}
                 </ul>
                 <div className="mt-3 flex justify-between border-t border-border pt-2">
                   <span className="font-medium text-foreground">Total</span>
@@ -342,36 +394,149 @@ export function OrderHistory() {
                 </div>
               </div>
 
+              {/* Payment Details */}
+              {order.payment && (
+                <div className="rounded-lg bg-secondary/50 p-3">
+                  <p className="mb-2 text-sm text-muted-foreground">Payment Details</p>
+                  <div className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Method</span>
+                      <span className="text-foreground capitalize">{order.payment.method}</span>
+                    </div>
+                    {order.payment.transactionId && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Txn ID</span>
+                        <span className="text-foreground">{order.payment.transactionId}</span>
+                      </div>
+                    )}
+                    {order.payment.method === "cash" && order.payment.cashReceived && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Given</span>
+                          <span className="text-foreground">
+                            {order.payment.cashReceived.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Change</span>
+                          <span className="text-foreground">
+                            {order.payment.change?.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {order.payment.method === "split" && order.payment.splitDetails && (
+                      <div className="pt-1 mt-1 border-t border-border">
+                        {order.payment.splitDetails.cash > 0 && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Cash</span>
+                            <span className="text-foreground">{order.payment.splitDetails.cash.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                          </div>
+                        )}
+                        {order.payment.splitDetails.upi > 0 && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">UPI</span>
+                            <span className="text-foreground">{order.payment.splitDetails.upi.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                          </div>
+                        )}
+                        {order.payment.splitDetails.card > 0 && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Card</span>
+                            <span className="text-foreground">{order.payment.splitDetails.card.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Timeline */}
               <div className="rounded-lg bg-secondary/50 p-3">
                 <p className="mb-2 text-sm text-muted-foreground">Timeline</p>
-                <div className="text-sm">
+                <div className="text-sm space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Created</span>
                     <span className="text-foreground">
                       {format(order.createdAt, "dd MMM yyyy, hh:mm a")}
                     </span>
                   </div>
+                  {order.refund && (
+                    <div className="flex justify-between border-t border-border/50 pt-2 text-destructive">
+                      <span>Refunded {order.refund.amount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                      <span>
+                        {format(order.refund.refundedAt, "dd MMM yyyy, hh:mm a")}
+                        {order.refund.reason && <span className="block text-xs mt-0.5 opacity-80 text-right">Reason: {order.refund.reason}</span>}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Actions */}
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 gap-2">
-                  <Printer className="h-4 w-4" />
-                  Print
-                </Button>
-                {order.status === "completed" && (
-                  <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive">
-                    <RotateCcw className="h-4 w-4" />
-                    Refund
+                  <Button variant="outline" className="flex-1 gap-2" onClick={() => window.print()}>
+                    <Printer className="h-4 w-4" />
+                    Print
                   </Button>
-                )}
+                  {!order.refund && order.status === "completed" && (
+                    <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowRefundDialog(true)}>
+                      <RotateCcw className="h-4 w-4" />
+                      Refund
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Refund Dialog */}
+        <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
+          <DialogContent>
+             <DialogHeader>
+               <DialogTitle>Process Refund</DialogTitle>
+               <DialogDescription>
+                 Are you sure you want to refund this order? This action will be logged.
+               </DialogDescription>
+             </DialogHeader>
+             {order && (
+             <div className="space-y-4 pt-4">
+               <div className="rounded-lg bg-secondary p-4">
+                 <p className="mb-2 text-sm text-muted-foreground">Refund Amount</p>
+                 <Input
+                   type="number"
+                   placeholder={(order.grandTotal || order.total).toString()}
+                   value={refundAmount}
+                   onChange={(e) => setRefundAmount(e.target.value)}
+                   className="bg-background text-lg font-bold"
+                 />
+               </div>
+               <div>
+                 <Label className="text-sm">Reason (Optional)</Label>
+                 <Input
+                   placeholder="e.g., Customer requested, overcharged..."
+                   value={refundReason}
+                   onChange={(e) => setRefundReason(e.target.value)}
+                   className="mt-1 bg-secondary border-none"
+                 />
+               </div>
+               <div className="flex gap-2 pt-2">
+                 <Button variant="outline" className="flex-1" onClick={() => setShowRefundDialog(false)}>
+                   Cancel
+                 </Button>
+                 <Button variant="destructive" className="flex-1" onClick={handleRefund}>
+                   Confirm Refund
+                 </Button>
+               </div>
+             </div>
+             )}
+          </DialogContent>
+        </Dialog>
+
+      {order && (
+        <ReceiptTemplate order={order} settings={settings} />
+      )}
     </div>
   );
 }

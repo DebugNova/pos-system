@@ -1,0 +1,1 @@
+ok so like we need make it so that after ordering its straight away billing then its given to kitchen and the tables and all .

@@ -22,14 +22,13 @@ import {
   XCircle,
   Plus,
   ShieldAlert,
+  Search,
 } from "lucide-react";
+import { format } from "date-fns";
 
 export function Settings() {
-  const { currentUser } = usePOSStore();
+  const { currentUser, settings, updateSettings, auditLog } = usePOSStore();
   const permissions = getPermissions(currentUser?.role || "Kitchen");
-  const [cafeName, setCafeName] = useState("SUHASHI Cafe");
-  const [gstNumber, setGstNumber] = useState("27AABCT1234F1ZH");
-  const [taxRate, setTaxRate] = useState("5");
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
@@ -63,6 +62,12 @@ export function Settings() {
             <Wifi className="h-4 w-4" />
             Integrations
           </TabsTrigger>
+          {permissions.canManageStaff && (
+            <TabsTrigger value="audit" className="gap-2">
+              <ShieldAlert className="h-4 w-4" />
+              Audit Log
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* General Settings */}
@@ -80,8 +85,8 @@ export function Settings() {
                   <Label htmlFor="cafeName">Cafe Name</Label>
                   <Input
                     id="cafeName"
-                    value={cafeName}
-                    onChange={(e) => setCafeName(e.target.value)}
+                    value={settings.cafeName}
+                    onChange={(e) => updateSettings({ cafeName: e.target.value })}
                     className="bg-secondary border-none"
                   />
                 </div>
@@ -89,8 +94,8 @@ export function Settings() {
                   <Label htmlFor="gst">GST Number</Label>
                   <Input
                     id="gst"
-                    value={gstNumber}
-                    onChange={(e) => setGstNumber(e.target.value)}
+                    value={settings.gstNumber}
+                    onChange={(e) => updateSettings({ gstNumber: e.target.value })}
                     className="bg-secondary border-none"
                   />
                 </div>
@@ -100,6 +105,8 @@ export function Settings() {
                 <Input
                   id="address"
                   placeholder="Enter cafe address"
+                  value={settings.address}
+                  onChange={(e) => updateSettings({ address: e.target.value })}
                   className="bg-secondary border-none"
                 />
               </div>
@@ -121,7 +128,10 @@ export function Settings() {
                     Apply GST to all orders
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.gstEnabled}
+                  onCheckedChange={(checked) => updateSettings({ gstEnabled: checked })}
+                />
               </div>
               
               <div className="space-y-4 pt-4 border-t border-border">
@@ -133,16 +143,16 @@ export function Settings() {
                     </p>
                   </div>
                   <div className="flex items-center justify-center bg-primary/10 text-primary border border-primary/20 px-5 py-2 rounded-xl font-bold text-2xl shadow-inner min-w-[5rem]">
-                    {taxRate}%
+                    {settings.taxRate}%
                   </div>
                 </div>
                 
                 <div className="px-2 pt-6 pb-4">
                   <Slider
-                    value={[parseFloat(taxRate) || 0]}
+                    value={[settings.taxRate]}
                     max={28}
                     step={1}
-                    onValueChange={(vals) => setTaxRate(vals[0].toString())}
+                    onValueChange={(vals) => updateSettings({ taxRate: vals[0] })}
                     className="w-full cursor-pointer"
                   />
                   <div className="flex justify-between mt-2 text-xs text-muted-foreground font-medium px-1">
@@ -158,9 +168,9 @@ export function Settings() {
                       key={rate}
                       variant="outline"
                       size="sm"
-                      onClick={() => setTaxRate(rate.toString())}
+                      onClick={() => updateSettings({ taxRate: rate })}
                       className={`rounded-lg transition-all h-10 ${
-                        parseFloat(taxRate) === rate
+                        settings.taxRate === rate
                           ? "bg-primary text-primary-foreground border-primary shadow ring-2 ring-primary/20"
                           : "hover:bg-secondary/80 bg-secondary/30"
                       }`}
@@ -191,7 +201,10 @@ export function Settings() {
                     </p>
                   </div>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.orderAlerts}
+                  onCheckedChange={(checked) => updateSettings({ orderAlerts: checked })}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -203,7 +216,10 @@ export function Settings() {
                     </p>
                   </div>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.kitchenReadyAlerts}
+                  onCheckedChange={(checked) => updateSettings({ kitchenReadyAlerts: checked })}
+                />
               </div>
             </CardContent>
           </Card>
@@ -274,7 +290,10 @@ export function Settings() {
                     Automatically print kitchen tickets
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.autoPrintKot}
+                  onCheckedChange={(checked) => updateSettings({ autoPrintKot: checked })}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -283,7 +302,10 @@ export function Settings() {
                     Print receipt for customer
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.printCustomerCopy}
+                  onCheckedChange={(checked) => updateSettings({ printCustomerCopy: checked })}
+                />
               </div>
             </CardContent>
           </Card>
@@ -368,17 +390,29 @@ export function Settings() {
                 </div>
                 <Switch defaultChecked />
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CreditCard className="h-5 w-5 text-muted-foreground" />
-                  <div className="space-y-0.5">
-                    <Label>UPI</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Accept UPI payments (PhonePe, GPay, etc.)
-                    </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="h-5 w-5 text-muted-foreground" />
+                    <div className="space-y-0.5">
+                      <Label>UPI</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Accept UPI payments (PhonePe, GPay, etc.)
+                      </p>
+                    </div>
                   </div>
+                  <Switch defaultChecked />
                 </div>
-                <Switch defaultChecked />
+                <div className="pl-8 space-y-2">
+                  <Label>UPI ID</Label>
+                  <Input
+                    id="upiId"
+                    value={settings.upiId}
+                    onChange={(e) => updateSettings({ upiId: e.target.value })}
+                    placeholder="e.g. cafe@upi"
+                    className="bg-secondary border-none"
+                  />
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -449,6 +483,69 @@ export function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Audit Log (Admin Only) */}
+        {permissions.canManageStaff && (
+          <TabsContent value="audit" className="space-y-4">
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-primary" />
+                  System Audit Log
+                </CardTitle>
+                <CardDescription>
+                  Track all critical actions performed in the system
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border border-border">
+                  <div className="flex bg-secondary p-3 text-sm font-medium text-muted-foreground border-b border-border">
+                    <div className="w-[180px]">Timestamp</div>
+                    <div className="w-[150px]">User</div>
+                    <div className="w-[150px]">Action</div>
+                    <div className="flex-1">Details</div>
+                  </div>
+                  <div className="max-h-[500px] overflow-y-auto">
+                    {auditLog.length === 0 ? (
+                      <div className="p-8 text-center text-muted-foreground">
+                        No audit records found
+                      </div>
+                    ) : (
+                      [...auditLog]
+                        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+                        .map((entry, index) => (
+                          <div 
+                            key={index}
+                            className="flex items-center p-3 text-sm border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors"
+                          >
+                            <div className="w-[180px] text-muted-foreground whitespace-nowrap">
+                              {format(entry.timestamp, "dd MMM yy, hh:mm a")}
+                            </div>
+                            <div className="w-[150px] font-medium text-foreground">
+                              {entry.userId}
+                            </div>
+                            <div className="w-[150px]">
+                              <Badge variant="outline" className="capitalize">
+                                {entry.action.replace("_", " ")}
+                              </Badge>
+                            </div>
+                            <div className="flex-1 text-muted-foreground flex flex-col items-start gap-1">
+                              <span>{entry.details}</span>
+                              {entry.orderId && (
+                                <Badge variant="secondary" className="text-[10px]">
+                                  Order: {entry.orderId}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

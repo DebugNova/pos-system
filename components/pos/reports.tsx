@@ -66,6 +66,23 @@ export function ReportsContent() {
   const totalOrders = orders.length;
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
+  const staffPerformanceMap = new Map<string, { orders: number; revenue: number }>();
+  orders
+    .filter((o) => o.status === "completed" || o.status === "ready")
+    .forEach((o) => {
+      const staffName = o.createdBy || "Unknown";
+      const current = staffPerformanceMap.get(staffName) || { orders: 0, revenue: 0 };
+      staffPerformanceMap.set(staffName, {
+        orders: current.orders + 1,
+        revenue: current.revenue + (o.grandTotal || o.total),
+      });
+    });
+
+  const staffPerformance = Array.from(staffPerformanceMap.entries()).map(([name, data]) => ({
+    name,
+    ...data,
+  })).sort((a, b) => b.revenue - a.revenue);
+
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
       {/* Header */}
@@ -263,52 +280,107 @@ export function ReportsContent() {
         </Card>
       </div>
 
-      {/* Top Items */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-base">Top Selling Items</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topItems} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  type="number"
-                  stroke="hsl(var(--border))"
-                  tick={{ fill: "hsl(var(--foreground))" }}
-                  fontSize={12}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  stroke="hsl(var(--border))"
-                  tick={{ fill: "hsl(var(--foreground))" }}
-                  fontSize={12}
-                  width={100}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    color: "hsl(var(--foreground))"
-                  }}
-                  formatter={(value: number, name: string) => [
-                    name === "orders" ? `${value} orders` : `₹${value}`,
-                    name === "orders" ? "Orders" : "Revenue",
-                  ]}
-                />
-                <Bar
-                  dataKey="orders"
-                  fill="#f59e0b"
-                  radius={[0, 4, 4, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Top Items */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Top Selling Items</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topItems} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis
+                    type="number"
+                    stroke="hsl(var(--border))"
+                    tick={{ fill: "hsl(var(--foreground))" }}
+                    fontSize={12}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    stroke="hsl(var(--border))"
+                    tick={{ fill: "hsl(var(--foreground))" }}
+                    fontSize={12}
+                    width={100}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      color: "hsl(var(--foreground))"
+                    }}
+                    formatter={(value: number, name: string) => [
+                      name === "orders" ? `${value} orders` : `₹${value}`,
+                      name === "orders" ? "Orders" : "Revenue",
+                    ]}
+                  />
+                  <Bar
+                    dataKey="orders"
+                    fill="#f59e0b"
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Staff Performance */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Staff Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              {staffPerformance.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  No order data yet
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={staffPerformance} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      type="number"
+                      stroke="hsl(var(--border))"
+                      tick={{ fill: "hsl(var(--foreground))" }}
+                      fontSize={12}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      stroke="hsl(var(--border))"
+                      tick={{ fill: "hsl(var(--foreground))" }}
+                      fontSize={12}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        color: "hsl(var(--foreground))"
+                      }}
+                      formatter={(value: number, name: string) => [
+                        name === "orders" ? `${value} orders` : `₹${value.toFixed(2)}`,
+                        name === "orders" ? "Orders" : "Revenue",
+                      ]}
+                    />
+                    <Bar
+                      dataKey="revenue"
+                      fill="#3b82f6"
+                      radius={[0, 4, 4, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -92,12 +92,12 @@ export function TransitionOverlay({ isAnimating, origin, onComplete }: Transitio
               opacity: 0,
               x: targetX,
               y: targetY,
+              transition: { duration: 0.8, ease: [0.32, 0.72, 0, 1] } // Buttersmooth trajectory to sidebar
             }}
             transition={{
               scale: { type: "spring", damping: 18, stiffness: 100 },
               opacity: { duration: 0.5 },
               y: { type: "spring", damping: 20, stiffness: 100 },
-              exit: { duration: 0.8, ease: [0.32, 0.72, 0, 1] } // Buttersmooth trajectory to sidebar
             }}
           >
             <div className="relative flex h-32 w-32 sm:h-40 sm:w-40 items-center justify-center rounded-[2rem] bg-white shadow-2xl overflow-hidden">

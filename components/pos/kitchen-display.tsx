@@ -419,6 +419,11 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
               {order.customerName}
             </Badge>
           )}
+          {order.createdBy && (
+            <Badge variant="outline" className="text-[10px] lg:text-xs border-dashed opacity-70">
+              by {order.createdBy}
+            </Badge>
+          )}
         </div>
 
         {/* Urgency warning for stale orders */}

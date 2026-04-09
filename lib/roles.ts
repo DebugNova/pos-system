@@ -19,7 +19,8 @@ export type SettingsTab =
   | "printers"
   | "staff"
   | "payments"
-  | "integrations";
+  | "integrations"
+  | "audit";
 
 // Which sidebar views each role can access
 export const roleViewAccess: Record<UserRole, ViewId[]> = {
@@ -53,7 +54,7 @@ export const roleViewAccess: Record<UserRole, ViewId[]> = {
 
 // Which settings tabs each role can see (only Admin reaches settings, but just in case)
 export const roleSettingsAccess: Record<UserRole, SettingsTab[]> = {
-  Admin: ["general", "printers", "staff", "payments", "integrations"],
+  Admin: ["general", "printers", "staff", "payments", "integrations", "audit"],
   Cashier: [], // Cashier cannot access settings at all
   Server: [],  // Server cannot access settings at all
   Kitchen: [], // Kitchen cannot access settings at all

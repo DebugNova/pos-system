@@ -49,6 +49,22 @@ export const menuItems: MenuItem[] = [
   { id: "drink-6", name: "Iced Mocha", price: 170, category: "drinks", available: true, image_url: "/menu/ICED MOCHA.png" },
 ];
 
+export interface Modifier {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export const defaultModifiers: Modifier[] = [
+  { id: "extra-shot", name: "Extra Shot", price: 30 },
+  { id: "oat-milk", name: "Oat Milk", price: 40 },
+  { id: "almond-milk", name: "Almond Milk", price: 40 },
+  { id: "sugar-free", name: "Sugar Free", price: 0 },
+  { id: "less-ice", name: "Less Ice", price: 0 },
+  { id: "extra-hot", name: "Extra Hot", price: 0 },
+  { id: "whipped-cream", name: "Whipped Cream", price: 20 },
+];
+
 export interface Table {
   id: string;
   number: number;
@@ -76,6 +92,22 @@ export interface OrderItem {
   quantity: number;
   variant?: string;
   notes?: string;
+  modifiers?: Modifier[];
+}
+
+export type PaymentMethod = "cash" | "upi" | "card" | "split";
+
+export interface PaymentRecord {
+  method: PaymentMethod;
+  amount: number;
+  transactionId?: string;
+  splitDetails?: {
+    cash: number;
+    upi: number;
+    card: number;
+  };
+  cashReceived?: number;
+  change?: number;
 }
 
 export interface Order {
@@ -89,6 +121,35 @@ export interface Order {
   customerName?: string;
   orderNotes?: string;
   platform?: "swiggy" | "zomato";
+  payment?: PaymentRecord;
+  subtotal?: number;
+  discount?: {
+    type: "percent" | "amount";
+    value: number;
+    amount: number;
+  };
+  taxRate?: number;
+  taxAmount?: number;
+  grandTotal?: number;
+  paidAt?: Date;
+  paidBy?: string;
+  refund?: {
+    amount: number;
+    reason?: string;
+    refundedAt: Date;
+    refundedBy: string;
+  };
+  createdBy?: string;
 }
 
 export const sampleOrders: Order[] = [];
+
+export interface AuditEntry {
+  id: string;
+  timestamp: Date;
+  action: "login" | "logout" | "refund" | "void" | "discount" | "order_created" | "order_edited" | "data_clear" | "data_import" | "settings_changed" | "staff_added" | "staff_deleted";
+  userId: string;
+  details: string;
+  orderId?: string;
+  metadata?: Record<string, unknown>;
+}
