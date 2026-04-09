@@ -14,20 +14,22 @@ export interface MenuItem {
   category: string;
   variants?: { name: string; price: number }[];
   available: boolean;
+  image?: string;
+  bestseller?: boolean;
 }
 
 export const menuItems: MenuItem[] = [
   // Tea
-  { id: "tea-1", name: "Red Tea", price: 60, category: "tea", available: true },
+  { id: "tea-1", name: "Red Tea", price: 60, category: "tea", available: true, image: "https://images.unsplash.com/photo-1544787219-7f47cc31ce68?w=400&q=80" },
   { id: "tea-2", name: "Ginger Tea", price: 70, category: "tea", available: true },
   { id: "tea-3", name: "Lemongrass Tea", price: 100, category: "tea", available: true },
-  { id: "tea-4", name: "Honey Ginger Tea", price: 100, category: "tea", available: true },
+  { id: "tea-4", name: "Honey Ginger Tea", price: 100, category: "tea", available: true, bestseller: true },
   { id: "tea-5", name: "Lemon Tea", price: 70, category: "tea", available: true },
   
   // Coffee
   { id: "coffee-1", name: "Espresso", price: 70, category: "coffee", variants: [{ name: "Single", price: 70 }, { name: "Double", price: 90 }], available: true },
-  { id: "coffee-2", name: "Cappuccino", price: 120, category: "coffee", available: true },
-  { id: "coffee-3", name: "Latte", price: 120, category: "coffee", available: true },
+  { id: "coffee-2", name: "Cappuccino", price: 120, category: "coffee", available: true, bestseller: true, image: "https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&q=80" },
+  { id: "coffee-3", name: "Latte", price: 120, category: "coffee", available: true, bestseller: true, image: "https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?w=400&q=80" },
   { id: "coffee-4", name: "Americano", price: 100, category: "coffee", available: true },
   { id: "coffee-5", name: "Cinnamon Latte", price: 140, category: "coffee", available: true },
   { id: "coffee-6", name: "Hazelnut", price: 160, category: "coffee", available: true },

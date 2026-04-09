@@ -53,9 +53,9 @@ export function POSSidebar() {
   ).length;
 
   return (
-    <aside className="flex h-full w-[72px] flex-col bg-sidebar border-r border-sidebar-border lg:w-20 shadow-sm z-10 relative">
+    <aside className="flex h-full w-20 flex-col bg-sidebar border-r border-sidebar-border lg:w-28 shadow-sm z-10 relative">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b border-sidebar-border lg:h-20">
+      <div className="flex h-20 items-center justify-center border-b border-sidebar-border lg:h-24">
         <button 
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -64,7 +64,7 @@ export function POSSidebar() {
             const y = rect.top + rect.height / 2;
             window.dispatchEvent(new CustomEvent("trigger-logo-animation", { detail: { x, y } }));
           }}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary lg:h-12 lg:w-12 hover:opacity-90 active:scale-95 transition-all outline-none"
+          className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary lg:h-16 lg:w-16 hover:opacity-90 active:scale-95 transition-all outline-none animate-[pulse_3s_ease-in-out_infinite]"
           title="Play Logo Animation"
         >
           <CatLogo className="h-full w-full p-0.5" />
@@ -72,59 +72,63 @@ export function POSSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col items-center gap-0.5 overflow-y-auto py-2 px-1.5 lg:gap-1 lg:px-2">
+      <nav className="flex flex-1 flex-col items-center gap-1 overflow-y-auto py-3 px-2 lg:gap-2">
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
           const showBadge = "showBadge" in item && item.showBadge && pendingAggregatorOrders > 0;
 
           return (
-            <button
-              key={item.id}
-              onClick={() => setActiveView(item.id as typeof activeView)}
-              className={cn(
-                "relative flex h-12 w-full flex-col items-center justify-center rounded-lg transition-all active:scale-95 lg:h-14 lg:rounded-xl",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            <div key={item.id} className="relative w-full px-1.5 lg:px-2">
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[60%] w-1 rounded-r-md bg-primary z-20" />
               )}
-            >
-              <Icon className={cn("h-4 w-4 lg:h-5 lg:w-5", isActive ? "text-sidebar-accent-foreground" : "")} />
-              <span className="mt-0.5 text-[8px] font-medium leading-tight lg:mt-1 lg:text-[9px]">{item.label}</span>
-              {showBadge && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground lg:-top-1 lg:-right-1 lg:h-5 lg:w-5 lg:text-[10px]">
-                  {pendingAggregatorOrders}
-                </span>
-              )}
-            </button>
+              <button
+                onClick={() => setActiveView(item.id as typeof activeView)}
+                className={cn(
+                  "relative flex h-14 w-full flex-col items-center justify-center rounded-lg transition-all active:scale-95 lg:h-16 lg:rounded-xl",
+                  isActive
+                    ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                    : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                )}
+              >
+                <Icon className={cn("h-5 w-5 lg:h-6 lg:w-6", isActive ? "text-primary-foreground" : "")} />
+                <span className="mt-1 text-[10px] font-medium leading-tight lg:mt-1.5 lg:text-xs">{item.label}</span>
+                {showBadge && (
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground shadow-sm lg:h-6 lg:min-w-[24px] lg:px-2 lg:text-xs">
+                    {pendingAggregatorOrders}
+                  </span>
+                )}
+              </button>
+            </div>
           );
         })}
       </nav>
 
       {/* Theme Toggle & User */}
-      <div className="flex flex-col items-center border-t border-sidebar-border py-2 gap-1.5 lg:py-3 lg:gap-2">
+      <div className="flex flex-col items-center border-t border-sidebar-border py-4 gap-2 lg:py-5 lg:gap-3">
         {mounted && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:bg-secondary hover:text-foreground mb-1 lg:h-10 lg:w-10 rounded-full"
+            className="h-10 w-10 text-muted-foreground hover:bg-secondary hover:text-foreground mb-1 lg:h-12 lg:w-12 rounded-full"
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             title="Toggle theme"
           >
-            {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
         )}
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground lg:h-10 lg:w-10 lg:text-sm">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground lg:h-12 lg:w-12 lg:text-base">
           {currentUser?.name.split(" ").map((n) => n[0]).join("").slice(0, 2) || "??"}
         </div>
-        <span className="text-[8px] text-muted-foreground lg:text-[9px]">{currentUser?.role || "Guest"}</span>
+        <span className="text-[10px] text-muted-foreground lg:text-xs">{currentUser?.role || "Guest"}</span>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-destructive lg:h-8 lg:w-8"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive lg:h-10 lg:w-10"
           onClick={logout}
         >
-          <LogOut className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
+          <LogOut className="h-4 w-4 lg:h-5 lg:w-5" />
         </Button>
       </div>
     </aside>
