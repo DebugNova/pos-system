@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Order, OrderItem, OrderType, Table, MenuItem } from "./data";
 import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
+import { getDefaultView } from "./roles";
 
 // Version to force refresh when data structure changes
 const STORE_VERSION = 2;
@@ -102,7 +103,11 @@ export const usePOSStore = create<POSState>()(
       isLoggedIn: false,
       currentUser: null,
       staffMembers: defaultStaffMembers,
-      login: (user) => set({ isLoggedIn: true, currentUser: user }),
+      login: (user) => set({
+        isLoggedIn: true,
+        currentUser: user,
+        activeView: getDefaultView(user.role) as POSState["activeView"],
+      }),
       logout: () => set({ isLoggedIn: false, currentUser: null, activeView: "dashboard" }),
       addStaffMember: (staff) => set((state) => ({ staffMembers: [...state.staffMembers, staff] })),
       updateStaffMember: (id, data) => set((state) => ({

@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { usePOSStore } from "@/lib/store";
+import { canAccessView, type ViewId } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,21 +15,30 @@ import {
   CreditCard,
   ClipboardList,
   LogOut,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "orders", label: "New Order", icon: ShoppingCart },
-  { id: "tables", label: "Tables", icon: Grid3X3 },
-  { id: "kitchen", label: "Kitchen", icon: ChefHat },
-  { id: "aggregator", label: "Online", icon: Store, showBadge: true },
-  { id: "billing", label: "Billing", icon: CreditCard },
-  { id: "history", label: "History", icon: ClipboardList },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "dashboard" as ViewId, label: "Dashboard", icon: LayoutDashboard },
+  { id: "orders" as ViewId, label: "New Order", icon: ShoppingCart },
+  { id: "tables" as ViewId, label: "Tables", icon: Grid3X3 },
+  { id: "kitchen" as ViewId, label: "Kitchen", icon: ChefHat },
+  { id: "aggregator" as ViewId, label: "Online", icon: Store, showBadge: true },
+  { id: "billing" as ViewId, label: "Billing", icon: CreditCard },
+  { id: "history" as ViewId, label: "History", icon: ClipboardList },
+  { id: "reports" as ViewId, label: "Reports", icon: BarChart3 },
+  { id: "settings" as ViewId, label: "Settings", icon: Settings },
 ] as const;
 
 export function POSSidebar() {
   const { activeView, setActiveView, orders, currentUser, logout } = usePOSStore();
+
+  const userRole = currentUser?.role || "Kitchen"; // Most restrictive fallback
+
+  // Filter nav items based on user role
+  const visibleNavItems = navItems.filter((item) =>
+    canAccessView(userRole, item.id)
+  );
 
   const pendingAggregatorOrders = orders.filter(
     (o) => o.type === "aggregator" && o.status === "new"
@@ -45,10 +55,10 @@ export function POSSidebar() {
 
       {/* Navigation */}
       <nav className="flex flex-1 flex-col items-center gap-0.5 overflow-y-auto py-2 px-1.5 lg:gap-1 lg:px-2">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
-          const showBadge = item.showBadge && pendingAggregatorOrders > 0;
+          const showBadge = "showBadge" in item && item.showBadge && pendingAggregatorOrders > 0;
 
           return (
             <button

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { usePOSStore } from "@/lib/store";
+import { getPermissions } from "@/lib/roles";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +20,12 @@ import {
   CheckCircle2,
   XCircle,
   Plus,
+  ShieldAlert,
 } from "lucide-react";
 
 export function Settings() {
+  const { currentUser } = usePOSStore();
+  const permissions = getPermissions(currentUser?.role || "Kitchen");
   const [cafeName, setCafeName] = useState("SUHASHI Cafe");
   const [gstNumber, setGstNumber] = useState("27AABCT1234F1ZH");
   const [taxRate, setTaxRate] = useState("5");

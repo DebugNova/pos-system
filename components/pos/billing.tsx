@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePOSStore } from "@/lib/store";
+import { getPermissions } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,8 @@ import { formatDistanceToNow } from "date-fns";
 type PaymentMethod = "cash" | "upi" | "card" | "split";
 
 export function Billing() {
-  const { orders, updateOrderStatus, setActiveView } = usePOSStore();
+  const { orders, updateOrderStatus, setActiveView, currentUser } = usePOSStore();
+  const permissions = getPermissions(currentUser?.role || "Kitchen");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [cashReceived, setCashReceived] = useState("");
@@ -203,7 +205,8 @@ export function Billing() {
               </CardContent>
             </Card>
 
-            {/* Discount */}
+            {/* Discount - only Admin and Cashier can apply */}
+            {permissions.canApplyDiscounts && (
             <div className="mb-6 flex gap-4">
               <div className="flex-1">
                 <Label className="text-sm">Discount</Label>
@@ -232,6 +235,7 @@ export function Billing() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Bill Summary */}
             <div className="mb-6 rounded-lg bg-secondary/50 p-4 space-y-2">
@@ -415,6 +419,8 @@ export function Billing() {
 
             {/* Actions */}
             <div className="mt-auto flex gap-3">
+              {/* Refund - Admin only */}
+              {permissions.canProcessRefunds && (
               <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="gap-2">
@@ -447,6 +453,7 @@ export function Billing() {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
               <Button variant="outline" className="gap-2">
                 <Printer className="h-4 w-4" />
                 Print Bill
