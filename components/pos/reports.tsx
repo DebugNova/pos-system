@@ -1,16 +1,16 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { usePOSStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   IndianRupee,
-  TrendingUp,
   ShoppingBag,
   CreditCard,
   Banknote,
   Smartphone,
   Clock,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import {
   BarChart,
@@ -26,71 +26,161 @@ import {
   LineChart,
   Line,
 } from "recharts";
-
-// Mock data for reports
-const hourlyRevenue = [
-  { hour: "9AM", revenue: 1200 },
-  { hour: "10AM", revenue: 2400 },
-  { hour: "11AM", revenue: 3100 },
-  { hour: "12PM", revenue: 4500 },
-  { hour: "1PM", revenue: 3800 },
-  { hour: "2PM", revenue: 2900 },
-  { hour: "3PM", revenue: 3200 },
-  { hour: "4PM", revenue: 2800 },
-  { hour: "5PM", revenue: 3600 },
-  { hour: "6PM", revenue: 4200 },
-];
-
-const paymentBreakdown = [
-  { name: "UPI", value: 45, color: "#f59e0b" },
-  { name: "Cash", value: 30, color: "#22c55e" },
-  { name: "Card", value: 20, color: "#3b82f6" },
-  { name: "Online", value: 5, color: "#ec4899" },
-];
-
-const topItems = [
-  { name: "Cappuccino", orders: 45, revenue: 5400 },
-  { name: "Latte", orders: 38, revenue: 4560 },
-  { name: "Iced Americano", orders: 32, revenue: 4480 },
-  { name: "Mocha", orders: 28, revenue: 4200 },
-  { name: "Spanish Latte", orders: 24, revenue: 3600 },
-];
+import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
 
 export function ReportsContent() {
   const { orders } = usePOSStore();
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: startOfDay(new Date()),
+    to: endOfDay(new Date()),
+  });
 
-  const totalRevenue = orders
-    .filter((o) => o.status === "completed" || o.status === "ready")
-    .reduce((sum, o) => sum + o.total, 0);
+  const filteredOrders = useMemo(() => {
+    if (!date?.from) return [];
+    const from = startOfDay(date.from);
+    const to = endOfDay(date.to || date.from);
 
-  const totalOrders = orders.length;
+    return orders.filter((o) => {
+      if (o.status !== "completed" && o.status !== "ready") return false;
+      const orderDate = new Date(o.createdAt);
+      return isWithinInterval(orderDate, { start: from, end: to });
+    });
+  }, [orders, date]);
+
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.grandTotal || o.total || 0), 0);
+  const totalOrders = filteredOrders.length;
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-  const staffPerformanceMap = new Map<string, { orders: number; revenue: number }>();
-  orders
-    .filter((o) => o.status === "completed" || o.status === "ready")
-    .forEach((o) => {
-      const staffName = o.createdBy || "Unknown";
-      const current = staffPerformanceMap.get(staffName) || { orders: 0, revenue: 0 };
-      staffPerformanceMap.set(staffName, {
-        orders: current.orders + 1,
-        revenue: current.revenue + (o.grandTotal || o.total),
-      });
+  // Since we don't track status transition timestamps right now, we default to N/A
+  const avgPrepTime = "N/A";
+
+  const hourlyRevenue = useMemo(() => {
+    const hours: Record<string, number> = {};
+    filteredOrders.forEach((o) => {
+      const hour = new Date(o.createdAt).getHours();
+      const label = hour > 12 ? `${hour - 12}PM` : hour === 12 ? "12PM" : hour === 0 ? "12AM" : `${hour}AM`;
+      hours[label] = (hours[label] || 0) + (o.grandTotal || o.total || 0);
+    });
+    
+    const result = [];
+    for(let i=0; i<24; i++) {
+        const hLabel = i > 12 ? `${i - 12}PM` : i === 12 ? "12PM" : i === 0 ? "12AM" : `${i}AM`;
+        if (hours[hLabel] !== undefined) {
+            result.push({ hour: hLabel, revenue: hours[hLabel], _hour: i });
+        }
+    }
+    return result.sort((a,b) => a._hour - b._hour);
+  }, [filteredOrders]);
+
+  const paymentBreakdown = useMemo(() => {
+    const methods: Record<string, number> = { Cash: 0, UPI: 0, Card: 0, Split: 0 };
+    filteredOrders.forEach((o) => {
+      if (o.payment) {
+        const method = o.payment.method;
+        const key = method.toLowerCase() === "upi" ? "UPI" : method.charAt(0).toUpperCase() + method.slice(1);
+        methods[key] = (methods[key] || 0) + 1;
+      } else {
+        // Fallback for orders without payment details
+        methods["Unknown"] = (methods["Unknown"] || 0) + 1;
+      }
     });
 
-  const staffPerformance = Array.from(staffPerformanceMap.entries()).map(([name, data]) => ({
-    name,
-    ...data,
-  })).sort((a, b) => b.revenue - a.revenue);
+    // Remove empty methods
+    if (methods["Unknown"] === 0) delete methods["Unknown"];
+    
+    const total = Object.values(methods).reduce((a, b) => a + b, 0);
+    return Object.entries(methods)
+      .filter(([, count]) => count > 0)
+      .map(([name, count]) => ({
+        name,
+        value: total > 0 ? Math.round((count / total) * 100) : 0,
+        color: name === "Cash" ? "#22c55e" : name === "UPI" ? "#f59e0b" : name === "Card" ? "#3b82f6" : name === "Split" ? "#ec4899" : "#94a3b8",
+      }));
+  }, [filteredOrders]);
+
+  const topItems = useMemo(() => {
+    const itemMap: Record<string, { name: string; orders: number; revenue: number }> = {};
+    filteredOrders.forEach((o) => {
+      o.items.forEach((item) => {
+        if (!itemMap[item.menuItemId]) {
+          itemMap[item.menuItemId] = { name: item.name, orders: 0, revenue: 0 };
+        }
+        itemMap[item.menuItemId].orders += item.quantity;
+        itemMap[item.menuItemId].revenue += item.price * item.quantity;
+      });
+    });
+    return Object.values(itemMap).sort((a, b) => b.orders - a.orders).slice(0, 5);
+  }, [filteredOrders]);
+
+  const staffPerformance = useMemo(() => {
+    const staffMap = new Map<string, { name: string; orders: number; revenue: number }>();
+    filteredOrders.forEach((o) => {
+      const staffName = o.createdBy || "Unknown";
+      const current = staffMap.get(staffName) || { name: staffName, orders: 0, revenue: 0 };
+      staffMap.set(staffName, {
+        ...current,
+        orders: current.orders + 1,
+        revenue: current.revenue + (o.grandTotal || o.total || 0),
+      });
+    });
+    return Array.from(staffMap.values()).sort((a, b) => b.revenue - a.revenue);
+  }, [filteredOrders]);
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Reports & Analytics</h1>
-        <p className="text-sm text-muted-foreground">
-          Today&apos;s performance overview
-        </p>
+      <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Reports & Analytics</h1>
+          <p className="text-sm text-muted-foreground">
+            Performance overview
+          </p>
+        </div>
+        
+        {/* Date Filter */}
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                  "w-[300px] justify-start text-left font-normal bg-card border-border",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, "LLL dd, y")} -{" "}
+                      {format(date.to, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(date.from, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pick a date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       {/* Stats Row */}
@@ -104,15 +194,11 @@ export function ReportsContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              {(totalRevenue + 28500).toLocaleString("en-IN", {
+              {totalRevenue.toLocaleString("en-IN", {
                 style: "currency",
                 currency: "INR",
                 minimumFractionDigits: 0,
               })}
-            </div>
-            <div className="flex items-center gap-1 text-xs text-success">
-              <TrendingUp className="h-3 w-3" />
-              <span>+12.5% from yesterday</span>
             </div>
           </CardContent>
         </Card>
@@ -125,11 +211,7 @@ export function ReportsContent() {
             <ShoppingBag className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalOrders + 156}</div>
-            <div className="flex items-center gap-1 text-xs text-success">
-              <TrendingUp className="h-3 w-3" />
-              <span>+8 orders from yesterday</span>
-            </div>
+            <div className="text-2xl font-bold text-foreground">{totalOrders}</div>
           </CardContent>
         </Card>
 
@@ -142,13 +224,12 @@ export function ReportsContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              {(avgOrderValue + 182).toLocaleString("en-IN", {
+              {avgOrderValue.toLocaleString("en-IN", {
                 style: "currency",
                 currency: "INR",
                 minimumFractionDigits: 0,
               })}
             </div>
-            <p className="text-xs text-muted-foreground">Per transaction</p>
           </CardContent>
         </Card>
 
@@ -160,8 +241,7 @@ export function ReportsContent() {
             <Clock className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">4.2 min</div>
-            <p className="text-xs text-muted-foreground">Per order</p>
+            <div className="text-2xl font-bold text-foreground">{avgPrepTime}</div>
           </CardContent>
         </Card>
       </div>
@@ -175,39 +255,45 @@ export function ReportsContent() {
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={hourlyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    dataKey="hour"
-                    stroke="hsl(var(--border))"
-                    tick={{ fill: "hsl(var(--foreground))" }}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    stroke="hsl(var(--border))"
-                    tick={{ fill: "hsl(var(--foreground))" }}
-                    fontSize={12}
-                    tickFormatter={(value) => `₹${value}`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      color: "hsl(var(--foreground))"
-                    }}
-                    formatter={(value: number) => [`₹${value}`, "Revenue"]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                    dot={{ fill: "#f59e0b", strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {hourlyRevenue.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                  No data available for the selected period
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={hourlyRevenue}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="hour"
+                      stroke="hsl(var(--border))"
+                      tick={{ fill: "hsl(var(--foreground))" }}
+                      fontSize={12}
+                    />
+                    <YAxis
+                      stroke="hsl(var(--border))"
+                      tick={{ fill: "hsl(var(--foreground))" }}
+                      fontSize={12}
+                      tickFormatter={(value) => `₹${value}`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        color: "hsl(var(--foreground))"
+                      }}
+                      formatter={(value: number) => [`₹${value}`, "Revenue"]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      dot={{ fill: "#f59e0b", strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -219,62 +305,70 @@ export function ReportsContent() {
           </CardHeader>
           <CardContent>
             <div className="flex h-64 items-center gap-8">
-              <div className="flex-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={paymentBreakdown}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {paymentBreakdown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                        color: "hsl(var(--foreground))"
-                      }}
-                      formatter={(value: number) => [`${value}%`, "Share"]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-3">
-                {paymentBreakdown.map((item, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <div className="flex items-center gap-2">
-                      {item.name === "UPI" && (
-                        <Smartphone className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      {item.name === "Cash" && (
-                        <Banknote className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      {item.name === "Card" && (
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      {item.name === "Online" && (
-                        <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="text-sm text-foreground">{item.name}</span>
-                    </div>
-                    <span className="ml-auto text-sm font-semibold text-foreground">
-                      {item.value}%
-                    </span>
+              {paymentBreakdown.length === 0 ? (
+                <div className="flex w-full h-full items-center justify-center text-muted-foreground text-sm">
+                  No data available for the selected period
+                </div>
+              ) : (
+                <>
+                  <div className="flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={paymentBreakdown}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {paymentBreakdown.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            color: "hsl(var(--foreground))"
+                          }}
+                          formatter={(value: number) => [`${value}%`, "Share"]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-3">
+                    {paymentBreakdown.map((item, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <div className="flex items-center gap-2">
+                          {item.name === "UPI" && (
+                            <Smartphone className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          {item.name === "Cash" && (
+                            <Banknote className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          {item.name === "Card" && (
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          {(item.name !== "UPI" && item.name !== "Cash" && item.name !== "Card") && (
+                            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="text-sm text-foreground">{item.name}</span>
+                        </div>
+                        <span className="ml-auto text-sm font-semibold text-foreground">
+                          {item.value}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -288,42 +382,48 @@ export function ReportsContent() {
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topItems} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis
-                    type="number"
-                    stroke="hsl(var(--border))"
-                    tick={{ fill: "hsl(var(--foreground))" }}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    stroke="hsl(var(--border))"
-                    tick={{ fill: "hsl(var(--foreground))" }}
-                    fontSize={12}
-                    width={100}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      color: "hsl(var(--foreground))"
-                    }}
-                    formatter={(value: number, name: string) => [
-                      name === "orders" ? `${value} orders` : `₹${value}`,
-                      name === "orders" ? "Orders" : "Revenue",
-                    ]}
-                  />
-                  <Bar
-                    dataKey="orders"
-                    fill="#f59e0b"
-                    radius={[0, 4, 4, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {topItems.length === 0 ? (
+                <div className="flex w-full h-full items-center justify-center text-muted-foreground text-sm">
+                  No data available for the selected period
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topItems} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      type="number"
+                      stroke="hsl(var(--border))"
+                      tick={{ fill: "hsl(var(--foreground))" }}
+                      fontSize={12}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      stroke="hsl(var(--border))"
+                      tick={{ fill: "hsl(var(--foreground))" }}
+                      fontSize={12}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        color: "hsl(var(--foreground))"
+                      }}
+                      formatter={(value: number, name: string) => [
+                        name === "orders" ? `${value} orders` : `₹${value}`,
+                        name === "orders" ? "Orders" : "Revenue",
+                      ]}
+                    />
+                    <Bar
+                      dataKey="orders"
+                      fill="#f59e0b"
+                      radius={[0, 4, 4, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -336,8 +436,8 @@ export function ReportsContent() {
           <CardContent>
             <div className="h-64">
               {staffPerformance.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  No order data yet
+                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                  No data available for the selected period
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -384,3 +484,4 @@ export function ReportsContent() {
     </div>
   );
 }
+

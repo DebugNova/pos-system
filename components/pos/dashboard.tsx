@@ -15,6 +15,8 @@ import {
   BarChart3,
   ArrowLeft,
   Database,
+  Banknote,
+  Briefcase
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ReportsContent } from "./reports";
@@ -23,7 +25,9 @@ import { DataManager } from "./data-manager";
 export function Dashboard() {
   const [showReports, setShowReports] = useState(false);
   const [showDataManager, setShowDataManager] = useState(false);
-  const { orders, tables, setActiveView } = usePOSStore();
+  const { orders, tables, shifts, currentUser, setActiveView } = usePOSStore();
+
+  const isAdmin = currentUser?.role === "Admin";
 
   const todaySales = orders
     .filter((o) => o.status === "completed" || o.status === "ready")
@@ -227,11 +231,72 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent Orders */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-base">Recent Orders</CardTitle>
-        </CardHeader>
+      {/* Admin Only: Shift History & Recent Orders */}
+      <div className={`grid grid-cols-1 ${isAdmin ? "lg:grid-cols-2 gap-4 lg:gap-6" : ""}`}>
+        {isAdmin && (
+          <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-primary" />
+                Recent Shifts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {shifts.slice(0, 5).map((shift) => (
+                  <div key={shift.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg bg-secondary/50 p-3">
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">{shift.staffName}</span>
+                        {shift.endedAt ? (
+                          <Badge variant="outline" className="text-[10px] py-0">Completed</Badge>
+                        ) : (
+                          <Badge variant="default" className="text-[10px] py-0 bg-success hover:bg-success/90">Active</Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground mt-1" suppressHydrationWarning>
+                        {shift.startedAt.toLocaleString("en-IN", {
+                          hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short"
+                        })}
+                        {shift.endedAt && ` - ${shift.endedAt.toLocaleString("en-IN", {
+                          hour: "2-digit", minute: "2-digit"
+                        })}`}
+                      </span>
+                    </div>
+                    <div className="flex flex-row sm:flex-col items-end gap-2 sm:gap-1">
+                      {shift.endedAt && shift.totalSales !== undefined && (
+                        <div className="text-right">
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Sales</span>
+                          <span className="font-semibold text-foreground text-sm">
+                            ₹{shift.totalSales.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                          </span>
+                        </div>
+                      )}
+                      <div className="text-right">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Drawer</span>
+                        <span className="text-sm font-medium text-muted-foreground flex items-center justify-end gap-1">
+                          <Banknote className="h-3 w-3" />
+                          ₹{shift.closingCash !== undefined ? shift.closingCash : shift.openingCash}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {shifts.length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground text-sm">
+                    No shift records found
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Orders */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Recent Orders</CardTitle>
+          </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {recentOrders.map((order) => (
@@ -302,9 +367,15 @@ export function Dashboard() {
                 </div>
               </div>
             ))}
+            {recentOrders.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground text-sm">
+                No orders today
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

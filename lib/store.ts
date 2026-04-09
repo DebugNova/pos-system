@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Order, OrderItem, OrderType, Table, MenuItem, AuditEntry } from "./data";
+import type { Order, OrderItem, OrderType, Table, MenuItem, AuditEntry, Shift } from "./data";
 import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
 import { getDefaultView } from "./roles";
 
@@ -99,7 +99,7 @@ interface POSState {
   updateTableStatus: (tableId: string, status: Table["status"], orderId?: string) => void;
   deleteTable: (tableId: string) => void;
   mergeTable: (sourceTableId: string, targetTableId: string) => void;
-  splitTable: (tableId: string) => void;
+  splitOrder: (orderId: string, itemIdsForNewOrder: string[]) => void;
   moveTable: (orderId: string, newTableId: string) => void;
 
   // Data Management
@@ -113,6 +113,12 @@ interface POSState {
 
   // Cart Total
   getCartTotal: () => number;
+
+  // Shift Tracking
+  shifts: Shift[];
+  currentShift: Shift | null;
+  startShift: (staffId: string, staffName: string, openingCash: number) => void;
+  endShift: (closingCash: number, notes?: string) => void;
 }
 
 const defaultStaffMembers: StaffMember[] = [
@@ -483,9 +489,56 @@ export const usePOSStore = create<POSState>()(
         }
       },
 
-      splitTable: (tableId) => {
-        // In a real app, this would create a new order for the split items
-        console.log("Split table:", tableId);
+      splitOrder: (orderId, itemIdsForNewOrder) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order || itemIdsForNewOrder.length === 0) return;
+
+        const remainingItems = order.items.filter((item) => !itemIdsForNewOrder.includes(item.id));
+        const splitItems = order.items.filter((item) => itemIdsForNewOrder.includes(item.id));
+
+        if (remainingItems.length === 0) return; // Cannot split all items
+
+        const calculateTotal = (items: OrderItem[]) => items.reduce((sum, item) => {
+          const modTotal = item.modifiers?.reduce((mSum, mod) => mSum + mod.price, 0) || 0;
+          return sum + (item.price + modTotal) * item.quantity;
+        }, 0);
+
+        const newOrderId = `ord-${Date.now()}`;
+        const newOrder: Order = {
+          ...order,
+          id: newOrderId,
+          items: splitItems,
+          total: calculateTotal(splitItems),
+          createdAt: new Date(),
+          createdBy: get().currentUser?.name || "System",
+          tableId: undefined, // Assign to takeaway by default
+          type: "takeaway",
+        };
+
+        set((state) => ({
+          orders: [
+            newOrder,
+            ...state.orders.map((o) =>
+              o.id === orderId
+                ? { ...o, items: remainingItems, total: calculateTotal(remainingItems) }
+                : o
+            ),
+          ],
+        }));
+
+        get().addAuditEntry({
+          action: "order_edited",
+          userId: get().currentUser?.name || "System",
+          details: `Order ${orderId.toUpperCase()} split into ${newOrderId.toUpperCase()}`,
+          orderId: orderId,
+        });
+        
+        get().addAuditEntry({
+          action: "order_created",
+          userId: get().currentUser?.name || "System",
+          details: `Order ${newOrderId.toUpperCase()} created from split`,
+          orderId: newOrderId,
+        });
       },
 
       moveTable: (orderId, newTableId) => {
@@ -583,6 +636,48 @@ export const usePOSStore = create<POSState>()(
           return sum + (item.price + modsTotal) * item.quantity;
         }, 0);
       },
+
+      // Shift Tracking
+      shifts: [],
+      currentShift: null,
+      startShift: (staffId, staffName, openingCash) => {
+        const newShift: Shift = {
+          id: `shift-${Date.now()}`,
+          staffId,
+          staffName,
+          startedAt: new Date(),
+          openingCash,
+        };
+        set({ currentShift: newShift });
+        get().addAuditEntry({ action: "settings_changed", userId: staffName, details: `Shift started with opening cash ₹${openingCash}` }); // using settings_changed or login? Let's use login context if appropriate. We can just add custom text. Note: action is typed, "login" is probably better but we didn't add "shift_start" to action union.
+      },
+      endShift: (closingCash, notes) => {
+        const { currentShift, orders } = get();
+        if (!currentShift) return;
+
+        // Calculate totals for this shift
+        const shiftOrders = orders.filter(
+          (o) => o.createdAt >= currentShift.startedAt && o.status === "completed"
+        );
+        const totalSales = shiftOrders.reduce((sum, o) => sum + o.total, 0);
+        const totalOrders = shiftOrders.length;
+
+        const completedShift: Shift = {
+          ...currentShift,
+          endedAt: new Date(),
+          closingCash,
+          totalSales,
+          totalOrders,
+          notes,
+        };
+
+        set((state) => ({
+          shifts: [completedShift, ...state.shifts],
+          currentShift: null,
+        }));
+        
+        get().addAuditEntry({ action: "logout", userId: currentShift.staffName, details: `Shift ended. Total sales: ₹${totalSales}` });
+      },
     }),
     {
       name: "suhashi-pos-storage",
@@ -594,6 +689,8 @@ export const usePOSStore = create<POSState>()(
         staffMembers: state.staffMembers,
         settings: state.settings,
         auditLog: state.auditLog,
+        shifts: state.shifts,
+        currentShift: state.currentShift,
       }),
       migrate: (persistedState: any, version) => {
         // Reset tables and menuItems to default when version changes
@@ -627,6 +724,20 @@ export const usePOSStore = create<POSState>()(
             ...a,
             timestamp: new Date(a.timestamp)
           }));
+        }
+        if (state?.shifts) {
+          state.shifts = state.shifts.map((s) => ({
+            ...s,
+            startedAt: new Date(s.startedAt),
+            ...(s.endedAt && { endedAt: new Date(s.endedAt) }),
+          }));
+        }
+        if (state?.currentShift) {
+          state.currentShift = {
+            ...state.currentShift,
+            startedAt: new Date(state.currentShift.startedAt),
+            ...(state.currentShift.endedAt && { endedAt: new Date(state.currentShift.endedAt) }),
+          };
         }
       },
     }

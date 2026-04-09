@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Banknote,
   CreditCard,
@@ -36,6 +48,7 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { ReceiptTemplate } from "./receipt-template";
+import { SplitBillDialog } from "./split-bill-dialog";
 
 import type { PaymentMethod, PaymentRecord } from "@/lib/data";
 
@@ -52,6 +65,7 @@ export function Billing() {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [refundReason, setRefundReason] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
+  const [showSplitDialog, setShowSplitDialog] = useState(false);
 
   const pendingPaymentOrders = orders.filter(
     (o) => o.status === "ready" || o.status === "preparing"
@@ -271,6 +285,15 @@ export function Billing() {
                     {order.createdBy && (
                       <Badge variant="outline" className="opacity-70 font-normal">By {order.createdBy}</Badge>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-1 gap-1.5"
+                      onClick={() => setShowSplitDialog(true)}
+                    >
+                      <Split className="h-3.5 w-3.5" />
+                      Split
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -526,20 +549,20 @@ export function Billing() {
             <div className="mt-auto flex gap-3">
               {/* Refund - Admin only */}
               {permissions.canProcessRefunds && (
-              <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-                <DialogTrigger asChild>
+              <AlertDialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
+                <AlertDialogTrigger asChild>
                   <Button variant="outline" className="gap-2">
                     <RotateCcw className="h-4 w-4" />
                     Refund
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Process Refund</DialogTitle>
-                    <DialogDescription>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Process Refund</AlertDialogTitle>
+                    <AlertDialogDescription>
                       Are you sure you want to refund this order? This action will be logged.
-                    </DialogDescription>
-                  </DialogHeader>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
                   <div className="space-y-4 pt-4">
                     <div className="rounded-lg bg-secondary p-4">
                       <p className="mb-2 text-sm text-muted-foreground">Refund Amount</p>
@@ -553,24 +576,24 @@ export function Billing() {
                     </div>
                     <div>
                       <Label className="text-sm">Reason (Optional)</Label>
-                      <Input
+                      <Textarea
                         placeholder="e.g., Customer requested, overcharged..."
                         value={refundReason}
                         onChange={(e) => setRefundReason(e.target.value)}
-                        className="mt-1 bg-secondary border-none"
+                        className="mt-1 bg-secondary border-none resize-none"
                       />
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button variant="outline" className="flex-1" onClick={() => setShowRefundDialog(false)}>
+                    <AlertDialogFooter className="pt-2">
+                      <AlertDialogCancel onClick={() => setShowRefundDialog(false)} className="flex-1 mt-0">
                         Cancel
-                      </Button>
-                      <Button variant="destructive" className="flex-1" onClick={handleRefund}>
+                      </AlertDialogCancel>
+                      <AlertDialogAction onClick={handleRefund} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
                         Confirm Refund
-                      </Button>
-                    </div>
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
                   </div>
-                </DialogContent>
-              </Dialog>
+                </AlertDialogContent>
+              </AlertDialog>
               )}
               <Button variant="outline" className="gap-2" onClick={() => window.print()}>
                 <Printer className="h-4 w-4" />
@@ -592,6 +615,11 @@ export function Billing() {
       {order && (
         <ReceiptTemplate order={order} settings={settings} />
       )}
+      <SplitBillDialog 
+        order={order || null}
+        open={showSplitDialog}
+        onOpenChange={setShowSplitDialog}
+      />
     </div>
   );
 }

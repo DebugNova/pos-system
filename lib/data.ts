@@ -142,6 +142,19 @@ export interface Order {
   createdBy?: string;
 }
 
+export interface Shift {
+  id: string;
+  staffId: string;
+  staffName: string;
+  startedAt: Date;
+  endedAt?: Date;
+  openingCash: number;
+  closingCash?: number;
+  totalSales?: number;
+  totalOrders?: number;
+  notes?: string;
+}
+
 export const sampleOrders: Order[] = [];
 
 export interface AuditEntry {

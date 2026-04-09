@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Users, Clock, CreditCard, Plus, MoreVertical, ArrowRight, Merge, Split, Eye, Pencil } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { SplitBillDialog } from "./split-bill-dialog";
 
 const statusColors: Record<string, string> = {
   available: "bg-success/20 border-success/50 text-success",
@@ -43,6 +44,7 @@ export function TableManagement() {
   const [showOrderDialog, setShowOrderDialog] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [showSplitDialog, setShowSplitDialog] = useState(false);
 
   const handleTableClick = (tableId: string, status: string) => {
     if (status === "available") {
@@ -202,6 +204,8 @@ export function TableManagement() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
+                            setSelectedOrderId(order.id);
+                            setShowSplitDialog(true);
                           }}>
                             <Split className="mr-2 h-4 w-4" />
                             Split Bill
@@ -413,6 +417,13 @@ export function TableManagement() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Split Bill Dialog */}
+      <SplitBillDialog 
+        order={selectedOrderId ? orders.find((o) => o.id === selectedOrderId) || null : null}
+        open={showSplitDialog}
+        onOpenChange={setShowSplitDialog}
+      />
     </div>
   );
 }

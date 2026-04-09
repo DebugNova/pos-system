@@ -22,6 +22,7 @@ import {
   Moon,
 } from "lucide-react";
 import { CatLogo } from "@/components/ui/cat-logo";
+import { EndShiftDialog } from "./end-shift-dialog";
 
 const navItems = [
   { id: "dashboard" as ViewId, label: "Dashboard", icon: LayoutDashboard },
@@ -35,9 +36,10 @@ const navItems = [
 ] as const;
 
 export function POSSidebar() {
-  const { activeView, setActiveView, orders, currentUser, logout } = usePOSStore();
+  const { activeView, setActiveView, orders, currentUser, logout, currentShift } = usePOSStore();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [showEndShift, setShowEndShift] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -51,6 +53,14 @@ export function POSSidebar() {
   const pendingAggregatorOrders = orders.filter(
     (o) => o.type === "aggregator" && o.status === "new"
   ).length;
+
+  const handleLogoutClick = () => {
+    if (currentShift) {
+      setShowEndShift(true);
+    } else {
+      logout();
+    }
+  };
 
   return (
     <aside className="flex h-full w-20 flex-col bg-sidebar border-r border-sidebar-border lg:w-28 shadow-sm z-10 relative">
@@ -126,11 +136,16 @@ export function POSSidebar() {
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-destructive lg:h-10 lg:w-10"
-          onClick={logout}
+          onClick={handleLogoutClick}
         >
           <LogOut className="h-4 w-4 lg:h-5 lg:w-5" />
         </Button>
       </div>
+
+      <EndShiftDialog 
+        open={showEndShift} 
+        onOpenChange={setShowEndShift} 
+      />
     </aside>
   );
 }

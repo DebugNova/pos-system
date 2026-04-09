@@ -23,11 +23,12 @@ interface StaffMember {
 }
 
 export function Login({ onLogin }: LoginProps) {
-  const { staffMembers } = usePOSStore();
+  const { staffMembers, startShift } = usePOSStore();
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [shiftStarted, setShiftStarted] = useState(false);
+  const [openingCash, setOpeningCash] = useState("");
 
   const handlePinSubmit = () => {
     if (!selectedStaff) return;
@@ -43,6 +44,7 @@ export function Login({ onLogin }: LoginProps) {
 
   const handleStartShift = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (selectedStaff) {
+      startShift(selectedStaff.id, selectedStaff.name, parseFloat(openingCash || "0"));
       const rect = e.currentTarget.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
       const y = rect.top + rect.height / 2;
@@ -237,6 +239,20 @@ export function Login({ onLogin }: LoginProps) {
                   <Badge variant="outline" className="font-bold text-[10px] sm:text-[11px] px-2 py-0 border-primary/30 text-primary bg-primary/5 rounded-full mt-0.5">
                     {selectedStaff.role}
                   </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 pt-2 text-left">
+                <Label className="text-sm font-medium text-muted-foreground ml-1">Opening Cash Balance</Label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                  <Input 
+                    type="number" 
+                    value={openingCash}
+                    onChange={(e) => setOpeningCash(e.target.value)}
+                    placeholder="Enter cash in drawer" 
+                    className="pl-8 bg-secondary/30 border-border/40 text-foreground text-sm font-medium h-11 rounded-2xl transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+                  />
                 </div>
               </div>
 

@@ -11,6 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import {
   Store,
   Printer,
@@ -23,11 +26,17 @@ import {
   Plus,
   ShieldAlert,
   Search,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 
 export function Settings() {
-  const { currentUser, settings, updateSettings, auditLog } = usePOSStore();
+  const { currentUser, settings, updateSettings, auditLog, staffMembers, addStaffMember, updateStaffMember, deleteStaffMember } = usePOSStore();
+  
+  const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [staffForm, setStaffForm] = useState({ name: "", role: "Server", pin: "" });
+
   const permissions = getPermissions(currentUser?.role || "Kitchen");
 
   return (
@@ -321,53 +330,148 @@ export function Settings() {
                   Manage staff accounts and permissions
                 </CardDescription>
               </div>
-              <Button size="sm" className="gap-1.5">
+              <Button size="sm" className="gap-1.5" onClick={() => {
+                setStaffForm({ name: "", role: "Server", pin: "" });
+                setEditingStaffId(null);
+                setIsStaffDialogOpen(true);
+              }}>
                 <Plus className="h-4 w-4" />
                 Add Staff
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              {[
-                { name: "Admin User", role: "Admin", email: "admin@suhashi.cafe", active: true },
-                { name: "Rahul Sharma", role: "Cashier", email: "rahul@suhashi.cafe", active: true },
-                { name: "Priya Patel", role: "Server", email: "priya@suhashi.cafe", active: true },
-                { name: "Amit Kumar", role: "Kitchen", email: "amit@suhashi.cafe", active: false },
-              ].map((staff, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg bg-secondary/50 p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
-                      <span className="text-sm font-semibold text-primary">
-                        {staff.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </span>
+              {staffMembers.map((staff) => {
+                const isActive = staff.name === currentUser?.name;
+                return (
+                  <div
+                    key={staff.id}
+                    className="flex items-center justify-between rounded-lg bg-secondary/50 p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 cursor-pointer" onClick={() => {
+                          setStaffForm({ name: staff.name, role: staff.role, pin: staff.pin });
+                          setEditingStaffId(staff.id);
+                          setIsStaffDialogOpen(true);
+                      }}>
+                        <span className="text-sm font-semibold text-primary">
+                          {staff.initials || staff.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="cursor-pointer" onClick={() => {
+                          setStaffForm({ name: staff.name, role: staff.role, pin: staff.pin });
+                          setEditingStaffId(staff.id);
+                          setIsStaffDialogOpen(true);
+                      }}>
+                        <p className="font-medium text-foreground">{staff.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">PIN: {staff.pin.replace(/./g, '*')}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{staff.name}</p>
-                      <p className="text-sm text-muted-foreground">{staff.email}</p>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary">{staff.role}</Badge>
+                      <Badge
+                        variant="outline"
+                        className={
+                          isActive
+                            ? "border-success/50 text-success"
+                            : "border-muted-foreground/50 text-muted-foreground"
+                        }
+                      >
+                        {isActive ? "Active" : "Inactive"}
+                      </Badge>
+                      {!isActive && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Staff Member</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {staff.name}? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteStaffMember(staff.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary">{staff.role}</Badge>
-                    <Badge
-                      variant="outline"
-                      className={
-                        staff.active
-                          ? "border-success/50 text-success"
-                          : "border-muted-foreground/50 text-muted-foreground"
-                      }
-                    >
-                      {staff.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
+
+          <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingStaffId ? "Edit Staff Member" : "Add Staff Member"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="staffName">Name</Label>
+                  <Input 
+                    id="staffName" 
+                    value={staffForm.name} 
+                    onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} 
+                    placeholder="e.g. Rahul Sharma" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="staffRole">Role</Label>
+                  <Select value={staffForm.role} onValueChange={(val) => setStaffForm({ ...staffForm, role: val })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Cashier">Cashier</SelectItem>
+                      <SelectItem value="Server">Server</SelectItem>
+                      <SelectItem value="Kitchen">Kitchen</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="staffPin">PIN (for login)</Label>
+                  <Input 
+                    id="staffPin" 
+                    value={staffForm.pin} 
+                    onChange={(e) => setStaffForm({ ...staffForm, pin: e.target.value.replace(/\D/g, '') })} 
+                    maxLength={4} 
+                    placeholder="4-digit PIN" 
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsStaffDialogOpen(false)}>Cancel</Button>
+                <Button onClick={() => {
+                  if (!staffForm.name || !staffForm.pin || staffForm.pin.length < 4) return;
+                  
+                  if (editingStaffId) {
+                    updateStaffMember(editingStaffId, staffForm);
+                  } else {
+                    const initials = staffForm.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+                    addStaffMember({
+                      id: `staff-${Date.now()}`,
+                      name: staffForm.name,
+                      role: staffForm.role,
+                      pin: staffForm.pin,
+                      initials
+                    });
+                  }
+                  setIsStaffDialogOpen(false);
+                }}>
+                  Save
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Payment Settings */}

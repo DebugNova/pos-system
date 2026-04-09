@@ -24,6 +24,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   Filter,
   Clock,
@@ -492,14 +502,14 @@ export function OrderHistory() {
         </Dialog>
 
         {/* Refund Dialog */}
-        <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-          <DialogContent>
-             <DialogHeader>
-               <DialogTitle>Process Refund</DialogTitle>
-               <DialogDescription>
+        <AlertDialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
+          <AlertDialogContent>
+             <AlertDialogHeader>
+               <AlertDialogTitle>Process Refund</AlertDialogTitle>
+               <AlertDialogDescription>
                  Are you sure you want to refund this order? This action will be logged.
-               </DialogDescription>
-             </DialogHeader>
+               </AlertDialogDescription>
+             </AlertDialogHeader>
              {order && (
              <div className="space-y-4 pt-4">
                <div className="rounded-lg bg-secondary p-4">
@@ -521,18 +531,18 @@ export function OrderHistory() {
                    className="mt-1 bg-secondary border-none"
                  />
                </div>
-               <div className="flex gap-2 pt-2">
-                 <Button variant="outline" className="flex-1" onClick={() => setShowRefundDialog(false)}>
+               <AlertDialogFooter className="pt-2">
+                 <AlertDialogCancel onClick={() => setShowRefundDialog(false)} className="flex-1 mt-0">
                    Cancel
-                 </Button>
-                 <Button variant="destructive" className="flex-1" onClick={handleRefund}>
+                 </AlertDialogCancel>
+                 <AlertDialogAction onClick={handleRefund} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
                    Confirm Refund
-                 </Button>
-               </div>
+                 </AlertDialogAction>
+               </AlertDialogFooter>
              </div>
              )}
-          </DialogContent>
-        </Dialog>
+          </AlertDialogContent>
+        </AlertDialog>
 
       {order && (
         <ReceiptTemplate order={order} settings={settings} />

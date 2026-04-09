@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePOSStore } from "@/lib/store";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -140,8 +141,9 @@ export function DataManager({ onBack }: DataManagerProps) {
     if (success) {
       setShowImportDialog(false);
       setImportText("");
+      toast.success("Data imported successfully.");
     } else {
-      alert("Failed to import data. Please check the format.");
+      toast.error("Failed to import data. Please check the format.");
     }
   };
 
@@ -795,12 +797,14 @@ export function DataManager({ onBack }: DataManagerProps) {
       </Dialog>
 
       {/* Import Dialog */}
-      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Import Data</DialogTitle>
-            <DialogDescription>Paste your exported JSON data below to restore your backup.</DialogDescription>
-          </DialogHeader>
+      <AlertDialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Import Data (Overwrite)</AlertDialogTitle>
+            <AlertDialogDescription>
+              Paste your exported JSON data below to restore your backup. WARNING: This will overwrite and replace all current data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <div className="space-y-2">
             <Label>JSON Data</Label>
             <textarea
@@ -810,12 +814,17 @@ export function DataManager({ onBack }: DataManagerProps) {
               placeholder='{"orders": [], "tables": [], ...}'
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowImportDialog(false)}>Cancel</Button>
-            <Button onClick={handleImport}>Import</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowImportDialog(false);
+              setImportText("");
+            }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleImport} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Import & Overwrite
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(null)}>
