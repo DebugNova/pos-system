@@ -39,29 +39,7 @@ export function POSSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border lg:h-20">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary lg:h-12 lg:w-12">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-6 w-6 text-primary-foreground lg:h-7 lg:w-7"
-          >
-            {/* Cat ears */}
-            <path d="M3 11V5.5a.5.5 0 0 1 .874-.331L7 9" />
-            <path d="M21 11V5.5a.5.5 0 0 0-.874-.331L17 9" />
-            {/* Cat face */}
-            <path d="M12 21a9 9 0 0 0 9-9 9 9 0 0 0-9-3 9 9 0 0 0-9 3 9 9 0 0 0 9 9Z" />
-            {/* Cat eyes */}
-            <circle cx="9" cy="12" r="1" fill="currentColor" />
-            <circle cx="15" cy="12" r="1" fill="currentColor" />
-            {/* Cat nose */}
-            <path d="M12 15.5v-1" />
-            {/* Cat mouth */}
-            <path d="M10 16.5c.5.5 1.5.5 2 0" />
-            <path d="M12 16.5c.5.5 1.5.5 2 0" />
-          </svg>
+          <img src="/logo.png" alt="Logo" className="h-full w-full object-contain p-1" />
         </div>
       </div>
 

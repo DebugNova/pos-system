@@ -63,8 +63,8 @@ export function Login({ onLogin }: LoginProps) {
       <div className="w-full max-w-lg">
         {/* Logo and Header */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary">
-            <Coffee className="h-10 w-10 text-primary-foreground" />
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary overflow-hidden">
+            <img src="/logo.png" alt="Logo" className="h-full w-full object-contain p-2" />
           </div>
           <h1 className="text-3xl font-bold text-foreground">SUHASHI Cafe</h1>
           <p className="mt-1 text-muted-foreground">Point of Sale System</p>
