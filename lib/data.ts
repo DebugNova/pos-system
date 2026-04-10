@@ -82,7 +82,7 @@ export const tables: Table[] = [
 ];
 
 export type OrderType = "dine-in" | "takeaway" | "delivery" | "aggregator";
-export type OrderStatus = "new" | "preparing" | "ready" | "completed" | "cancelled";
+export type OrderStatus = "awaiting-payment" | "new" | "preparing" | "ready" | "completed" | "cancelled";
 
 export interface OrderItem {
   id: string;
@@ -116,6 +116,14 @@ export interface Order {
   status: OrderStatus;
   tableId?: string;
   items: OrderItem[];
+  supplementaryBills?: {
+    id: string;
+    items: OrderItem[];
+    total: number;
+    createdAt: Date;
+    paidAt?: Date;
+    payment?: PaymentRecord;
+  }[];
   total: number;
   createdAt: Date;
   customerName?: string;
@@ -160,7 +168,7 @@ export const sampleOrders: Order[] = [];
 export interface AuditEntry {
   id: string;
   timestamp: Date;
-  action: "login" | "logout" | "refund" | "void" | "discount" | "order_created" | "order_edited" | "data_clear" | "data_import" | "settings_changed" | "staff_added" | "staff_deleted";
+  action: "login" | "logout" | "refund" | "void" | "discount" | "order_created" | "order_edited" | "order_sent_to_kitchen" | "order_served" | "payment_recorded" | "status_changed" | "data_clear" | "data_import" | "settings_changed" | "staff_added" | "staff_deleted";
   userId: string;
   details: string;
   orderId?: string;

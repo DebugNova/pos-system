@@ -16,9 +16,10 @@ import {
   ArrowLeft,
   Database,
   Banknote,
-  Briefcase
+  Briefcase,
+  Wallet
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, isToday } from "date-fns";
 import { ReportsContent } from "./reports";
 import { DataManager } from "./data-manager";
 
@@ -30,14 +31,19 @@ export function Dashboard() {
   const isAdmin = currentUser?.role === "Admin";
 
   const todaySales = orders
-    .filter((o) => o.status === "completed" || o.status === "ready")
-    .reduce((sum, o) => sum + o.total, 0);
+    .filter((o) => o.status === "completed" && isToday(new Date(o.createdAt)))
+    .reduce((sum, o) => {
+      const orderTotal = o.grandTotal ?? o.total;
+      const refundAmount = o.refund?.amount ?? 0;
+      return sum + (orderTotal - refundAmount);
+    }, 0);
 
   const activeTables = tables.filter((t) => t.status !== "available").length;
   const pendingOrders = orders.filter(
-    (o) => o.status === "new" || o.status === "preparing"
+    (o) => o.status === "new" || o.status === "preparing" || o.status === "ready"
   ).length;
   const kitchenQueue = orders.filter((o) => o.status === "preparing").length;
+  const awaitingPaymentOrders = orders.filter((o) => o.status === "awaiting-payment").length;
 
   const swiggyOrders = orders.filter(
     (o) => o.platform === "swiggy" && o.status !== "completed"
@@ -105,7 +111,7 @@ export function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-5 lg:gap-4">
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -122,6 +128,24 @@ export function Dashboard() {
               })}
             </div>
             <p className="text-xs text-muted-foreground">+12% from yesterday</p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="cursor-pointer bg-card border-border transition-colors hover:bg-secondary/50 active:scale-[0.98]"
+          onClick={() => setActiveView("billing")}
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Awaiting Payment
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${awaitingPaymentOrders > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+              {awaitingPaymentOrders}
+            </div>
+            <p className="text-xs text-muted-foreground">pending bills</p>
           </CardContent>
         </Card>
 

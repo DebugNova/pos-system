@@ -1,15 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Order, OrderItem, OrderType, Table, MenuItem, AuditEntry, Shift, QueuedMutation, MutationKind } from "./data";
+import type { Order, OrderItem, OrderType, OrderStatus, Table, MenuItem, AuditEntry, Shift, QueuedMutation, MutationKind } from "./data";
 import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
 import { getDefaultView } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 7;
+const STORE_VERSION = 8;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
+  originalItemId?: string;
 }
 
 interface User {
@@ -67,7 +68,10 @@ interface POSState {
   customerName: string;
   orderNotes: string;
   editingOrderId: string | null;
+  editMode: "none" | "pre-payment" | "supplementary";
+  lockedItemIds: string[];
   addToCart: (item: Omit<CartItem, "tempId">) => void;
+  adminRemoveLockedItem: (orderId: string, itemId: string) => void;
   removeFromCart: (tempId: string) => void;
   updateQuantity: (tempId: string, quantity: number) => void;
   updateItemNotes: (tempId: string, notes: string) => void;
@@ -88,11 +92,16 @@ interface POSState {
   deleteMenuItem: (id: string) => void;
 
   // Orders
+  pendingBillingOrderId: string | null;
+  setPendingBillingOrderId: (id: string | null) => void;
   orders: Order[];
-  addOrder: (order: Omit<Order, "id" | "createdAt">) => void;
+  addOrder: (order: Omit<Order, "id" | "createdAt">, opts?: { initialStatus?: OrderStatus; skipTableLock?: boolean }) => string;
   updateOrder: (orderId: string, data: Partial<Order>) => void;
   updateOrderStatus: (orderId: string, status: Order["status"]) => void;
   deleteOrder: (orderId: string) => void;
+  confirmPaymentAndSendToKitchen: (orderId: string, payment: import("./data").PaymentRecord) => void;
+  cancelAwaitingPaymentOrder: (orderId: string, reason?: string) => void;
+  markOrderServed: (orderId: string) => void;
 
   // Tables
   tables: Table[];
@@ -286,12 +295,64 @@ export const usePOSStore = create<POSState>()(
       customerName: "",
       orderNotes: "",
       editingOrderId: null,
+      editMode: "none",
+      lockedItemIds: [],
 
       addToCart: (item) => {
         const tempId = `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         set((state) => ({
           cart: [...state.cart, { ...item, tempId }],
         }));
+      },
+
+      adminRemoveLockedItem: (orderId, itemId) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order || get().currentUser?.role !== "Admin") return;
+
+        const itemToRemove = order.items.find((i) => i.id === itemId);
+        if (!itemToRemove) return;
+
+        const modsTotal = itemToRemove.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+        const refundAmount = (itemToRemove.price + modsTotal) * itemToRemove.quantity;
+
+        const updatedItems = order.items.filter((i) => i.id !== itemId);
+        const newTotal = order.total - refundAmount;
+
+        const existingRefundAmount = order.refund?.amount || 0;
+
+        set((state) => ({
+            orders: state.orders.map((o) => {
+                if (o.id === orderId) {
+                    return {
+                        ...o,
+                        items: updatedItems,
+                        total: newTotal,
+                        refund: {
+                           amount: existingRefundAmount + refundAmount,
+                           reason: `Admin force removed ${itemToRemove.name}`,
+                           refundedAt: new Date(),
+                           refundedBy: get().currentUser?.name || "System"
+                        }
+                    };
+                }
+                return o;
+            })
+        }));
+
+        get().addAuditEntry({
+            action: "refund",
+            userId: get().currentUser?.name || "System",
+            details: `Admin forced removed ${itemToRemove.name}`,
+            orderId,
+            metadata: { reason: "admin_force_remove", itemId, amount: refundAmount }
+        });
+
+        if (get().editingOrderId === orderId) {
+            set((state) => ({
+               cart: state.cart.filter(c => c.originalItemId !== itemId),
+               lockedItemIds: state.lockedItemIds.filter(id => id !== itemId)
+            }));
+        }
       },
 
       removeFromCart: (tempId) => {
@@ -328,11 +389,19 @@ export const usePOSStore = create<POSState>()(
         }));
       },
 
-      clearCart: () => set({ cart: [], selectedTable: null, customerName: "", orderNotes: "", editingOrderId: null }),
+      clearCart: () => set({ cart: [], selectedTable: null, customerName: "", orderNotes: "", editingOrderId: null, editMode: "none", lockedItemIds: [] }),
 
       startEditOrder: (orderId) => {
         const order = get().orders.find((o) => o.id === orderId);
-        if (!order) return;
+        if (!order || order.status === "completed" || order.status === "cancelled") return;
+
+        let editMode: POSState["editMode"] = "pre-payment";
+        let lockedItemIds: string[] = [];
+
+        if (order.status === "new" || order.status === "preparing" || order.status === "ready") {
+          editMode = "supplementary";
+          lockedItemIds = order.items.map((i) => i.id);
+        }
 
         // Load order items into cart
         const cartItems: CartItem[] = order.items.map((item) => ({
@@ -344,6 +413,7 @@ export const usePOSStore = create<POSState>()(
           variant: item.variant,
           notes: item.notes,
           modifiers: item.modifiers,
+          originalItemId: editMode === "supplementary" ? item.id : undefined,
         }));
 
         set({
@@ -354,12 +424,74 @@ export const usePOSStore = create<POSState>()(
           customerName: order.customerName || "",
           orderNotes: order.orderNotes || "",
           activeView: "orders",
+          editMode,
+          lockedItemIds,
         });
       },
 
       saveEditOrder: () => {
-        const { editingOrderId, cart, orderType, selectedTable, customerName, orderNotes } = get();
+        const { editingOrderId, cart, orderType, selectedTable, customerName, orderNotes, editMode, lockedItemIds } = get();
         if (!editingOrderId || cart.length === 0) return;
+
+        const oldOrder = get().orders.find((o) => o.id === editingOrderId);
+        if (!oldOrder) return;
+
+        if (editMode === "supplementary") {
+          const newCartItems = cart.filter(item => !item.originalItemId || !lockedItemIds.includes(item.originalItemId));
+          if (newCartItems.length === 0) return;
+
+          const computedTotal = newCartItems.reduce((sum, item) => {
+            const modsTotal = item.modifiers?.reduce((modSum, mod) => modSum + mod.price, 0) || 0;
+            return sum + (item.price + modsTotal) * item.quantity;
+          }, 0);
+
+          const newItems = newCartItems.map((item, index) => ({
+            id: `oi-${Date.now()}-${index}`,
+            menuItemId: item.menuItemId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            variant: item.variant,
+            notes: item.notes,
+            modifiers: item.modifiers,
+          }));
+
+          const newBill = {
+            id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `bill-${Date.now()}`,
+            items: newItems,
+            total: computedTotal,
+            createdAt: new Date(),
+          };
+
+          set((state) => ({
+            orders: state.orders.map((order) =>
+              order.id === editingOrderId
+                ? {
+                    ...order,
+                    supplementaryBills: [...(order.supplementaryBills || []), newBill],
+                  }
+                : order
+            ),
+            cart: [],
+            editingOrderId: null,
+            selectedTable: null,
+            customerName: "",
+            orderNotes: "",
+            editMode: "none",
+            lockedItemIds: [],
+          }));
+
+          get().addAuditEntry({
+            action: "order_edited",
+            userId: get().currentUser?.name || "System",
+            details: `Order ${editingOrderId.toUpperCase()} received a supplementary bill`,
+            orderId: editingOrderId,
+            metadata: { mode: "supplementary", addedItems: newItems }
+          });
+          
+          get().setPendingBillingOrderId(editingOrderId);
+          return;
+        }
 
         const newTotal = cart.reduce((sum, item) => {
           const modsTotal = item.modifiers?.reduce((modSum, mod) => modSum + mod.price, 0) || 0;
@@ -376,8 +508,6 @@ export const usePOSStore = create<POSState>()(
           modifiers: item.modifiers,
         }));
 
-        // Get old order to check if table changed
-        const oldOrder = get().orders.find((o) => o.id === editingOrderId);
         const oldTableId = oldOrder?.tableId;
         const newTableId = orderType === "dine-in" ? selectedTable || undefined : undefined;
 
@@ -400,15 +530,16 @@ export const usePOSStore = create<POSState>()(
           selectedTable: null,
           customerName: "",
           orderNotes: "",
+          editMode: "none",
+          lockedItemIds: [],
         }));
 
-        // Update table assignments if table changed
         if (oldTableId !== newTableId) {
           if (oldTableId) {
             get().updateTableStatus(oldTableId, "available");
           }
           if (newTableId) {
-            get().updateTableStatus(newTableId, "occupied", editingOrderId);
+            get().updateTableStatus(newTableId, oldOrder?.status === "awaiting-payment" ? "waiting-payment" : "occupied", editingOrderId);
           }
         }
 
@@ -418,6 +549,8 @@ export const usePOSStore = create<POSState>()(
           details: `Order ${editingOrderId.toUpperCase()} was edited`,
           orderId: editingOrderId,
         });
+        
+        get().setPendingBillingOrderId(editingOrderId);
       },
 
       cancelEditOrder: () => {
@@ -427,6 +560,8 @@ export const usePOSStore = create<POSState>()(
           selectedTable: null,
           customerName: "",
           orderNotes: "",
+          editMode: "none",
+          lockedItemIds: [],
         });
       },
 
@@ -446,13 +581,17 @@ export const usePOSStore = create<POSState>()(
       })),
 
       // Orders
+      pendingBillingOrderId: null,
+      setPendingBillingOrderId: (id) => set({ pendingBillingOrderId: id }),
       orders: [],
 
-      addOrder: (orderData) => {
+      addOrder: (orderData, opts) => {
         const id = `ord-${Date.now()}`;
+        const initialStatus = opts?.initialStatus || "awaiting-payment";
         const newOrder: Order = {
           ...orderData,
           id,
+          status: initialStatus,
           createdAt: new Date(),
           createdBy: get().currentUser?.name || "System",
         };
@@ -465,12 +604,13 @@ export const usePOSStore = create<POSState>()(
         get().addAuditEntry({ action: "order_created", userId: newOrder.createdBy || "System", details: `Order ${id} created`, orderId: id });
 
         // Update table status if dine-in
-        if (orderData.type === "dine-in" && orderData.tableId) {
-          get().updateTableStatus(orderData.tableId, "occupied", id);
+        if (orderData.type === "dine-in" && orderData.tableId && !opts?.skipTableLock) {
+          get().updateTableStatus(orderData.tableId, initialStatus === "awaiting-payment" ? "waiting-payment" : "occupied", id);
         }
 
         // Clear cart after order
         get().clearCart();
+        return id;
       },
 
       updateOrder: (orderId, data) => {
@@ -483,20 +623,31 @@ export const usePOSStore = create<POSState>()(
       },
 
       updateOrderStatus: (orderId, status) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order) return;
+        
+        const fromStatus = order.status;
+        
+        // Prevent completed via this action (must use markOrderServed)
+        if (status === "completed") return;
+
+        // Prevent moving out of awaiting-payment except via specific actions
+        if (fromStatus === "awaiting-payment") return;
+
         set((state) => ({
-          orders: state.orders.map((order) =>
-            order.id === orderId ? { ...order, status } : order
+          orders: state.orders.map((o) =>
+            o.id === orderId ? { ...o, status } : o
           ),
         }));
         get().enqueueMutation("order.update", { id: orderId, changes: { status } });
 
-        // Update table status if order is completed
-        if (status === "completed") {
-          const order = get().orders.find((o) => o.id === orderId);
-          if (order?.tableId) {
-            get().updateTableStatus(order.tableId, "available");
-          }
-        }
+        get().addAuditEntry({ 
+          action: "status_changed", 
+          userId: get().currentUser?.name || "System", 
+          details: `Order ${orderId.toUpperCase()} status changed from ${fromStatus} to ${status}`, 
+          orderId,
+          metadata: { fromStatus, toStatus: status }
+        });
       },
 
       deleteOrder: (orderId) => {
@@ -514,6 +665,102 @@ export const usePOSStore = create<POSState>()(
           userId: get().currentUser?.name || "System",
           details: `Order ${orderId.toUpperCase()} was voided/deleted`,
           orderId: orderId,
+        });
+      },
+
+      confirmPaymentAndSendToKitchen: (orderId, payment) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order || order.status !== "awaiting-payment") return;
+
+        const userName = get().currentUser?.name || "System";
+        
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === orderId ? { 
+              ...o, 
+              status: "new",
+              payment,
+              paidAt: new Date(),
+              paidBy: userName,
+              subtotal: o.total,
+            } : o
+          ),
+        }));
+        get().enqueueMutation("order.update", { 
+          id: orderId, 
+          changes: { status: "new", payment, paidAt: new Date().toISOString(), paidBy: userName } 
+        });
+
+        if (order.type === "dine-in" && order.tableId) {
+          get().updateTableStatus(order.tableId, "occupied", orderId);
+        }
+
+        get().addAuditEntry({ 
+          action: "payment_recorded", 
+          userId: userName, 
+          details: `Payment of ₹${payment.amount} recorded for order ${orderId}`, 
+          orderId,
+          metadata: { method: payment.method, amount: payment.amount, transactionId: payment.transactionId, cashier: userName }
+        });
+
+        get().addAuditEntry({ 
+          action: "order_sent_to_kitchen", 
+          userId: userName, 
+          details: `Order ${orderId.toUpperCase()} sent to kitchen`, 
+          orderId,
+          metadata: { table: order.tableId, sentBy: userName }
+        });
+      },
+
+      cancelAwaitingPaymentOrder: (orderId, reason) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order || order.status !== "awaiting-payment") return;
+
+        const userName = get().currentUser?.name || "System";
+
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === orderId ? { ...o, status: "cancelled" } : o
+          ),
+        }));
+        get().enqueueMutation("order.update", { id: orderId, changes: { status: "cancelled" } });
+
+        if (order.type === "dine-in" && order.tableId) {
+          get().updateTableStatus(order.tableId, "available");
+        }
+
+        get().addAuditEntry({ 
+          action: "void", 
+          userId: userName, 
+          details: reason ? `Order ${orderId.toUpperCase()} voided: ${reason}` : `Order ${orderId.toUpperCase()} voided`, 
+          orderId,
+          metadata: { reason }
+        });
+      },
+
+      markOrderServed: (orderId) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order) return;
+
+        const userName = get().currentUser?.name || "System";
+
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === orderId ? { ...o, status: "completed" } : o
+          ),
+        }));
+        get().enqueueMutation("order.update", { id: orderId, changes: { status: "completed" } });
+
+        if (order.tableId) {
+          get().updateTableStatus(order.tableId, "available");
+        }
+
+        get().addAuditEntry({ 
+          action: "order_served", 
+          userId: userName, 
+          details: `Order ${orderId.toUpperCase()} served`, 
+          orderId,
+          metadata: { table: order.tableId, servedBy: userName }
         });
       },
 
@@ -686,6 +933,13 @@ export const usePOSStore = create<POSState>()(
                   ...o.refund,
                   refundedAt: new Date(o.refund.refundedAt)
                 }
+              }),
+              ...(o.supplementaryBills && {
+                supplementaryBills: o.supplementaryBills.map((sb: any) => ({
+                  ...sb,
+                  createdAt: new Date(sb.createdAt),
+                  ...(sb.paidAt && { paidAt: new Date(sb.paidAt) })
+                }))
               })
             }));
           }
@@ -765,6 +1019,7 @@ export const usePOSStore = create<POSState>()(
       name: "suhashi-pos-storage",
       version: STORE_VERSION,
       partialize: (state) => ({
+        pendingBillingOrderId: state.pendingBillingOrderId,
         orders: state.orders,
         tables: state.tables,
         menuItems: state.menuItems,
@@ -800,6 +1055,13 @@ export const usePOSStore = create<POSState>()(
                 ...o.refund,
                 refundedAt: new Date(o.refund.refundedAt)
               }
+            }),
+            ...(o.supplementaryBills && {
+              supplementaryBills: o.supplementaryBills.map((sb: any) => ({
+                ...sb,
+                createdAt: new Date(sb.createdAt),
+                ...(sb.paidAt && { paidAt: new Date(sb.paidAt) })
+              }))
             })
           }));
         }

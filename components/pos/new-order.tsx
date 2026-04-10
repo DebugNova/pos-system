@@ -18,6 +18,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   Plus,
   Minus,
@@ -37,6 +47,7 @@ import {
   ArrowLeft,
   Save,
   Pencil,
+  Lock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -65,6 +76,7 @@ export function NewOrder() {
   const [showModifierDialog, setShowModifierDialog] = useState(false);
   const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
   const [showCustomerNote, setShowCustomerNote] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState<{orderId: string, itemId: string, tempId: string, name: string} | null>(null);
 
   const {
     cart,
@@ -86,11 +98,16 @@ export function NewOrder() {
     setCustomerName,
     setOrderNotes,
     addOrder,
+    setPendingBillingOrderId,
     saveEditOrder,
     cancelEditOrder,
     getCartTotal,
     setActiveView,
     settings,
+    editMode,
+    lockedItemIds,
+    adminRemoveLockedItem,
+    currentUser,
   } = usePOSStore();
 
   const isEditing = !!editingOrderId;
@@ -155,13 +172,13 @@ export function NewOrder() {
     setSelectedModifiers([]);
   };
 
-  const handlePlaceOrder = () => {
+  const handleProceedToPayment = () => {
     if (cart.length === 0) return;
     if (orderType === "dine-in" && !selectedTable) return;
 
-    addOrder({
+    const newId = addOrder({
       type: orderType,
-      status: "new",
+      status: "awaiting-payment",
       tableId: orderType === "dine-in" ? selectedTable || undefined : undefined,
       customerName: customerName || undefined,
       orderNotes: orderNotes || undefined,
@@ -178,33 +195,9 @@ export function NewOrder() {
       total: getCartTotal(),
     });
 
-    setActiveView("kitchen");
-  };
-
-  const handleSendToKitchen = () => {
-    if (cart.length === 0) return;
-    if (orderType === "dine-in" && !selectedTable) return;
-
-    addOrder({
-      type: orderType,
-      status: "new",
-      tableId: orderType === "dine-in" ? selectedTable || undefined : undefined,
-      customerName: customerName || undefined,
-      orderNotes: orderNotes || undefined,
-      items: cart.map((item, index) => ({
-        id: `oi-${Date.now()}-${index}`,
-        menuItemId: item.menuItemId,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        variant: item.variant,
-        notes: item.notes,
-        modifiers: item.modifiers,
-      })),
-      total: getCartTotal(),
-    });
-
-    setActiveView("kitchen");
+    setPendingBillingOrderId(newId);
+    clearCart();
+    setActiveView("billing");
   };
 
   const handleEditItemNotes = (tempId: string) => {
@@ -251,11 +244,10 @@ export function NewOrder() {
         if (table) setSelectedTable(table.id);
       }
 
-      // Ctrl+Enter → KOT, Ctrl+Shift+Enter → Place Order
+      // Ctrl+Enter → Proceed to Payment
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        if (e.shiftKey) handlePlaceOrder();
-        else handleSendToKitchen();
+        handleProceedToPayment();
       }
     };
 
@@ -508,10 +500,10 @@ export function NewOrder() {
       <div className="flex w-72 shrink-0 flex-col bg-card shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 border-l border-border/50 sm:w-80 lg:w-80 xl:w-96">
         <CardHeader className="flex flex-col justify-center border-b border-border h-20 lg:h-24 px-5 py-3 shrink-0 bg-background/50 backdrop-blur-sm space-y-1">
           {isEditing && (
-            <div className="mb-1 flex items-center gap-2 rounded-md bg-primary/10 px-2.5 py-1.5 shadow-sm">
-              <Pencil className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-semibold text-primary">
-                Editing {editingOrderId?.toUpperCase()}
+            <div className={cn("mb-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 shadow-sm", editMode === "supplementary" ? "bg-warning/10" : "bg-primary/10")}>
+              {editMode === "supplementary" ? <Lock className="h-3.5 w-3.5 text-warning" /> : <Pencil className="h-3.5 w-3.5 text-primary" />}
+              <span className={cn("text-xs font-semibold", editMode === "supplementary" ? "text-warning" : "text-primary")}>
+                {editMode === "supplementary" ? `Supplementary Bill: ${editingOrderId?.toUpperCase()}` : `Editing ${editingOrderId?.toUpperCase()}`}
               </span>
               <Button
                 variant="ghost"
@@ -521,6 +513,13 @@ export function NewOrder() {
               >
                 Cancel
               </Button>
+            </div>
+          )}
+          {editMode === "supplementary" && (
+            <div className="mb-1 rounded bg-warning/5 px-2 py-1 border border-warning/20">
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                 Original items are locked. Customer will be charged a supplementary bill for any new items added.
+              </p>
             </div>
           )}
           <div className="flex items-center justify-between">
@@ -587,7 +586,12 @@ export function NewOrder() {
             ) : (
               <div className="space-y-3">
                 <AnimatePresence initial={false}>
-                  {cart.map((item) => (
+                  {cart.map((item) => {
+                    const isLocked = isEditing && editMode === "supplementary" && item.originalItemId && lockedItemIds.includes(item.originalItemId);
+                    const isAdmin = currentUser?.role === "Admin";
+                    const isNewlyAdded = !isLocked && editMode === "supplementary";
+
+                    return (
                     <motion.div
                       key={item.tempId}
                       layout
@@ -595,11 +599,15 @@ export function NewOrder() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, x: -20, scale: 0.9 }}
                       transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                      className="rounded-lg bg-secondary/50 p-3"
+                      className={cn("rounded-lg p-3", isLocked ? "bg-muted/50 border border-border/50 opacity-80" : isNewlyAdded ? "bg-warning/10 border border-warning/30" : "bg-secondary/50")}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="font-medium text-foreground">{item.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            {isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                            {isNewlyAdded && <Badge variant="outline" className="h-4 px-1 text-[8px] bg-warning/20 text-warning border-transparent">+ADD</Badge>}
+                            <p className="font-medium text-foreground">{item.name}</p>
+                          </div>
                           {item.variant && (
                             <p className="text-xs text-muted-foreground">{item.variant}</p>
                           )}
@@ -608,7 +616,7 @@ export function NewOrder() {
                               {item.modifiers.map(m => m.name).join(", ")}
                             </p>
                           )}
-                          <p className="text-sm font-semibold text-primary">
+                          <p className={cn("text-sm font-semibold", isLocked ? "text-muted-foreground" : "text-primary")}>
                             {item.price.toLocaleString("en-IN", {
                               style: "currency",
                               currency: "INR",
@@ -621,19 +629,22 @@ export function NewOrder() {
                             </p>
                           )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground active:scale-90 transition-transform"
-                          onClick={() => handleEditItemNotes(item.tempId)}
-                        >
-                          <Edit3 className="h-3 w-3" />
-                        </Button>
+                        {!isLocked && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground active:scale-90 transition-transform"
+                            onClick={() => handleEditItemNotes(item.tempId)}
+                          >
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                       <div className="mt-2 flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="icon"
+                          disabled={isLocked}
                           className="h-8 w-8 active:scale-90 transition-transform"
                           onClick={() => {
                             if (item.quantity > 1) {
@@ -650,6 +661,7 @@ export function NewOrder() {
                         <Button
                           variant="outline"
                           size="icon"
+                          disabled={isLocked}
                           className="h-8 w-8 active:scale-90 transition-transform"
                           onClick={() => {
                             navigator.vibrate?.(8);
@@ -658,7 +670,7 @@ export function NewOrder() {
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
-                        <span className="ml-auto font-bold text-foreground">
+                        <span className={cn("ml-auto font-bold", isLocked ? "text-muted-foreground" : "text-foreground")}>
                           {((item.price + (item.modifiers?.reduce((s, m) => s + m.price, 0) || 0)) * item.quantity).toLocaleString("en-IN", {
                             style: "currency",
                             currency: "INR",
@@ -666,8 +678,20 @@ export function NewOrder() {
                           })}
                         </span>
                       </div>
+                      {isLocked && isAdmin && editingOrderId && item.originalItemId && (
+                        <div className="mt-2 text-right">
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="h-6 text-[10px]"
+                            onClick={() => setItemToRemove({ orderId: editingOrderId, itemId: item.originalItemId!, tempId: item.tempId, name: item.name })}
+                          >
+                            Remove Item (Admin)
+                          </Button>
+                        </div>
+                      )}
                     </motion.div>
-                  ))}
+                  )})}
                 </AnimatePresence>
               </div>
             )}
@@ -721,32 +745,23 @@ export function NewOrder() {
                 </Button>
                 <Button
                   size="lg"
-                  className="flex-1 h-14 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className={cn("flex-1 h-14", editMode === "supplementary" ? "bg-warning hover:bg-warning/90 text-warning-foreground" : "bg-primary hover:bg-primary/90 text-primary-foreground")}
                   disabled={
                     cart.length === 0 ||
-                    (orderType === "dine-in" && !selectedTable)
+                    (orderType === "dine-in" && !selectedTable) ||
+                    (editMode === "supplementary" && !cart.some(c => !c.originalItemId || !lockedItemIds.includes(c.originalItemId)))
                   }
                   onClick={() => {
                     saveEditOrder();
-                    setActiveView("tables");
+                    setActiveView("billing");
                   }}
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  Update Order
+                  {editMode === "supplementary" ? "Add Supplementary Bill" : "Update Order"}
                 </Button>
               </div>
             ) : (
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className={cn("flex-1 h-14", cart.length > 0 && "animate-pulse-subtle border-primary/50 text-foreground")}
-                  disabled={cart.length === 0}
-                  onClick={handleSendToKitchen}
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  KOT
-                </Button>
                 <Button
                   size="lg"
                   className={cn(
@@ -757,10 +772,10 @@ export function NewOrder() {
                     cart.length === 0 ||
                     (orderType === "dine-in" && !selectedTable)
                   }
-                  onClick={handlePlaceOrder}
+                  onClick={handleProceedToPayment}
                 >
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Place Order
+                  Proceed to Payment
                 </Button>
               </div>
             )}
@@ -868,6 +883,33 @@ export function NewOrder() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Admin Remove Item Dialog */}
+      <AlertDialog open={!!itemToRemove} onOpenChange={(open) => !open && setItemToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Item (Admin)</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{itemToRemove?.name}</strong>?
+              This will issue a partial refund to the order total.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (itemToRemove) {
+                  adminRemoveLockedItem(itemToRemove.orderId, itemToRemove.itemId);
+                }
+                setItemToRemove(null);
+              }}
+            >
+              Confirm Removal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

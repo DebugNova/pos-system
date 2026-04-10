@@ -97,7 +97,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canEditIntegrations: false,
     canManageStaff: false,
     canDeleteOrders: false,
-    canEditOrders: false,
+    canEditOrders: true,
     canPrintReceipts: true,
     canViewReports: false,
     canManageData: false,

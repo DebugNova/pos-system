@@ -87,6 +87,8 @@ export function OrderHistory() {
   const [refundAmount, setRefundAmount] = useState("");
 
   const filteredOrders = orders.filter((order) => {
+    if (order.status === "awaiting-payment") return false;
+    
     const matchesSearch =
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerName?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -281,8 +283,13 @@ export function OrderHistory() {
                       <Badge variant="outline" className={getStatusColor(o.status)}>
                         {o.status}
                       </Badge>
-                      <span className="text-lg font-bold text-foreground">
-                        {o.total.toLocaleString("en-IN", {
+                      {o.refund && (
+                        <Badge variant="outline" className="border-destructive/30 text-destructive bg-destructive/10 hidden sm:inline-flex">
+                          Refunded
+                        </Badge>
+                      )}
+                      <span className={cn("text-lg font-bold text-foreground", o.status === "cancelled" && "line-through opacity-50")}>
+                        {(o.grandTotal ?? o.total).toLocaleString("en-IN", {
                           style: "currency",
                           currency: "INR",
                           minimumFractionDigits: 0,
@@ -373,7 +380,7 @@ export function OrderHistory() {
                     return (
                     <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
                       <div className="flex justify-between">
-                        <span className="text-foreground font-medium">{item.quantity}x {item.name}</span>
+                        <span className={cn("text-foreground font-medium", order.status === "cancelled" && "line-through opacity-60")}>{item.quantity}x {item.name}</span>
                         <span className="text-muted-foreground">
                           {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                         </span>
@@ -392,16 +399,72 @@ export function OrderHistory() {
                     </li>
                   )})}
                 </ul>
-                <div className="mt-3 flex justify-between border-t border-border pt-2">
-                  <span className="font-medium text-foreground">Total</span>
-                  <span className="font-bold text-primary">
-                    {order.total.toLocaleString("en-IN", {
-                      style: "currency",
-                      currency: "INR",
-                      minimumFractionDigits: 0,
-                    })}
-                  </span>
-                </div>
+
+                {order.supplementaryBills?.map((bill, index) => (
+                  <div key={bill.id} className="mt-4 border-t border-border pt-3">
+                    <div className="flex justify-between items-center mb-2">
+                       <p className="text-sm font-medium text-foreground">Supplementary #{index + 1}</p>
+                       <Badge variant="outline" className={cn("text-[10px] h-5", bill.payment ? "bg-success/10 text-success border-success/30" : "bg-warning/10 text-warning border-warning/30")}>
+                         {bill.payment ? "Paid" : "Unpaid"}
+                       </Badge>
+                    </div>
+                    <ul className="space-y-3">
+                      {bill.items.map((item) => {
+                        const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                        return (
+                        <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                          <div className="flex justify-between">
+                            <span className={cn("text-foreground font-medium", order.status === "cancelled" && "line-through opacity-60")}>{item.quantity}x {item.name}</span>
+                            <span className="text-muted-foreground">
+                              {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                          {item.variant && <span className="text-xs text-muted-foreground ml-4 mt-0.5">({item.variant})</span>}
+                          {item.modifiers && item.modifiers.length > 0 && (
+                            <span className="text-xs text-muted-foreground ml-4 mt-0.5">
+                              + {item.modifiers.map(m => m.name).join(", ")}
+                            </span>
+                          )}
+                          {item.notes && (
+                            <span className="block text-xs text-muted-foreground mt-0.5 ml-4">
+                              Note: {item.notes}
+                            </span>
+                          )}
+                        </li>
+                      )})}
+                    </ul>
+                  </div>
+                ))}
+
+                {(!order.supplementaryBills || order.supplementaryBills.length === 0) ? (
+                  <div className="mt-3 flex justify-between border-t border-border pt-2">
+                    <span className="font-medium text-foreground">Total</span>
+                    <span className="font-bold text-primary">
+                      {order.total.toLocaleString("en-IN", {
+                        style: "currency",
+                        currency: "INR",
+                        minimumFractionDigits: 0,
+                      })}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-4 border-t border-border pt-3 text-sm">
+                    <div className="flex justify-between text-muted-foreground mb-1">
+                      <span>Original Total</span>
+                      <span>{order.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                    </div>
+                    {order.supplementaryBills.map((bill, i) => (
+                      <div key={bill.id} className="flex justify-between text-muted-foreground mb-1">
+                        <span>Supplementary #{i + 1}</span>
+                        <span>{bill.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between font-bold text-primary border-t border-border mt-2 pt-2 text-base">
+                      <span>Grand Total</span>
+                      <span>{(order.grandTotal ?? order.total).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Payment Details */}

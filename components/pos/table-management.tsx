@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Users, Clock, CreditCard, Plus, MoreVertical, ArrowRight, Merge, Split, Eye, Pencil } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import { SplitBillDialog } from "./split-bill-dialog";
 
 const statusColors: Record<string, string> = {
@@ -33,11 +34,11 @@ const statusColors: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   available: "Available",
   occupied: "Occupied",
-  "waiting-payment": "Payment",
+  "waiting-payment": "Awaiting Payment",
 };
 
 export function TableManagement() {
-  const { tables, orders, setActiveView, setSelectedTable, setOrderType, moveTable, mergeTable, startEditOrder } =
+  const { tables, orders, setActiveView, setSelectedTable, setOrderType, moveTable, mergeTable, startEditOrder, setPendingBillingOrderId } =
     usePOSStore();
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
@@ -51,6 +52,14 @@ export function TableManagement() {
       setOrderType("dine-in");
       setSelectedTable(tableId);
       setActiveView("orders");
+    } else if (status === "waiting-payment") {
+      const order = orders.find(o => o.tableId === tableId && o.status === "awaiting-payment");
+      if (order) {
+        setPendingBillingOrderId(order.id);
+        setActiveView("billing");
+      } else {
+        toast.error("Order not found or already paid.");
+      }
     }
   };
 
@@ -96,6 +105,7 @@ export function TableManagement() {
   const handleProcessPayment = (tableId: string) => {
     const table = tables.find((t) => t.id === tableId);
     if (table?.orderId) {
+      setPendingBillingOrderId(table.orderId);
       setActiveView("billing");
     }
   };
@@ -130,7 +140,7 @@ export function TableManagement() {
           </div>
           <div className="flex items-center gap-1.5 lg:gap-2">
             <div className="h-2.5 w-2.5 rounded-full bg-destructive lg:h-3 lg:w-3" />
-            <span className="text-xs text-muted-foreground lg:text-sm">Waiting Payment</span>
+            <span className="text-xs text-muted-foreground lg:text-sm">Awaiting Payment</span>
           </div>
         </div>
       </div>

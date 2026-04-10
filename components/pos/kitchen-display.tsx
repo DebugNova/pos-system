@@ -81,7 +81,7 @@ function sortOrders(orders: Order[], sort: SortType): Order[] {
 }
 
 export function KitchenDisplay() {
-  const { orders, updateOrderStatus, startEditOrder } = usePOSStore();
+  const { orders, updateOrderStatus, startEditOrder, markOrderServed } = usePOSStore();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortType>("oldest");
@@ -121,7 +121,7 @@ export function KitchenDisplay() {
   };
 
   const handleComplete = (orderId: string) => {
-    updateOrderStatus(orderId, "completed");
+    markOrderServed(orderId);
   };
 
   const filterTabs: { id: FilterType; label: string; icon: React.ElementType }[] = [
@@ -145,34 +145,37 @@ export function KitchenDisplay() {
           </div>
 
           {/* Stats summary */}
-          <div className="flex items-center gap-3 lg:gap-6">
-            <div className="flex items-center gap-1.5 lg:gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 lg:h-8 lg:w-8">
-                <Clock className="h-3.5 w-3.5 text-primary lg:h-4 lg:w-4" />
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0 lg:gap-4">
+            {/* New */}
+            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Clock className="h-4 w-4" />
               </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground lg:text-sm">{newOrders.length}</p>
-                <p className="text-[10px] text-muted-foreground lg:text-xs">New</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 lg:gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning/20 lg:h-8 lg:w-8">
-                <ChefHat className="h-3.5 w-3.5 text-warning lg:h-4 lg:w-4" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground lg:text-sm">
-                  {preparingOrders.length}
-                </p>
-                <p className="text-[10px] text-muted-foreground lg:text-xs">Preparing</p>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">New</span>
+                <span className="text-base font-bold leading-none text-foreground">{newOrders.length}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 lg:gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/20 lg:h-8 lg:w-8">
-                <CheckCircle2 className="h-3.5 w-3.5 text-success lg:h-4 lg:w-4" />
+
+            {/* Preparing */}
+            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                <ChefHat className="h-4 w-4" />
               </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground lg:text-sm">{readyOrders.length}</p>
-                <p className="text-[10px] text-muted-foreground lg:text-xs">Ready</p>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Preparing</span>
+                <span className="text-base font-bold leading-none text-foreground">{preparingOrders.length}</span>
+              </div>
+            </div>
+
+            {/* Ready */}
+            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Ready</span>
+                <span className="text-base font-bold leading-none text-foreground">{readyOrders.length}</span>
               </div>
             </div>
           </div>
@@ -340,7 +343,7 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
       variant: "outline" as const,
     },
     ready: {
-      label: "Complete",
+      label: "Mark Served",
       icon: CheckCircle2,
       className: "w-full gap-1.5 bg-success text-success-foreground hover:bg-success/90",
       variant: "default" as const,
@@ -463,6 +466,28 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
               )}
             </li>
           ))}
+          {/* Supplementary Items */}
+          {order.supplementaryBills?.map(bill => 
+            bill.items.map(item => (
+              <li key={item.id} className="flex flex-col text-sm border-l-2 border-warning/50 pl-2 ml-1 mt-1 font-medium bg-warning/5 rounded-r py-1">
+                <div className="text-foreground">
+                  <span className="text-[10px] font-bold text-warning mr-1 tracking-wider uppercase">+ADD</span>
+                  <span className="font-semibold text-primary">{item.quantity}x</span>{" "}
+                  {item.name}
+                  {item.variant && (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({item.variant})
+                    </span>
+                  )}
+                </div>
+                {item.notes && (
+                  <span className="text-xs text-muted-foreground italic pl-10">
+                    ↳ {item.notes}
+                  </span>
+                )}
+              </li>
+            ))
+          )}
         </ul>
 
         {/* Action buttons */}

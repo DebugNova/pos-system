@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePOSStore } from "@/lib/store";
 import { getPermissions } from "@/lib/roles";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,21 @@ import { SplitBillDialog } from "./split-bill-dialog";
 import type { PaymentMethod, PaymentRecord } from "@/lib/data";
 
 export function Billing() {
-  const { orders, updateOrder, updateOrderStatus, updateTableStatus, setActiveView, currentUser, startEditOrder, settings, addAuditEntry } = usePOSStore();
+  const { 
+    orders, 
+    updateOrder, 
+    updateOrderStatus, 
+    updateTableStatus, 
+    setActiveView, 
+    currentUser, 
+    startEditOrder, 
+    settings, 
+    addAuditEntry,
+    confirmPaymentAndSendToKitchen,
+    cancelAwaitingPaymentOrder,
+    pendingBillingOrderId,
+    setPendingBillingOrderId
+  } = usePOSStore();
   const permissions = getPermissions(currentUser?.role || "Kitchen");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -61,19 +75,30 @@ export function Billing() {
   const [splitAmounts, setSplitAmounts] = useState({ cash: "", upi: "", card: "" });
   const [discount, setDiscount] = useState("");
   const [discountType, setDiscountType] = useState<"percent" | "amount">("percent");
-  const [showRefundDialog, setShowRefundDialog] = useState(false);
+  const [showVoidDialog, setShowVoidDialog] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
-  const [refundReason, setRefundReason] = useState("");
-  const [refundAmount, setRefundAmount] = useState("");
+  const [voidReason, setVoidReason] = useState("");
   const [showSplitDialog, setShowSplitDialog] = useState(false);
 
   const pendingPaymentOrders = orders.filter(
-    (o) => o.status === "ready" || o.status === "preparing"
+    (o) => o.status === "awaiting-payment" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
   );
 
   const order = selectedOrder ? orders.find((o) => o.id === selectedOrder) : null;
 
-  const subtotal = order?.total || 0;
+  useEffect(() => {
+    if (pendingBillingOrderId) {
+      const pendingOrder = orders.find((o) => o.id === pendingBillingOrderId);
+      if (pendingOrder && pendingOrder.status === "awaiting-payment") {
+        setSelectedOrder(pendingBillingOrderId);
+      }
+      setPendingBillingOrderId(null);
+    }
+  }, [pendingBillingOrderId, orders, setPendingBillingOrderId]);
+
+  const isSupplementary = order?.status && order.status !== "awaiting-payment";
+  const unpaidBills = isSupplementary ? order?.supplementaryBills?.filter(b => !b.payment) || [] : [];
+  const subtotal = isSupplementary ? unpaidBills.reduce((s, b) => s + b.total, 0) : (order?.total || 0);
   const discountAmount = discount
     ? discountType === "percent"
       ? (subtotal * parseFloat(discount)) / 100
@@ -106,36 +131,54 @@ export function Billing() {
       })
     };
 
-    updateOrder(selectedOrder, {
-      payment,
-      subtotal,
-      discount: discountAmount > 0 ? {
-        type: discountType,
-        amount: discountAmount,
-        value: parseFloat(discount)
-      } : undefined,
-      taxRate: settings.gstEnabled ? settings.taxRate : 0,
-      taxAmount: tax,
-      grandTotal,
-      paidAt: new Date(),
-      paidBy: currentUser?.name || "Unknown"
-    });
+    if (!isSupplementary) {
+      updateOrder(selectedOrder, {
+        subtotal,
+        discount: discountAmount > 0 ? {
+          type: discountType,
+          amount: discountAmount,
+          value: parseFloat(discount)
+        } : undefined,
+        taxRate: settings.gstEnabled ? settings.taxRate : 0,
+        taxAmount: tax,
+        grandTotal,
+      });
 
-    if (discountAmount > 0) {
-      addAuditEntry({
-        action: "discount",
-        userId: currentUser?.name || "Unknown",
-        details: `Discount of ${discountAmount} applied to order ${selectedOrder.toUpperCase()}`,
-        orderId: selectedOrder
+      if (discountAmount > 0) {
+        addAuditEntry({
+          action: "discount",
+          userId: currentUser?.name || "Unknown",
+          details: `Discount of ${discountAmount} applied to order ${selectedOrder.toUpperCase()}`,
+          orderId: selectedOrder
+        });
+      }
+
+      confirmPaymentAndSendToKitchen(selectedOrder, payment);
+    } else {
+      const updatedBills = order!.supplementaryBills!.map(b => b.payment ? b : { ...b, payment, paidAt: new Date() });
+      updateOrder(selectedOrder, { 
+        supplementaryBills: updatedBills,
+        grandTotal: (order!.grandTotal || order!.total) + grandTotal
+      });
+      addAuditEntry({ 
+        action: "payment_recorded", 
+        userId: currentUser?.name || "System", 
+        details: `Supplementary bill payment of ₹${payment.amount} recorded for order ${selectedOrder}`, 
+        orderId: selectedOrder,
+        metadata: { method: payment.method, amount: payment.amount, transactionId: payment.transactionId, cashier: currentUser?.name || "System" }
       });
     }
-
     setPaymentComplete(true);
+
+    setTimeout(() => {
+      if (settings.printCustomerCopy) {
+        window.print();
+      }
+    }, 100);
   };
 
   const handleCompleteBilling = () => {
     if (!selectedOrder) return;
-    updateOrderStatus(selectedOrder, "completed");
     setSelectedOrder(null);
     setPaymentMethod(null);
     setCashReceived("");
@@ -144,39 +187,16 @@ export function Billing() {
     setPaymentComplete(false);
   };
 
-  const handleRefund = () => {
+  const handleVoidOrder = () => {
     if (!selectedOrder) return;
-    const amount = refundAmount ? parseFloat(refundAmount) : grandTotal;
+    
+    cancelAwaitingPaymentOrder(selectedOrder, voidReason);
+    setSelectedOrder(null);
+    setShowVoidDialog(false);
+    setVoidReason("");
 
-    updateOrder(selectedOrder, {
-      refund: {
-        amount,
-        reason: refundReason,
-        refundedAt: new Date(),
-        refundedBy: currentUser?.name || "Unknown",
-      },
-      status: "cancelled", // Just in case, updating status here too
-    });
-
-    updateOrderStatus(selectedOrder, "cancelled");
-
-    if (order?.tableId) {
-      updateTableStatus(order.tableId, "available");
-    }
-
-    addAuditEntry({
-      action: "refund",
-      userId: currentUser?.name || "Unknown",
-      details: `Refund of ${amount} on order ${selectedOrder.toUpperCase()}${refundReason ? ` - Reason: ${refundReason}` : ''}`,
-      orderId: selectedOrder
-    });
-
-    setShowRefundDialog(false);
-    setRefundReason("");
-    setRefundAmount("");
-
-    toast.success("Refund processed successfully", {
-      description: `Refunded ${amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })} for order ${selectedOrder.toUpperCase()}`
+    toast.success("Order voided successfully", {
+      description: `Order ${selectedOrder.toUpperCase()} voided and table released`
     });
   };
 
@@ -208,8 +228,8 @@ export function Billing() {
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">{o.id.toUpperCase()}</span>
-                <Badge variant={o.status === "ready" ? "outline" : "secondary"} className={o.status === "ready" ? "border-success text-success" : ""}>
-                  {o.status}
+                <Badge variant="secondary" className="text-warning border-warning/50">
+                  {o.status === "awaiting-payment" ? "Awaiting Payment" : "Supplementary Bill"}
                 </Badge>
               </div>
               <div className="mt-1 flex items-center justify-between text-sm">
@@ -217,7 +237,7 @@ export function Billing() {
                   {o.tableId ? `Table ${o.tableId.replace("t", "")}` : o.type}
                 </span>
                 <span className="font-semibold text-primary">
-                  {o.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                  {(o.status === "awaiting-payment" ? o.total : (o.supplementaryBills?.filter(b => !b.payment).reduce((sum, b) => sum + b.total, 0) || 0)).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground" suppressHydrationWarning>
@@ -307,26 +327,49 @@ export function Billing() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-3">
-                  {order.items.map((item) => {
-                    const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
-                    return (
-                    <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                      <div className="flex justify-between">
-                        <span className="text-foreground font-medium">{item.quantity}x {item.name}</span>
-                        <span className="text-muted-foreground">
-                          {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                        </span>
-                      </div>
-                      {item.variant && <span className="text-xs text-muted-foreground ml-4 mt-0.5">{item.variant}</span>}
-                      {item.modifiers && item.modifiers.length > 0 && (
-                        <span className="text-xs text-muted-foreground ml-4 mt-0.5">
-                          + {item.modifiers.map(m => m.name).join(", ")}
-                        </span>
-                      )}
-                    </li>
-                  )})}
-                </ul>
+                {isSupplementary && unpaidBills.length > 0 ? (
+                  <ul className="space-y-3">
+                    {unpaidBills.map(bill => bill.items.map((item) => {
+                      const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                      return (
+                      <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                        <div className="flex justify-between">
+                          <span className="text-foreground font-medium"><Badge variant="outline" className="mr-2 text-[10px] h-5 px-1 bg-warning/10 text-warning border-transparent">+ADD</Badge>{item.quantity}x {item.name}</span>
+                          <span className="text-muted-foreground">
+                            {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                          </span>
+                        </div>
+                        {item.variant && <span className="text-xs text-muted-foreground ml-8 mt-0.5">{item.variant}</span>}
+                        {item.modifiers && item.modifiers.length > 0 && (
+                          <span className="text-xs text-muted-foreground ml-8 mt-0.5">
+                            + {item.modifiers.map(m => m.name).join(", ")}
+                          </span>
+                        )}
+                      </li>
+                    )}))}
+                  </ul>
+                ) : (
+                  <ul className="space-y-3">
+                    {order.items.map((item) => {
+                      const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                      return (
+                      <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                        <div className="flex justify-between">
+                          <span className="text-foreground font-medium">{item.quantity}x {item.name}</span>
+                          <span className="text-muted-foreground">
+                            {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                          </span>
+                        </div>
+                        {item.variant && <span className="text-xs text-muted-foreground ml-4 mt-0.5">{item.variant}</span>}
+                        {item.modifiers && item.modifiers.length > 0 && (
+                          <span className="text-xs text-muted-foreground ml-4 mt-0.5">
+                            + {item.modifiers.map(m => m.name).join(", ")}
+                          </span>
+                        )}
+                      </li>
+                    )})}
+                  </ul>
+                )}
               </CardContent>
             </Card>
 
@@ -547,54 +590,42 @@ export function Billing() {
 
             {/* Actions */}
             <div className="mt-auto flex gap-3">
-              {/* Refund - Admin only */}
-              {permissions.canProcessRefunds && (
-              <AlertDialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
+              {/* Void Order */}
+              <AlertDialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-2 text-destructive border-destructive hover:bg-destructive/10">
                     <RotateCcw className="h-4 w-4" />
-                    Refund
+                    Void Order
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Process Refund</AlertDialogTitle>
+                    <AlertDialogTitle>Void Order</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to refund this order? This action will be logged.
+                      Are you sure you want to void this order? The customer's table will be released.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="space-y-4 pt-4">
-                    <div className="rounded-lg bg-secondary p-4">
-                      <p className="mb-2 text-sm text-muted-foreground">Refund Amount</p>
-                      <Input
-                        type="number"
-                        placeholder={grandTotal.toString()}
-                        value={refundAmount}
-                        onChange={(e) => setRefundAmount(e.target.value)}
-                        className="bg-background text-lg font-bold"
-                      />
-                    </div>
                     <div>
                       <Label className="text-sm">Reason (Optional)</Label>
                       <Textarea
-                        placeholder="e.g., Customer requested, overcharged..."
-                        value={refundReason}
-                        onChange={(e) => setRefundReason(e.target.value)}
+                        placeholder="e.g., Customer walked away..."
+                        value={voidReason}
+                        onChange={(e) => setVoidReason(e.target.value)}
                         className="mt-1 bg-secondary border-none resize-none"
                       />
                     </div>
                     <AlertDialogFooter className="pt-2">
-                      <AlertDialogCancel onClick={() => setShowRefundDialog(false)} className="flex-1 mt-0">
+                      <AlertDialogCancel onClick={() => setShowVoidDialog(false)} className="flex-1 mt-0">
                         Cancel
                       </AlertDialogCancel>
-                      <AlertDialogAction onClick={handleRefund} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Confirm Refund
+                      <AlertDialogAction onClick={handleVoidOrder} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Confirm Void
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </div>
                 </AlertDialogContent>
               </AlertDialog>
-              )}
               <Button variant="outline" className="gap-2" onClick={() => window.print()}>
                 <Printer className="h-4 w-4" />
                 Print Bill

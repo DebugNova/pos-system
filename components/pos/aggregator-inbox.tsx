@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { usePOSStore } from "@/lib/store";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { cn } from "@/lib/utils";
+import { Order, MenuItem } from "@/lib/data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,8 +32,9 @@ const aggregatorStatuses = [
 ] as const;
 
 export function AggregatorInbox() {
-  const { orders, updateOrderStatus } = usePOSStore();
+  const { orders, updateOrderStatus, addOrder, addAuditEntry, currentUser } = usePOSStore();
   const [activeTab, setActiveTab] = useState<"all" | "swiggy" | "zomato">("all");
+  const [incomingExternalOrders, setIncomingExternalOrders] = useState<any[]>([]);
 
   const aggregatorOrders = orders.filter((o) => o.type === "aggregator");
   
@@ -41,12 +43,64 @@ export function AggregatorInbox() {
     return o.platform === activeTab;
   });
 
-  const pendingOrders = filteredOrders.filter((o) => o.status === "new");
-  const activeOrders = filteredOrders.filter((o) => o.status === "preparing" || o.status === "ready");
-  const completedOrders = filteredOrders.filter((o) => o.status === "completed");
+  const pendingOrders = incomingExternalOrders.filter((o) => {
+    if (activeTab === "all") return true;
+    return o.platform === activeTab;
+  });
+
+  const activeOrders = filteredOrders.filter((o) => o.status === "new" || o.status === "preparing" || o.status === "ready");
+  const completedOrders = filteredOrders.filter((o) => o.status === "completed" || o.status === "cancelled");
+
+  const simulateIncomingOrder = useCallback(() => {
+    const isSwiggy = Math.random() > 0.5;
+    const items = [
+      { id: `mock-1-${Date.now()}`, name: "Mock Burger", price: 150, quantity: 2 },
+      { id: `mock-2-${Date.now()}`, name: "Mock Soda", price: 50, quantity: 2 },
+    ];
+    const total = 400;
+    
+    const newExternal = {
+      id: `ext-${Date.now()}`,
+      platform: isSwiggy ? "swiggy" : "zomato",
+      customerName: "Online User",
+      items,
+      total,
+      createdAt: new Date(),
+    };
+    
+    setIncomingExternalOrders(prev => [newExternal, ...prev]);
+  }, []);
 
   const handleAccept = (orderId: string) => {
-    updateOrderStatus(orderId, "preparing");
+    const extOrder = incomingExternalOrders.find(o => o.id === orderId);
+    if (!extOrder) return;
+    
+    setIncomingExternalOrders(prev => prev.filter(o => o.id !== orderId));
+    
+    const id = addOrder({
+      type: "aggregator",
+      platform: extOrder.platform,
+      customerName: extOrder.customerName,
+      items: extOrder.items,
+      total: extOrder.total,
+    }, { initialStatus: "new", skipTableLock: true });
+    
+    const userName = currentUser?.name || "System";
+    addAuditEntry({ 
+      action: "payment_recorded", 
+      userId: userName, 
+      details: `Payment of ₹${extOrder.total} recorded via platform`, 
+      orderId: id,
+      metadata: { method: "platform", amount: extOrder.total, cashier: userName, platform: extOrder.platform }
+    });
+    
+    addAuditEntry({ 
+      action: "order_sent_to_kitchen", 
+      userId: userName, 
+      details: `Order ${id.toUpperCase()} sent to kitchen automatically (platform pre-paid)`, 
+      orderId: id,
+      metadata: { sentBy: "System" }
+    });
   };
 
   const handleReady = (orderId: string) => {
@@ -58,7 +112,15 @@ export function AggregatorInbox() {
   };
 
   const handleReject = (orderId: string) => {
-    updateOrderStatus(orderId, "cancelled");
+    setIncomingExternalOrders(prev => prev.filter(o => o.id !== orderId));
+    const userName = currentUser?.name || "System";
+    addAuditEntry({ 
+      action: "void", 
+      userId: userName, 
+      details: `Rejected external order ${orderId.toUpperCase()}`, 
+      orderId: orderId,
+      metadata: { reason: "Rejected from inbox" }
+    });
   };
 
   const swiggyCount = aggregatorOrders.filter((o) => o.platform === "swiggy" && o.status !== "completed").length;
@@ -81,9 +143,10 @@ export function AggregatorInbox() {
           className="gap-2" 
           disabled={!isOnline}
           title={!isOnline ? "Offline — cannot fetch new orders" : undefined}
+          onClick={simulateIncomingOrder}
         >
           <RefreshCw className={cn("h-4 w-4", !isOnline && "opacity-50")} />
-          Refresh
+          Refresh / Simulate
         </Button>
       </div>
 
@@ -92,21 +155,21 @@ export function AggregatorInbox() {
         <TabsList className="mb-4 bg-secondary">
           <TabsTrigger value="all" className="gap-2">
             All Orders
-            <Badge variant="secondary" className="ml-1">{aggregatorOrders.filter((o) => o.status !== "completed").length}</Badge>
+            <Badge variant="secondary" className="ml-1">{incomingExternalOrders.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="swiggy" className="gap-2">
             <div className="flex h-5 w-5 items-center justify-center rounded bg-[#fc8019]">
               <span className="text-xs font-bold text-white">S</span>
             </div>
             Swiggy
-            <Badge variant="secondary" className="ml-1">{swiggyCount}</Badge>
+            <Badge variant="secondary" className="ml-1">{incomingExternalOrders.filter(o => o.platform === "swiggy").length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="zomato" className="gap-2">
             <div className="flex h-5 w-5 items-center justify-center rounded bg-[#e23744]">
               <span className="text-xs font-bold text-white">Z</span>
             </div>
             Zomato
-            <Badge variant="secondary" className="ml-1">{zomatoCount}</Badge>
+            <Badge variant="secondary" className="ml-1">{incomingExternalOrders.filter(o => o.platform === "zomato").length}</Badge>
           </TabsTrigger>
         </TabsList>
 
