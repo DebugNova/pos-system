@@ -120,7 +120,7 @@ export function TableManagement() {
   const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : null;
 
   return (
-    <div className="flex h-full flex-col p-3 lg:p-6">
+    <div className="flex h-full flex-col p-3 sm:p-4 lg:p-6">
       {/* Header */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:mb-6">
         <div>
@@ -131,22 +131,22 @@ export function TableManagement() {
         </div>
         <div className="flex flex-wrap gap-3 lg:gap-4">
           <div className="flex items-center gap-1.5 lg:gap-2">
-            <div className="h-2.5 w-2.5 rounded-full bg-success lg:h-3 lg:w-3" />
+            <div className="h-3 w-3 rounded-full bg-success lg:h-3 lg:w-3" />
             <span className="text-xs text-muted-foreground lg:text-sm">Available</span>
           </div>
           <div className="flex items-center gap-1.5 lg:gap-2">
-            <div className="h-2.5 w-2.5 rounded-full bg-warning lg:h-3 lg:w-3" />
+            <div className="h-3 w-3 rounded-full bg-warning lg:h-3 lg:w-3" />
             <span className="text-xs text-muted-foreground lg:text-sm">Occupied</span>
           </div>
           <div className="flex items-center gap-1.5 lg:gap-2">
-            <div className="h-2.5 w-2.5 rounded-full bg-destructive lg:h-3 lg:w-3" />
+            <div className="h-3 w-3 rounded-full bg-destructive lg:h-3 lg:w-3" />
             <span className="text-xs text-muted-foreground lg:text-sm">Awaiting Payment</span>
           </div>
         </div>
       </div>
 
       {/* Table Grid */}
-      <div className="grid flex-1 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4 xl:grid-cols-4">
+      <div className="grid flex-1 grid-cols-2 gap-3 sm:gap-4 lg:gap-6 overflow-y-auto sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
         {tables.map((table) => {
           const order = getTableOrder(table.orderId);
           return (
@@ -257,8 +257,8 @@ export function TableManagement() {
                     </p>
 
                     {table.status === "waiting-payment" && (
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="mt-2 w-full gap-1.5"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -288,16 +288,15 @@ export function TableManagement() {
         })}
       </div>
 
-      {/* Move Table Dialog */}
       <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto w-[95vw] max-w-lg sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Move to Table</DialogTitle>
             <DialogDescription>
               Select a table to move this order to
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-3 gap-3 pt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-4">
             {availableTablesForMove.map((table) => (
               <Button
                 key={table.id}
@@ -318,16 +317,15 @@ export function TableManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Merge Table Dialog */}
       <Dialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto w-[95vw] max-w-lg sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Merge Tables</DialogTitle>
             <DialogDescription>
               Select a table to merge this order with
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-3 gap-3 pt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-4">
             {occupiedTablesForMerge.map((table) => {
               const order = getTableOrder(table.orderId);
               return (
@@ -355,9 +353,8 @@ export function TableManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* View Order Dialog */}
       <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto w-[95vw] max-w-lg sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{selectedOrder?.id.toUpperCase()}</DialogTitle>
             <DialogDescription>
@@ -427,9 +424,9 @@ export function TableManagement() {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Split Bill Dialog */}
-      <SplitBillDialog 
+      <SplitBillDialog
         order={selectedOrderId ? orders.find((o) => o.id === selectedOrderId) || null : null}
         open={showSplitDialog}
         onOpenChange={setShowSplitDialog}

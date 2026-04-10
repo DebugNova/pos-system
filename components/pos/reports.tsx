@@ -132,7 +132,7 @@ export function ReportsContent() {
   }, [filteredOrders]);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto p-6">
+    <div className="flex h-full flex-col overflow-y-auto p-3 sm:p-4 lg:p-6">
       {/* Header */}
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
@@ -150,7 +150,7 @@ export function ReportsContent() {
                 id="date"
                 variant={"outline"}
                 className={cn(
-                  "w-[300px] justify-start text-left font-normal bg-card border-border",
+                  "w-full max-w-[300px] justify-start text-left font-normal bg-card border-border",
                   !date && "text-muted-foreground"
                 )}
               >
@@ -184,7 +184,7 @@ export function ReportsContent() {
       </div>
 
       {/* Stats Row */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">

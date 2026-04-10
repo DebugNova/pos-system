@@ -232,7 +232,7 @@ export function DataManager({ onBack }: DataManagerProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-border p-3 sm:flex-row sm:items-center sm:justify-between lg:p-4">
+      <div className="flex flex-col gap-3 border-b border-border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4 lg:p-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />
@@ -259,7 +259,7 @@ export function DataManager({ onBack }: DataManagerProps) {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-4 lg:gap-3 lg:p-4">
+      <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-4 sm:p-4 lg:gap-6 lg:p-6">
         <Card className="bg-card border-border">
           <CardContent className="p-3 lg:p-4">
             <div className="flex items-center gap-2">
@@ -309,7 +309,7 @@ export function DataManager({ onBack }: DataManagerProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex-1 overflow-hidden p-3 lg:p-4">
+      <div className="flex-1 overflow-hidden p-3 sm:p-4 lg:p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <TabsList className="grid w-full grid-cols-4 sm:w-auto">
@@ -366,12 +366,12 @@ export function DataManager({ onBack }: DataManagerProps) {
                       <TableRow key={order.id}>
                         <TableCell className="text-xs font-medium">{order.id.toUpperCase()}</TableCell>
                         <TableCell className="text-xs">
-                          <Badge variant="outline" className="text-[10px]">{order.type}</Badge>
+                          <Badge variant="outline" className="text-[11px] sm:text-xs">{order.type}</Badge>
                         </TableCell>
                         <TableCell className="text-xs">
                           <Badge
                             variant={order.status === "completed" ? "default" : "secondary"}
-                            className="text-[10px]"
+                            className="text-[11px] sm:text-xs"
                           >
                             {order.status}
                           </Badge>
@@ -439,13 +439,13 @@ export function DataManager({ onBack }: DataManagerProps) {
                       <TableRow key={item.id}>
                         <TableCell className="text-xs font-medium">{item.name}</TableCell>
                         <TableCell className="text-xs">
-                          <Badge variant="outline" className="text-[10px] capitalize">{item.category}</Badge>
+                          <Badge variant="outline" className="text-[11px] sm:text-xs capitalize">{item.category}</Badge>
                         </TableCell>
                         <TableCell className="text-xs font-medium">
                           {item.price.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                         </TableCell>
                         <TableCell className="text-xs">
-                          <Badge variant={item.available ? "default" : "secondary"} className="text-[10px]">
+                          <Badge variant={item.available ? "default" : "secondary"} className="text-[11px] sm:text-xs">
                             {item.available ? "Available" : "Unavailable"}
                           </Badge>
                         </TableCell>
@@ -500,7 +500,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                         <TableCell className="text-xs">
                           <Badge
                             variant="outline"
-                            className={`text-[10px] ${
+                            className={`text-[11px] sm:text-xs ${
                               table.status === "available"
                                 ? "border-success text-success"
                                 : table.status === "occupied"
@@ -559,14 +559,14 @@ export function DataManager({ onBack }: DataManagerProps) {
                       <TableRow key={staff.id}>
                         <TableCell className="text-xs font-medium">
                           <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] sm:text-xs font-semibold text-primary">
                               {staff.initials}
                             </div>
                             {staff.name}
                           </div>
                         </TableCell>
                         <TableCell className="text-xs">
-                          <Badge variant="outline" className="text-[10px]">{staff.role}</Badge>
+                          <Badge variant="outline" className="text-[11px] sm:text-xs">{staff.role}</Badge>
                         </TableCell>
                         <TableCell className="text-xs font-mono">****</TableCell>
                         <TableCell className="text-right">

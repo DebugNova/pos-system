@@ -107,6 +107,8 @@
 }
 
 @theme inline {
+  --breakpoint-xs: 375px;
+  --breakpoint-tablet: 834px;
   --font-sans: var(--font-inter), 'Inter', sans-serif;
   --font-serif: var(--font-fraunces), 'Fraunces', serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
@@ -233,4 +235,44 @@
   body * { visibility: hidden; }
   .print-receipt, .print-receipt * { visibility: visible; }
   .print-receipt { position: absolute; left: 0; top: 0; width: 80mm; }
+}
+
+/* Smooth scrolling for all scroll containers */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area insets for notched devices */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Touch-optimized minimum targets */
+@media (pointer: coarse) {
+  button:not(.badge-btn),
+  [role="button"]:not(.badge-btn),
+  [role="tab"],
+  select,
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Prevent text selection on interactive elements (touch UX) */
+button, [role="button"], [role="tab"], nav a {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Snap scrolling for horizontal lists */
+.snap-x-mandatory {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.snap-start {
+  scroll-snap-align: start;
 }

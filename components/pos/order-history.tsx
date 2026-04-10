@@ -145,7 +145,7 @@ export function OrderHistory() {
   };
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full flex-col p-3 sm:p-4 lg:p-6">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -172,7 +172,7 @@ export function OrderHistory() {
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px] bg-secondary border-none">
+          <SelectTrigger className="w-full sm:w-[160px] bg-secondary border-none">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -185,7 +185,7 @@ export function OrderHistory() {
         </Select>
 
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[140px] bg-secondary border-none">
+          <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-none">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -229,7 +229,7 @@ export function OrderHistory() {
                 onClick={() => setSelectedOrder(o.id)}
               >
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
                         <TypeIcon className="h-5 w-5 text-muted-foreground" />
@@ -279,7 +279,7 @@ export function OrderHistory() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t border-border/40 sm:border-0">
                       <Badge variant="outline" className={getStatusColor(o.status)}>
                         {o.status}
                       </Badge>
@@ -314,7 +314,7 @@ export function OrderHistory() {
 
       {/* Order Detail Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{order?.id.toUpperCase()}</DialogTitle>
             <DialogDescription>
@@ -404,7 +404,7 @@ export function OrderHistory() {
                   <div key={bill.id} className="mt-4 border-t border-border pt-3">
                     <div className="flex justify-between items-center mb-2">
                        <p className="text-sm font-medium text-foreground">Supplementary #{index + 1}</p>
-                       <Badge variant="outline" className={cn("text-[10px] h-5", bill.payment ? "bg-success/10 text-success border-success/30" : "bg-warning/10 text-warning border-warning/30")}>
+                       <Badge variant="outline" className={cn("text-[11px] sm:text-xs h-5", bill.payment ? "bg-success/10 text-success border-success/30" : "bg-warning/10 text-warning border-warning/30")}>
                          {bill.payment ? "Paid" : "Unpaid"}
                        </Badge>
                     </div>

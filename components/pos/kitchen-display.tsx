@@ -85,6 +85,7 @@ export function KitchenDisplay() {
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortType>("oldest");
+  const [mobileTab, setMobileTab] = useState<"new" | "preparing" | "ready">("new");
   // Force re-render every 30 seconds to keep timestamps fresh
   const [, setTick] = useState(0);
 
@@ -135,7 +136,7 @@ export function KitchenDisplay() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-border p-3 lg:p-4">
+      <div className="flex flex-col gap-3 border-b border-border p-3 sm:p-4 lg:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-bold text-foreground lg:text-2xl">Kitchen Display</h1>
@@ -145,36 +146,36 @@ export function KitchenDisplay() {
           </div>
 
           {/* Stats summary */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0 lg:gap-4">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0 lg:gap-4 snap-x snap-mandatory">
             {/* New */}
-            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4">
+            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4 snap-start">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Clock className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">New</span>
+                <span className="text-[11px] sm:text-xs font-semibold tracking-wider text-muted-foreground uppercase">New</span>
                 <span className="text-base font-bold leading-none text-foreground">{newOrders.length}</span>
               </div>
             </div>
 
             {/* Preparing */}
-            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4">
+            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4 snap-start">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
                 <ChefHat className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Preparing</span>
+                <span className="text-[11px] sm:text-xs font-semibold tracking-wider text-muted-foreground uppercase">Preparing</span>
                 <span className="text-base font-bold leading-none text-foreground">{preparingOrders.length}</span>
               </div>
             </div>
 
             {/* Ready */}
-            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4">
+            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4 snap-start">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Ready</span>
+                <span className="text-[11px] sm:text-xs font-semibold tracking-wider text-muted-foreground uppercase">Ready</span>
                 <span className="text-base font-bold leading-none text-foreground">{readyOrders.length}</span>
               </div>
             </div>
@@ -182,7 +183,7 @@ export function KitchenDisplay() {
         </div>
 
         {/* Filter bar & sort toggle */}
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto snap-x snap-mandatory">
           {filterTabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -191,7 +192,7 @@ export function KitchenDisplay() {
                 variant={filter === tab.id ? "default" : "ghost"}
                 size="sm"
                 className={cn(
-                  "shrink-0 gap-1.5 text-xs lg:text-sm",
+                  "shrink-0 gap-1.5 text-xs lg:text-sm snap-start",
                   filter === tab.id && "bg-primary text-primary-foreground"
                 )}
                 onClick={() => setFilter(tab.id)}
@@ -216,10 +217,35 @@ export function KitchenDisplay() {
         </div>
       </div>
 
+      {/* Mobile Tabs */}
+      <div className="flex md:hidden px-3 pt-2 gap-2">
+        <Button 
+          variant={mobileTab === "new" ? "default" : "outline"} 
+          onClick={() => setMobileTab("new")}
+          className="flex-1"
+        >
+          New ({newOrders.length})
+        </Button>
+        <Button 
+          variant={mobileTab === "preparing" ? "default" : "outline"} 
+          onClick={() => setMobileTab("preparing")}
+          className="flex-1"
+        >
+          Prep ({preparingOrders.length})
+        </Button>
+        <Button 
+          variant={mobileTab === "ready" ? "default" : "outline"} 
+          onClick={() => setMobileTab("ready")}
+          className="flex-1"
+        >
+          Ready ({readyOrders.length})
+        </Button>
+      </div>
+
       {/* Kanban Board */}
-      <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3 md:flex-row lg:gap-4 lg:p-4">
+      <div className="flex flex-1 flex-col gap-3 sm:gap-4 lg:gap-6 overflow-hidden p-3 sm:p-4 lg:p-6 md:flex-row">
         {/* New Orders Column */}
-        <div className="flex min-h-[200px] flex-1 flex-col rounded-lg bg-secondary/30 p-3 md:min-h-0 lg:rounded-xl lg:p-4">
+        <div className={cn("min-h-[200px] flex-1 flex-col rounded-lg bg-secondary/30 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "new" ? "flex" : "hidden md:flex")}>
           <div className="mb-3 flex items-center gap-2 lg:mb-4">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary lg:h-8 lg:w-8">
               <Clock className="h-3.5 w-3.5 text-primary-foreground lg:h-4 lg:w-4" />
@@ -249,7 +275,7 @@ export function KitchenDisplay() {
         </div>
 
         {/* Preparing Column */}
-        <div className="flex min-h-[200px] flex-1 flex-col rounded-lg bg-warning/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4">
+        <div className={cn("min-h-[200px] flex-1 flex-col rounded-lg bg-warning/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "preparing" ? "flex" : "hidden md:flex")}>
           <div className="mb-3 flex items-center gap-2 lg:mb-4">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning lg:h-8 lg:w-8">
               <ChefHat className="h-3.5 w-3.5 text-warning-foreground lg:h-4 lg:w-4" />
@@ -279,7 +305,7 @@ export function KitchenDisplay() {
         </div>
 
         {/* Ready Column */}
-        <div className="flex min-h-[200px] flex-1 flex-col rounded-lg bg-success/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4">
+        <div className={cn("min-h-[200px] flex-1 flex-col rounded-lg bg-success/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "ready" ? "flex" : "hidden md:flex")}>
           <div className="mb-3 flex items-center gap-2 lg:mb-4">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success lg:h-8 lg:w-8">
               <CheckCircle2 className="h-3.5 w-3.5 text-success-foreground lg:h-4 lg:w-4" />
@@ -324,10 +350,14 @@ interface KitchenOrderCardProps {
 }
 
 function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const TypeIcon = orderTypeIcons[order.type];
   const elapsed = getElapsedMinutes(order.createdAt);
   const urgency = getUrgency(elapsed);
   const styles = urgencyStyles[urgency];
+
+  const totalItems = order.items.length + (order.supplementaryBills?.reduce((sum, b) => sum + b.items.length, 0) || 0);
+  const showShowMore = totalItems > 3;
 
   const actionConfig = {
     new: {
@@ -380,13 +410,13 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
           </div>
           <div className="flex items-center gap-1.5">
             {/* Order type label */}
-            <Badge variant="secondary" className="text-[10px] lg:text-xs">
+            <Badge variant="secondary" className="text-[11px] sm:text-xs lg:text-xs">
               {orderTypeLabels[order.type] || order.type}
             </Badge>
             {/* Aggregator platform badge — prominent */}
             {order.platform && (
               <Badge
-                className="text-[10px] font-bold lg:text-xs"
+                className="text-[11px] sm:text-xs font-bold lg:text-xs"
                 style={{
                   backgroundColor:
                     order.platform === "swiggy"
@@ -407,23 +437,23 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
         {/* Time + Table + Customer */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground" suppressHydrationWarning>
           {/* Elapsed time badge with urgency color */}
-          <Badge variant="outline" className={cn("gap-1 border text-[10px] lg:text-xs", styles.badge)}>
+          <Badge variant="outline" className={cn("gap-1 border text-[11px] sm:text-xs", styles.badge)}>
             <Timer className="h-3 w-3" />
             {elapsed < 1 ? "Just now" : `${elapsed}m ago`}
           </Badge>
 
           {order.tableId && (
-            <Badge variant="secondary" className="text-[10px] lg:text-xs">
+            <Badge variant="secondary" className="text-[11px] sm:text-xs lg:text-xs">
               Table {order.tableId.replace("t", "")}
             </Badge>
           )}
           {order.customerName && (
-            <Badge variant="outline" className="text-[10px] lg:text-xs">
+            <Badge variant="outline" className="text-[11px] sm:text-xs lg:text-xs">
               {order.customerName}
             </Badge>
           )}
           {order.createdBy && (
-            <Badge variant="outline" className="text-[10px] lg:text-xs border-dashed opacity-70">
+            <Badge variant="outline" className="text-[11px] sm:text-xs lg:text-xs border-dashed opacity-70">
               by {order.createdBy}
             </Badge>
           )}
@@ -448,7 +478,7 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
       <CardContent>
         {/* Item list */}
         <ul className="mb-3 space-y-1">
-          {order.items.map((item) => (
+          {order.items.slice(0, expanded ? undefined : 3).map((item) => (
             <li key={item.id} className="flex flex-col text-sm">
               <span className="text-foreground">
                 <span className="font-semibold text-primary">{item.quantity}x</span>{" "}
@@ -467,11 +497,11 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
             </li>
           ))}
           {/* Supplementary Items */}
-          {order.supplementaryBills?.map(bill => 
+          {(!showShowMore || expanded) && order.supplementaryBills?.map(bill =>
             bill.items.map(item => (
               <li key={item.id} className="flex flex-col text-sm border-l-2 border-warning/50 pl-2 ml-1 mt-1 font-medium bg-warning/5 rounded-r py-1">
                 <div className="text-foreground">
-                  <span className="text-[10px] font-bold text-warning mr-1 tracking-wider uppercase">+ADD</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-warning mr-1 tracking-wider uppercase">+ADD</span>
                   <span className="font-semibold text-primary">{item.quantity}x</span>{" "}
                   {item.name}
                   {item.variant && (
@@ -487,6 +517,18 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
                 )}
               </li>
             ))
+          )}
+          {showShowMore && (
+            <li>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full text-xs h-7 mt-1 text-muted-foreground" 
+                onClick={() => setExpanded(!expanded)}
+              >
+                {expanded ? "Show Less" : `+ ${totalItems - 3} more items`}
+              </Button>
+            </li>
           )}
         </ul>
 

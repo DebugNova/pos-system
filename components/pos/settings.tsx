@@ -43,7 +43,7 @@ export function Settings() {
   const permissions = getPermissions(currentUser?.role || "Kitchen");
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto p-6">
+    <div className="flex h-full flex-col overflow-y-auto p-3 sm:p-4 lg:p-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
@@ -53,29 +53,29 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="general" className="flex-1">
-        <TabsList className="mb-6 bg-secondary">
-          <TabsTrigger value="general" className="gap-2">
+        <TabsList className="mb-6 bg-secondary flex overflow-x-auto flex-nowrap w-full justify-start md:w-auto h-auto min-h-10 py-1 snap-x snap-mandatory">
+          <TabsTrigger value="general" className="gap-2 shrink-0 snap-start">
             <Store className="h-4 w-4" />
             General
           </TabsTrigger>
-          <TabsTrigger value="printers" className="gap-2">
+          <TabsTrigger value="printers" className="gap-2 snap-start">
             <Printer className="h-4 w-4" />
             Printers
           </TabsTrigger>
-          <TabsTrigger value="staff" className="gap-2">
+          <TabsTrigger value="staff" className="gap-2 snap-start">
             <Users className="h-4 w-4" />
             Staff
           </TabsTrigger>
-          <TabsTrigger value="payments" className="gap-2">
+          <TabsTrigger value="payments" className="gap-2 snap-start">
             <CreditCard className="h-4 w-4" />
             Payments
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-2">
+          <TabsTrigger value="integrations" className="gap-2 snap-start">
             <Wifi className="h-4 w-4" />
             Integrations
           </TabsTrigger>
           {permissions.canManageStaff && (
-            <TabsTrigger value="audit" className="gap-2">
+            <TabsTrigger value="audit" className="gap-2 snap-start">
               <ShieldAlert className="h-4 w-4" />
               Audit Log
             </TabsTrigger>
@@ -633,48 +633,50 @@ export function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border border-border">
-                  <div className="flex bg-secondary p-3 text-sm font-medium text-muted-foreground border-b border-border">
-                    <div className="w-[180px]">Timestamp</div>
-                    <div className="w-[150px]">User</div>
-                    <div className="w-[150px]">Action</div>
-                    <div className="flex-1">Details</div>
-                  </div>
-                  <div className="max-h-[500px] overflow-y-auto">
-                    {auditLog.length === 0 ? (
-                      <div className="p-8 text-center text-muted-foreground">
-                        No audit records found
-                      </div>
-                    ) : (
-                      [...auditLog]
-                        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-                        .map((entry, index) => (
-                          <div 
-                            key={index}
-                            className="flex items-center p-3 text-sm border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors"
-                          >
-                            <div className="w-[180px] text-muted-foreground whitespace-nowrap">
-                              {format(entry.timestamp, "dd MMM yy, hh:mm a")}
-                            </div>
-                            <div className="w-[150px] font-medium text-foreground">
-                              {entry.userId}
-                            </div>
-                            <div className="w-[150px]">
-                              <Badge variant="outline" className="capitalize">
-                                {entry.action.replace("_", " ")}
-                              </Badge>
-                            </div>
-                            <div className="flex-1 text-muted-foreground flex flex-col items-start gap-1">
-                              <span>{entry.details}</span>
-                              {entry.orderId && (
-                                <Badge variant="secondary" className="text-[10px]">
-                                  Order: {entry.orderId}
+                <div className="rounded-md border border-border overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <div className="min-w-[600px]">
+                    <div className="flex bg-secondary p-3 text-sm font-medium text-muted-foreground border-b border-border">
+                      <div className="min-w-[140px] whitespace-nowrap px-2">Timestamp</div>
+                      <div className="min-w-[100px] whitespace-nowrap px-2">User</div>
+                      <div className="min-w-[100px] whitespace-nowrap px-2">Action</div>
+                      <div className="flex-1 px-2">Details</div>
+                    </div>
+                    <div className="max-h-[300px] sm:max-h-[500px] overflow-y-auto">
+                      {auditLog.length === 0 ? (
+                        <div className="p-8 text-center text-muted-foreground">
+                          No audit records found
+                        </div>
+                      ) : (
+                        [...auditLog]
+                          .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+                          .map((entry, index) => (
+                            <div 
+                              key={index}
+                              className="flex items-center p-3 text-sm border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors"
+                            >
+                              <div className="min-w-[140px] px-2 text-muted-foreground whitespace-nowrap">
+                                {format(entry.timestamp, "dd MMM yy, hh:mm a")}
+                              </div>
+                              <div className="min-w-[100px] px-2 font-medium text-foreground whitespace-nowrap">
+                                {entry.userId}
+                              </div>
+                              <div className="min-w-[100px] px-2 whitespace-nowrap">
+                                <Badge variant="outline" className="capitalize">
+                                  {entry.action.replace("_", " ")}
                                 </Badge>
-                              )}
+                              </div>
+                              <div className="flex-1 px-2 text-muted-foreground flex flex-col items-start gap-1">
+                                <span>{entry.details}</span>
+                                {entry.orderId && (
+                                  <Badge variant="secondary" className="text-[11px] sm:text-xs">
+                                    Order: {entry.orderId}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                      ))
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>

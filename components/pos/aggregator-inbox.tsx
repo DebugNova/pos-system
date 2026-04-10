@@ -37,7 +37,7 @@ export function AggregatorInbox() {
   const [incomingExternalOrders, setIncomingExternalOrders] = useState<any[]>([]);
 
   const aggregatorOrders = orders.filter((o) => o.type === "aggregator");
-  
+
   const filteredOrders = aggregatorOrders.filter((o) => {
     if (activeTab === "all") return true;
     return o.platform === activeTab;
@@ -58,7 +58,7 @@ export function AggregatorInbox() {
       { id: `mock-2-${Date.now()}`, name: "Mock Soda", price: 50, quantity: 2 },
     ];
     const total = 400;
-    
+
     const newExternal = {
       id: `ext-${Date.now()}`,
       platform: isSwiggy ? "swiggy" : "zomato",
@@ -67,37 +67,38 @@ export function AggregatorInbox() {
       total,
       createdAt: new Date(),
     };
-    
+
     setIncomingExternalOrders(prev => [newExternal, ...prev]);
   }, []);
 
   const handleAccept = (orderId: string) => {
     const extOrder = incomingExternalOrders.find(o => o.id === orderId);
     if (!extOrder) return;
-    
+
     setIncomingExternalOrders(prev => prev.filter(o => o.id !== orderId));
-    
+
     const id = addOrder({
       type: "aggregator",
+      status: "new",
       platform: extOrder.platform,
       customerName: extOrder.customerName,
       items: extOrder.items,
       total: extOrder.total,
     }, { initialStatus: "new", skipTableLock: true });
-    
+
     const userName = currentUser?.name || "System";
-    addAuditEntry({ 
-      action: "payment_recorded", 
-      userId: userName, 
-      details: `Payment of ₹${extOrder.total} recorded via platform`, 
+    addAuditEntry({
+      action: "payment_recorded",
+      userId: userName,
+      details: `Payment of ₹${extOrder.total} recorded via platform`,
       orderId: id,
       metadata: { method: "platform", amount: extOrder.total, cashier: userName, platform: extOrder.platform }
     });
-    
-    addAuditEntry({ 
-      action: "order_sent_to_kitchen", 
-      userId: userName, 
-      details: `Order ${id.toUpperCase()} sent to kitchen automatically (platform pre-paid)`, 
+
+    addAuditEntry({
+      action: "order_sent_to_kitchen",
+      userId: userName,
+      details: `Order ${id.toUpperCase()} sent to kitchen automatically (platform pre-paid)`,
       orderId: id,
       metadata: { sentBy: "System" }
     });
@@ -114,10 +115,10 @@ export function AggregatorInbox() {
   const handleReject = (orderId: string) => {
     setIncomingExternalOrders(prev => prev.filter(o => o.id !== orderId));
     const userName = currentUser?.name || "System";
-    addAuditEntry({ 
-      action: "void", 
-      userId: userName, 
-      details: `Rejected external order ${orderId.toUpperCase()}`, 
+    addAuditEntry({
+      action: "void",
+      userId: userName,
+      details: `Rejected external order ${orderId.toUpperCase()}`,
       orderId: orderId,
       metadata: { reason: "Rejected from inbox" }
     });
@@ -129,7 +130,7 @@ export function AggregatorInbox() {
   const isOnline = useOnlineStatus();
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-full flex-col p-3 sm:p-4 lg:p-6">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -138,9 +139,9 @@ export function AggregatorInbox() {
             Manage Swiggy and Zomato orders
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          className="gap-2" 
+        <Button
+          variant="outline"
+          className="gap-2"
           disabled={!isOnline}
           title={!isOnline ? "Offline — cannot fetch new orders" : undefined}
           onClick={simulateIncomingOrder}
@@ -174,7 +175,7 @@ export function AggregatorInbox() {
         </TabsList>
 
         <TabsContent value={activeTab} className="flex-1 mt-0">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 h-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 h-full">
             {/* Pending Orders */}
             <div className="flex flex-col rounded-xl bg-destructive/5 p-4">
               <div className="mb-4 flex items-center gap-2">
@@ -217,7 +218,7 @@ export function AggregatorInbox() {
                         </div>
                       )}
                       <ul className="space-y-1 rounded-lg bg-secondary/50 p-2">
-                        {order.items.map((item) => (
+                        {order.items.map((item: any) => (
                           <li key={item.id} className="flex justify-between text-sm">
                             <span className="text-foreground">{item.quantity}x {item.name}</span>
                             <span className="text-muted-foreground">
@@ -232,22 +233,22 @@ export function AggregatorInbox() {
                           {order.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                         </span>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 mt-4">
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="flex-1 border-destructive text-destructive hover:bg-destructive/10"
+                          size="default"
+                          className="flex-1 border-destructive text-destructive hover:bg-destructive/10 h-11"
                           onClick={() => handleReject(order.id)}
                         >
-                          <XCircle className="mr-1 h-4 w-4" />
+                          <XCircle className="mr-1 h-5 w-5" />
                           Reject
                         </Button>
                         <Button
-                          size="sm"
-                          className="flex-1"
+                          size="default"
+                          className="flex-1 h-11"
                           onClick={() => handleAccept(order.id)}
                         >
-                          <CheckCircle2 className="mr-1 h-4 w-4" />
+                          <CheckCircle2 className="mr-1 h-5 w-5" />
                           Accept
                         </Button>
                       </div>

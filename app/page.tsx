@@ -67,7 +67,7 @@ export default function POSApp() {
           <OfflineBanner />
           <div className="flex w-full h-full overflow-hidden">
             <POSSidebar />
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1 overflow-auto pb-14 md:pb-0">
               {activeView === "dashboard" && <Dashboard />}
             {activeView === "orders" && <NewOrder />}
             {activeView === "tables" && <TableManagement />}

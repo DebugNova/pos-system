@@ -57,10 +57,10 @@ export function SplitBillDialog({ order, open, onOpenChange }: SplitBillDialogPr
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 py-4">
           <div className="space-y-4">
             <h3 className="font-semibold text-lg text-foreground">Bill A (Original)</h3>
-            <div className="rounded-md border border-border p-4 space-y-3 h-[300px] overflow-y-auto">
+            <div className="rounded-md border border-border p-4 space-y-3 h-[200px] sm:h-[300px] overflow-y-auto">
               {remainingItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -87,7 +87,7 @@ export function SplitBillDialog({ order, open, onOpenChange }: SplitBillDialogPr
 
           <div className="space-y-4">
             <h3 className="font-semibold text-lg text-primary">Bill B (New Bill)</h3>
-            <div className="rounded-md border border-primary/20 bg-primary/5 p-4 space-y-3 h-[300px] overflow-y-auto">
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-4 space-y-3 h-[200px] sm:h-[300px] overflow-y-auto">
               {splitItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">

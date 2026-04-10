@@ -48,6 +48,7 @@ import {
   Save,
   Pencil,
   Lock,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -74,9 +75,10 @@ export function NewOrder() {
   const [selectedVariant, setSelectedVariant] = useState<string>("");
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
   const [showModifierDialog, setShowModifierDialog] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
   const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
   const [showCustomerNote, setShowCustomerNote] = useState(false);
-  const [itemToRemove, setItemToRemove] = useState<{orderId: string, itemId: string, tempId: string, name: string} | null>(null);
+  const [itemToRemove, setItemToRemove] = useState<{ orderId: string, itemId: string, tempId: string, name: string } | null>(null);
 
   const {
     cart,
@@ -294,28 +296,29 @@ export function NewOrder() {
                   const isSelected = selectedTable === table.id;
                   const isOccupied = table.status === "occupied" || table.status === "waiting-payment";
                   return (
-                  <button
-                    key={table.id}
-                    onClick={() => setSelectedTable(table.id)}
-                    className={cn(
-                      "flex flex-col items-center justify-center rounded-xl border p-2 transition-all min-w-[64px] lg:min-w-[72px]",
-                      isSelected 
-                        ? "border-primary bg-primary text-primary-foreground shadow-md"
-                        : isOccupied 
-                          ? "border-warning/50 bg-warning/10 text-foreground"
-                          : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
-                    )}
-                  >
-                    <span className="text-sm font-bold lg:text-base">T{table.number}</span>
-                    <span className="text-[10px] opacity-80">{table.capacity}p</span>
-                    <div className="mt-1 flex gap-0.5">
-                      {Array.from({ length: Math.min(table.capacity, 4) }).map((_, i) => (
-                        <div key={i} className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-primary-foreground" : isOccupied ? "bg-warning" : "bg-success")} />
-                      ))}
-                      {table.capacity > 4 && <div className="h-1.5 w-1.5 rounded-full bg-transparent text-[8px] leading-[6px] tracking-tighter opacity-70">+</div>}
-                    </div>
-                  </button>
-                )})}
+                    <button
+                      key={table.id}
+                      onClick={() => setSelectedTable(table.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center rounded-xl border p-2 transition-all min-w-[64px] lg:min-w-[72px]",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground shadow-md"
+                          : isOccupied
+                            ? "border-warning/50 bg-warning/10 text-foreground"
+                            : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
+                      )}
+                    >
+                      <span className="text-sm font-bold lg:text-base">T{table.number}</span>
+                      <span className="text-[11px] sm:text-xs opacity-80">{table.capacity}p</span>
+                      <div className="mt-1 flex gap-0.5">
+                        {Array.from({ length: Math.min(table.capacity, 4) }).map((_, i) => (
+                          <div key={i} className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-primary-foreground" : isOccupied ? "bg-warning" : "bg-success")} />
+                        ))}
+                        {table.capacity > 4 && <div className="h-1.5 w-1.5 rounded-full bg-transparent text-[8px] leading-[6px] tracking-tighter opacity-70">+</div>}
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             ) : (
               <span className="text-xs text-muted-foreground lg:text-sm">
@@ -375,7 +378,7 @@ export function NewOrder() {
               className="pl-10 pr-16 h-10 bg-card border border-border rounded-full text-sm lg:h-12 shadow-sm focus-visible:ring-primary/50"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1 pointer-events-none">
-              <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground opacity-100">
+              <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[11px] sm:text-xs font-medium text-muted-foreground opacity-100">
                 <span className="text-xs">⌘</span>K
               </kbd>
             </div>
@@ -383,15 +386,15 @@ export function NewOrder() {
         </div>
 
         {/* Category Tabs */}
-        <div className="flex gap-1.5 overflow-x-auto border-b border-border px-3 py-2.5 lg:gap-2 lg:px-4 lg:py-3 sticky top-0 z-10 bg-background">
+        <div className="flex gap-1.5 overflow-x-auto border-b border-border px-3 py-2.5 lg:gap-2 lg:px-4 lg:py-3 sticky top-0 z-10 bg-background snap-x snap-mandatory hide-scrollbar">
           <Button
             variant={activeCategory === "all" ? "default" : "secondary"}
             size="sm"
             onClick={() => setActiveCategory("all")}
-            className="shrink-0 rounded-full font-medium"
+            className="shrink-0 rounded-full font-medium snap-start"
           >
             All Items
-            <Badge variant="outline" className={cn("ml-1.5 h-5 px-1.5 text-[10px] bg-background/50 border-transparent", activeCategory === "all" ? "text-primary-foreground" : "text-muted-foreground")}>{menuItems.length}</Badge>
+            <Badge variant="outline" className={cn("ml-1.5 h-5 px-1.5 text-[11px] sm:text-xs bg-background/50 border-transparent", activeCategory === "all" ? "text-primary-foreground" : "text-muted-foreground")}>{menuItems.length}</Badge>
           </Button>
           {categories.map((cat) => {
             const Icon = categoryIcons[cat.id];
@@ -402,11 +405,11 @@ export function NewOrder() {
                 variant={activeCategory === cat.id ? "default" : "secondary"}
                 size="sm"
                 onClick={() => setActiveCategory(cat.id)}
-                className="shrink-0 gap-1.5 rounded-full font-medium"
+                className="shrink-0 gap-1.5 rounded-full font-medium snap-start"
               >
                 {Icon && <Icon className="h-4 w-4" />}
                 {cat.name}
-                <Badge variant="outline" className={cn("h-5 px-1.5 text-[10px] bg-background/50 border-transparent", activeCategory === cat.id ? "text-primary-foreground" : "text-muted-foreground")}>{catCount}</Badge>
+                <Badge variant="outline" className={cn("h-5 px-1.5 text-[11px] sm:text-xs bg-background/50 border-transparent", activeCategory === cat.id ? "text-primary-foreground" : "text-muted-foreground")}>{catCount}</Badge>
               </Button>
             );
           })}
@@ -419,85 +422,118 @@ export function NewOrder() {
               const isCoffee = item.category === "coffee";
               const isTea = item.category === "tea";
               const emoji = isCoffee ? "☕" : isTea ? "🍵" : "🥤";
-              
+
               return (
-              <motion.div
-                whileTap={{ scale: 0.96 }}
-                key={item.id}
-                onClick={() => handleAddItem(item)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleAddItem(item);
-                  }
-                }}
-                className="group cursor-pointer relative flex flex-col items-start overflow-hidden rounded-2xl bg-card shadow-sm border border-border/40 text-left transition-all duration-200 hover:shadow-md hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-              >
-                {/* Image or Gradient Placeholder */}
-                <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
-                  {item.image_url ? (
-                    <img 
-                      src={item.image_url} 
-                      alt={item.name} 
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95" 
-                      loading="lazy"
-                      onError={(e) => e.currentTarget.src = '/menu/_fallback.png'}
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-4xl opacity-50">{emoji}</div>
-                  )}
-                  
-                  {/* Ribbons */}
-                  {item.bestseller && (
-                    <div className="absolute top-0 left-0 bg-primary/95 text-primary-foreground text-[10px] uppercase font-bold px-2 py-1 rounded-br-lg shadow-sm backdrop-blur-sm z-10">
-                      Bestseller
-                    </div>
-                  )}
-                </div>
-                
-                {/* Content */}
-                <div className="flex flex-1 w-full flex-col p-3 lg:p-4">
-                  <span className="text-sm font-semibold text-foreground leading-tight lg:text-base">
-                    {item.name}
-                  </span>
-                  
-                  <div className="mt-auto pt-3 flex items-center justify-between w-full">
-                    <span className="text-sm font-bold text-primary lg:text-base">
-                      {item.price.toLocaleString("en-IN", {
-                        style: "currency",
-                        currency: "INR",
-                        minimumFractionDigits: 0,
-                      })}
-                    </span>
-                    {item.variants && item.variants.length > 0 ? (
-                      <Badge variant="secondary" className="text-[10px] font-medium bg-secondary text-secondary-foreground">
-                        Options
-                      </Badge>
+                <motion.div
+                  whileTap={{ scale: 0.96 }}
+                  key={item.id}
+                  onClick={() => handleAddItem(item)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleAddItem(item);
+                    }
+                  }}
+                  className="group cursor-pointer relative flex flex-col items-start overflow-hidden rounded-2xl bg-card shadow-sm border border-border/40 text-left transition-all duration-200 hover:shadow-md active:shadow-sm hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                >
+                  {/* Image or Gradient Placeholder */}
+                  <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95"
+                        loading="lazy"
+                        onError={(e) => e.currentTarget.src = '/menu/_fallback.png'}
+                      />
                     ) : (
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 transition-all group-hover:opacity-100 group-focus:opacity-100 hidden">
-                        <Plus className="h-4 w-4" />
+                      <div className="flex h-full items-center justify-center text-4xl opacity-50">{emoji}</div>
+                    )}
+
+                    {/* Ribbons */}
+                    {item.bestseller && (
+                      <div className="absolute top-0 left-0 bg-primary/95 text-primary-foreground text-[11px] sm:text-xs uppercase font-bold px-2 py-1 rounded-br-lg shadow-sm backdrop-blur-sm z-10">
+                        Bestseller
                       </div>
                     )}
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      className="h-7 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
-                    >
-                      Customize
-                    </Button>
                   </div>
-                </div>
-              </motion.div>
-            )})}
+
+                  {/* Content */}
+                  <div className="flex flex-1 w-full flex-col p-3 lg:p-4">
+                    <span className="text-sm font-semibold text-foreground leading-tight lg:text-base">
+                      {item.name}
+                    </span>
+
+                    <div className="mt-auto pt-3 flex items-center justify-between w-full">
+                      <span className="text-sm font-bold text-primary lg:text-base">
+                        {item.price.toLocaleString("en-IN", {
+                          style: "currency",
+                          currency: "INR",
+                          minimumFractionDigits: 0,
+                        })}
+                      </span>
+                      {item.variants && item.variants.length > 0 ? (
+                        <Badge variant="secondary" className="text-[11px] sm:text-xs font-medium bg-secondary text-secondary-foreground">
+                          Options
+                        </Badge>
+                      ) : (
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 transition-all group-hover:opacity-100 group-focus:opacity-100 hidden">
+                          <Plus className="h-4 w-4" />
+                        </div>
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 text-[11px] sm:text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
+                      >
+                        Customize
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       </div>
 
+      {/* Mobile Cart Floating Button */}
+      {!showMobileCart && cart.length > 0 && (
+        <div className="md:hidden fixed bottom-6 left-4 right-4 z-30 flex items-center justify-center pointer-events-none">
+          <Button 
+            className="w-auto h-14 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-primary text-primary-foreground font-bold text-base flex items-center gap-3 px-6 pointer-events-auto hover:scale-105 transition-transform"
+            onClick={() => setShowMobileCart(true)}
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5" />
+              <span>Cart ({cart.length})</span>
+            </div>
+            <div className="w-px h-6 bg-primary-foreground/30" />
+            <span>
+              {getCartTotal().toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+            </span>
+          </Button>
+        </div>
+      )}
+
+      {/* Mobile Cart Overlay */}
+      {showMobileCart && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setShowMobileCart(false)}
+        />
+      )}
+
       {/* Cart Section */}
-      <div className="flex w-72 shrink-0 flex-col bg-card shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 border-l border-border/50 sm:w-80 lg:w-80 xl:w-96">
+      <div className={cn(
+        "flex shrink-0 flex-col bg-card z-40 md:border-l border-border/50",
+        "md:relative md:w-72 sm:w-80 lg:w-80 xl:w-96 md:transform-none md:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] md:flex",
+        "fixed inset-x-0 bottom-0 h-[85vh] rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300",
+        showMobileCart ? "translate-y-0 flex" : "translate-y-full md:translate-y-0"
+      )}>
         <CardHeader className="flex flex-col justify-center border-b border-border h-20 lg:h-24 px-5 py-3 shrink-0 bg-background/50 backdrop-blur-sm space-y-1">
           {isEditing && (
             <div className={cn("mb-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 shadow-sm", editMode === "supplementary" ? "bg-warning/10" : "bg-primary/10")}>
@@ -508,7 +544,7 @@ export function NewOrder() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-auto h-6 px-2 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                className="ml-auto h-6 px-2 text-[11px] sm:text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 onClick={cancelEditOrder}
               >
                 Cancel
@@ -517,13 +553,18 @@ export function NewOrder() {
           )}
           {editMode === "supplementary" && (
             <div className="mb-1 rounded bg-warning/5 px-2 py-1 border border-warning/20">
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                 Original items are locked. Customer will be charged a supplementary bill for any new items added.
+              <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">
+                Original items are locked. Customer will be charged a supplementary bill for any new items added.
               </p>
             </div>
           )}
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-bold tracking-tight lg:text-xl text-foreground">
+            <CardTitle className="text-lg font-bold tracking-tight lg:text-xl text-foreground flex items-center gap-2">
+              <span className="md:hidden">
+                <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => setShowMobileCart(false)}>
+                  <ChevronDown className="h-5 w-5" />
+                </Button>
+              </span>
               {isEditing ? "Edit Order" : "Current Order"}
             </CardTitle>
             {cart.length > 0 && (
@@ -539,27 +580,27 @@ export function NewOrder() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-0.5">
-            <Badge 
-              variant="secondary" 
-              className="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary hover:bg-primary/20 border-transparent transition-colors"
+            <Badge
+              variant="secondary"
+              className="px-2 py-0.5 text-[11px] sm:text-xs uppercase font-bold tracking-wider bg-primary/10 text-primary hover:bg-primary/20 border-transparent transition-colors"
             >
               {orderType.replace("-", " ")}
             </Badge>
             {selectedTable && (
-              <Badge 
-                variant="secondary" 
-                className="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-secondary border-transparent text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              <Badge
+                variant="secondary"
+                className="px-2 py-0.5 text-[11px] sm:text-xs uppercase font-bold tracking-wider bg-secondary border-transparent text-secondary-foreground hover:bg-secondary/80 transition-colors"
               >
                 Table {selectedTable.replace("t", "")}
               </Badge>
             )}
             {customerName && (
-              <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-border/80 text-foreground">
+              <Badge variant="outline" className="px-2 py-0.5 text-[11px] sm:text-xs font-medium border-border/80 text-foreground">
                 {customerName}
               </Badge>
             )}
             {orderNotes && (
-              <Badge variant="outline" className="px-2 py-0.5 max-w-[100px] truncate text-[10px] font-medium border-dashed border-border/80 text-muted-foreground">
+              <Badge variant="outline" className="px-2 py-0.5 max-w-[100px] truncate text-[11px] sm:text-xs font-medium border-dashed border-border/80 text-muted-foreground">
                 {orderNotes}
               </Badge>
             )}
@@ -587,111 +628,112 @@ export function NewOrder() {
               <div className="space-y-3">
                 <AnimatePresence initial={false}>
                   {cart.map((item) => {
-                    const isLocked = isEditing && editMode === "supplementary" && item.originalItemId && lockedItemIds.includes(item.originalItemId);
+                    const isLocked = Boolean(isEditing && editMode === "supplementary" && item.originalItemId && lockedItemIds.includes(item.originalItemId));
                     const isAdmin = currentUser?.role === "Admin";
                     const isNewlyAdded = !isLocked && editMode === "supplementary";
 
                     return (
-                    <motion.div
-                      key={item.tempId}
-                      layout
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -20, scale: 0.9 }}
-                      transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                      className={cn("rounded-lg p-3", isLocked ? "bg-muted/50 border border-border/50 opacity-80" : isNewlyAdded ? "bg-warning/10 border border-warning/30" : "bg-secondary/50")}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-1.5">
-                            {isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
-                            {isNewlyAdded && <Badge variant="outline" className="h-4 px-1 text-[8px] bg-warning/20 text-warning border-transparent">+ADD</Badge>}
-                            <p className="font-medium text-foreground">{item.name}</p>
-                          </div>
-                          {item.variant && (
-                            <p className="text-xs text-muted-foreground">{item.variant}</p>
-                          )}
-                          {item.modifiers && item.modifiers.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              {item.modifiers.map(m => m.name).join(", ")}
+                      <motion.div
+                        key={item.tempId}
+                        layout
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -20, scale: 0.9 }}
+                        transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                        className={cn("rounded-lg p-3", isLocked ? "bg-muted/50 border border-border/50 opacity-80" : isNewlyAdded ? "bg-warning/10 border border-warning/30" : "bg-secondary/50")}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5">
+                              {isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                              {isNewlyAdded && <Badge variant="outline" className="h-4 px-1 text-[8px] bg-warning/20 text-warning border-transparent">+ADD</Badge>}
+                              <p className="font-medium text-foreground">{item.name}</p>
+                            </div>
+                            {item.variant && (
+                              <p className="text-xs text-muted-foreground">{item.variant}</p>
+                            )}
+                            {item.modifiers && item.modifiers.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                {item.modifiers.map(m => m.name).join(", ")}
+                              </p>
+                            )}
+                            <p className={cn("text-sm font-semibold", isLocked ? "text-muted-foreground" : "text-primary")}>
+                              {item.price.toLocaleString("en-IN", {
+                                style: "currency",
+                                currency: "INR",
+                                minimumFractionDigits: 0,
+                              })}
                             </p>
+                            {item.notes && (
+                              <p className="mt-1 text-xs text-muted-foreground italic">
+                                Note: {item.notes}
+                              </p>
+                            )}
+                          </div>
+                          {!isLocked && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground active:scale-90 transition-transform"
+                              onClick={() => handleEditItemNotes(item.tempId)}
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </Button>
                           )}
-                          <p className={cn("text-sm font-semibold", isLocked ? "text-muted-foreground" : "text-primary")}>
-                            {item.price.toLocaleString("en-IN", {
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={isLocked}
+                            className="h-8 w-8 active:scale-90 transition-transform"
+                            onClick={() => {
+                              if (item.quantity > 1) {
+                                navigator.vibrate?.(8);
+                              }
+                              updateQuantity(item.tempId, item.quantity - 1);
+                            }}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center font-medium text-foreground">
+                            {item.quantity}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={isLocked}
+                            className="h-8 w-8 active:scale-90 transition-transform"
+                            onClick={() => {
+                              navigator.vibrate?.(8);
+                              updateQuantity(item.tempId, item.quantity + 1);
+                            }}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <span className={cn("ml-auto font-bold", isLocked ? "text-muted-foreground" : "text-foreground")}>
+                            {((item.price + (item.modifiers?.reduce((s, m) => s + m.price, 0) || 0)) * item.quantity).toLocaleString("en-IN", {
                               style: "currency",
                               currency: "INR",
                               minimumFractionDigits: 0,
                             })}
-                          </p>
-                          {item.notes && (
-                            <p className="mt-1 text-xs text-muted-foreground italic">
-                              Note: {item.notes}
-                            </p>
-                          )}
+                          </span>
                         </div>
-                        {!isLocked && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground active:scale-90 transition-transform"
-                            onClick={() => handleEditItemNotes(item.tempId)}
-                          >
-                            <Edit3 className="h-3 w-3" />
-                          </Button>
+                        {isLocked && isAdmin && editingOrderId && item.originalItemId && (
+                          <div className="mt-2 text-right">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-6 text-[11px] sm:text-xs"
+                              onClick={() => setItemToRemove({ orderId: editingOrderId, itemId: item.originalItemId!, tempId: item.tempId, name: item.name })}
+                            >
+                              Remove Item (Admin)
+                            </Button>
+                          </div>
                         )}
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          disabled={isLocked}
-                          className="h-8 w-8 active:scale-90 transition-transform"
-                          onClick={() => {
-                            if (item.quantity > 1) {
-                              navigator.vibrate?.(8);
-                            }
-                            updateQuantity(item.tempId, item.quantity - 1);
-                          }}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center font-medium text-foreground">
-                          {item.quantity}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          disabled={isLocked}
-                          className="h-8 w-8 active:scale-90 transition-transform"
-                          onClick={() => {
-                            navigator.vibrate?.(8);
-                            updateQuantity(item.tempId, item.quantity + 1);
-                          }}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <span className={cn("ml-auto font-bold", isLocked ? "text-muted-foreground" : "text-foreground")}>
-                          {((item.price + (item.modifiers?.reduce((s, m) => s + m.price, 0) || 0)) * item.quantity).toLocaleString("en-IN", {
-                            style: "currency",
-                            currency: "INR",
-                            minimumFractionDigits: 0,
-                          })}
-                        </span>
-                      </div>
-                      {isLocked && isAdmin && editingOrderId && item.originalItemId && (
-                        <div className="mt-2 text-right">
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            className="h-6 text-[10px]"
-                            onClick={() => setItemToRemove({ orderId: editingOrderId, itemId: item.originalItemId!, tempId: item.tempId, name: item.name })}
-                          >
-                            Remove Item (Admin)
-                          </Button>
-                        </div>
-                      )}
-                    </motion.div>
-                  )})}
+                      </motion.div>
+                    )
+                  })}
                 </AnimatePresence>
               </div>
             )}
@@ -830,22 +872,23 @@ export function NewOrder() {
                 {defaultModifiers.map((mod) => {
                   const isSelected = selectedModifiers.some(m => m.id === mod.id);
                   return (
-                  <Button
-                    key={mod.id}
-                    variant={isSelected ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedModifiers(selectedModifiers.filter(m => m.id !== mod.id));
-                      } else {
-                        setSelectedModifiers([...selectedModifiers, mod]);
-                      }
-                    }}
-                  >
-                    {mod.name}
-                    {mod.price > 0 && ` (+₹${mod.price})`}
-                  </Button>
-                )})}
+                    <Button
+                      key={mod.id}
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedModifiers(selectedModifiers.filter(m => m.id !== mod.id));
+                        } else {
+                          setSelectedModifiers([...selectedModifiers, mod]);
+                        }
+                      }}
+                    >
+                      {mod.name}
+                      {mod.price > 0 && ` (+₹${mod.price})`}
+                    </Button>
+                  )
+                })}
               </div>
             </div>
 
@@ -896,7 +939,7 @@ export function NewOrder() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (itemToRemove) {

@@ -77,7 +77,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+    <div className="flex flex-col gap-3 sm:gap-4 lg:gap-6 p-3 sm:p-4 lg:p-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -104,14 +104,14 @@ export function Dashboard() {
             <span className="text-xs lg:text-sm font-semibold">Data</span>
           </Button>
           <Badge variant="outline" className="gap-1 py-1 text-xs text-success border-success/30 bg-success/10 lg:gap-1.5 lg:py-1.5">
-            <Wifi className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
+            <Wifi className="h-3 w-3 lg:h-3 lg:w-3" />
             Online
           </Badge>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-5 lg:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 lg:gap-6">
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -273,9 +273,9 @@ export function Dashboard() {
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground">{shift.staffName}</span>
                         {shift.endedAt ? (
-                          <Badge variant="outline" className="text-[10px] py-0">Completed</Badge>
+                          <Badge variant="outline" className="text-[11px] sm:text-xs py-0">Completed</Badge>
                         ) : (
-                          <Badge variant="default" className="text-[10px] py-0 bg-success hover:bg-success/90">Active</Badge>
+                          <Badge variant="default" className="text-[11px] sm:text-xs py-0 bg-success hover:bg-success/90">Active</Badge>
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground mt-1" suppressHydrationWarning>
@@ -290,14 +290,14 @@ export function Dashboard() {
                     <div className="flex flex-row sm:flex-col items-end gap-2 sm:gap-1">
                       {shift.endedAt && shift.totalSales !== undefined && (
                         <div className="text-right">
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Sales</span>
+                          <span className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wider block">Sales</span>
                           <span className="font-semibold text-foreground text-sm">
                             ₹{shift.totalSales.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
                           </span>
                         </div>
                       )}
                       <div className="text-right">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Drawer</span>
+                        <span className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wider block">Drawer</span>
                         <span className="text-sm font-medium text-muted-foreground flex items-center justify-end gap-1">
                           <Banknote className="h-3 w-3" />
                           ₹{shift.closingCash !== undefined ? shift.closingCash : shift.openingCash}
@@ -321,84 +321,84 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle className="text-base">Recent Orders</CardTitle>
           </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentOrders.map((order) => (
-              <div
-                key={order.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-lg bg-secondary/50 p-3"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex shrink-0 h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <ShoppingBag className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center flex-wrap gap-2">
-                      <p className="font-medium text-foreground truncate max-w-[120px] sm:max-w-[200px]">
-                        {order.id.toUpperCase()}
-                      </p>
-                      {order.tableId && (
-                        <span className="text-sm text-muted-foreground whitespace-nowrap">
-                          Table {order.tableId.replace("t", "")}
-                        </span>
-                      )}
-                      {order.platform && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs shrink-0"
-                          style={{
-                            borderColor:
-                              order.platform === "swiggy" ? "#fc8019" : "#e23744",
-                            color: order.platform === "swiggy" ? "#fc8019" : "#e23744",
-                          }}
-                        >
-                          {order.platform}
-                        </Badge>
-                      )}
+          <CardContent>
+            <div className="space-y-3">
+              {recentOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-lg bg-secondary/50 p-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex shrink-0 h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <ShoppingBag className="h-5 w-5 text-primary" />
                     </div>
-                    <p className="text-sm text-muted-foreground truncate" suppressHydrationWarning>
-                      {order.items.length} items &bull;{" "}
-                      {formatDistanceToNow(order.createdAt, { addSuffix: true })}
-                    </p>
+                    <div className="min-w-0">
+                      <div className="flex items-center flex-wrap gap-2">
+                        <p className="font-medium text-foreground truncate max-w-[120px] sm:max-w-[200px]">
+                          {order.id.toUpperCase()}
+                        </p>
+                        {order.tableId && (
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">
+                            Table {order.tableId.replace("t", "")}
+                          </span>
+                        )}
+                        {order.platform && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs shrink-0"
+                            style={{
+                              borderColor:
+                                order.platform === "swiggy" ? "#fc8019" : "#e23744",
+                              color: order.platform === "swiggy" ? "#fc8019" : "#e23744",
+                            }}
+                          >
+                            {order.platform}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate" suppressHydrationWarning>
+                        {order.items.length} items &bull;{" "}
+                        {formatDistanceToNow(order.createdAt, { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3 justify-end sm:justify-start">
+                    <Badge
+                      variant={
+                        order.status === "new"
+                          ? "default"
+                          : order.status === "preparing"
+                            ? "secondary"
+                            : order.status === "ready"
+                              ? "outline"
+                              : "outline"
+                      }
+                      className={
+                        order.status === "ready"
+                          ? "border-success text-success bg-success/10"
+                          : ""
+                      }
+                    >
+                      {order.status}
+                    </Badge>
+                    <span className="font-semibold text-foreground">
+                      {order.total.toLocaleString("en-IN", {
+                        style: "currency",
+                        currency: "INR",
+                        minimumFractionDigits: 0,
+                      })}
+                    </span>
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-3 justify-end sm:justify-start">
-                  <Badge
-                    variant={
-                      order.status === "new"
-                        ? "default"
-                        : order.status === "preparing"
-                        ? "secondary"
-                        : order.status === "ready"
-                        ? "outline"
-                        : "outline"
-                    }
-                    className={
-                      order.status === "ready"
-                        ? "border-success text-success bg-success/10"
-                        : ""
-                    }
-                  >
-                    {order.status}
-                  </Badge>
-                  <span className="font-semibold text-foreground">
-                    {order.total.toLocaleString("en-IN", {
-                      style: "currency",
-                      currency: "INR",
-                      minimumFractionDigits: 0,
-                    })}
-                  </span>
+              ))}
+              {recentOrders.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  No orders today
                 </div>
-              </div>
-            ))}
-            {recentOrders.length === 0 && (
-              <div className="text-center py-6 text-muted-foreground text-sm">
-                No orders today
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

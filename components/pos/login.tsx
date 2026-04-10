@@ -87,7 +87,7 @@ export function Login({ onLogin }: LoginProps) {
           <p className="text-xs font-medium text-muted-foreground mt-0.5">Point of Sale System</p>
           <div className="mt-2.5 flex items-center justify-center gap-2">
             {isOnline ? (
-              <Badge variant="outline" className="gap-1 px-2 py-0.5 text-[10px] sm:text-xs text-emerald-500 border-emerald-500/30 bg-emerald-500/10 font-semibold rounded-full shadow-sm">
+              <Badge variant="outline" className="gap-1 px-2 py-0.5 text-[11px] sm:text-xs sm:text-xs text-emerald-500 border-emerald-500/30 bg-emerald-500/10 font-semibold rounded-full shadow-sm">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
@@ -95,12 +95,12 @@ export function Login({ onLogin }: LoginProps) {
                 System Online
               </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1 px-2 py-0.5 text-[10px] sm:text-xs text-amber-500 border-amber-500/30 bg-amber-500/10 font-semibold rounded-full shadow-sm">
+              <Badge variant="outline" className="gap-1 px-2 py-0.5 text-[11px] sm:text-xs sm:text-xs text-amber-500 border-amber-500/30 bg-amber-500/10 font-semibold rounded-full shadow-sm">
                 System Offline
               </Badge>
             )}
-            <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-secondary/80 backdrop-blur-md border-border/50">
-              <Clock className="h-2.5 w-2.5" />
+            <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[11px] sm:text-xs sm:text-xs font-medium rounded-full bg-secondary/80 backdrop-blur-md border-border/50">
+              <Clock className="h-3 w-3" />
               {currentDate.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
             </Badge>
           </div>
@@ -125,7 +125,7 @@ export function Login({ onLogin }: LoginProps) {
                   <button
                     key={staff.id}
                     onClick={() => setSelectedStaff(staff)}
-                    className="group flex items-center justify-between rounded-2xl border border-border/40 bg-background/50 p-2 sm:p-2.5 transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/5 active:scale-[0.98]"
+                    className="group flex items-center justify-between rounded-2xl border border-border/40 bg-background/50 p-2 sm:p-2.5 transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:shadow-md active:shadow-sm hover:shadow-primary/5 active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-2.5 sm:gap-3">
                       <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-primary/5 text-primary group-hover:from-primary group-hover:to-primary/80 group-hover:text-primary-foreground transition-all duration-300 shadow-sm border border-primary/10">
@@ -133,10 +133,10 @@ export function Login({ onLogin }: LoginProps) {
                       </div>
                       <div className="flex flex-col items-start">
                         <span className="font-bold text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors">{staff.name}</span>
-                        <span className="text-[9px] sm:text-[10px] font-medium text-muted-foreground mt-0.5">{staff.role}</span>
+                        <span className="text-[9px] sm:text-[11px] sm:text-xs font-medium text-muted-foreground mt-0.5">{staff.role}</span>
                       </div>
                     </div>
-                    <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-background border border-border/50 text-muted-foreground opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 group-hover:border-primary/30 group-hover:text-primary group-hover:bg-primary/10 hover:!bg-primary hover:!text-primary-foreground">
+                    <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-background border border-border/50 text-muted-foreground opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 group-hover:border-primary/30 group-hover:text-primary group-hover:bg-primary/10 active:bg-primary/20 hover:!bg-primary hover:!text-primary-foreground">
                       <ChevronRight className="h-3 w-3 sm:h-3.5 w-3.5 ml-0.5" />
                     </div>
                   </button>
@@ -237,20 +237,20 @@ export function Login({ onLogin }: LoginProps) {
             <CardContent className="p-4 sm:p-5 space-y-4">
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-secondary/30 border border-border/40 backdrop-blur-sm transition-all hover:bg-secondary/40">
-                  <span className="text-muted-foreground font-medium text-[10px] sm:text-xs mb-1">Date</span>
+                  <span className="text-muted-foreground font-medium text-[11px] sm:text-xs sm:text-xs mb-1">Date</span>
                   <span className="text-foreground font-semibold text-xs sm:text-sm text-center leading-tight">
                     {currentDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                   </span>
                 </div>
                 <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-secondary/30 border border-border/40 backdrop-blur-sm transition-all hover:bg-secondary/40">
-                  <span className="text-muted-foreground font-medium text-[10px] sm:text-xs mb-1">Time</span>
+                  <span className="text-muted-foreground font-medium text-[11px] sm:text-xs sm:text-xs mb-1">Time</span>
                   <span className="text-foreground font-semibold text-xs sm:text-sm text-center leading-tight">
                     {currentDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
                 <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl bg-secondary/30 border border-border/40 backdrop-blur-sm transition-all hover:bg-secondary/40">
-                  <span className="text-muted-foreground font-medium text-[10px] sm:text-xs mb-1">Role</span>
-                  <Badge variant="outline" className="font-bold text-[10px] sm:text-[11px] px-2 py-0 border-primary/30 text-primary bg-primary/5 rounded-full mt-0.5">
+                  <span className="text-muted-foreground font-medium text-[11px] sm:text-xs sm:text-xs mb-1">Role</span>
+                  <Badge variant="outline" className="font-bold text-[11px] sm:text-xs sm:text-[11px] px-2 py-0 border-primary/30 text-primary bg-primary/5 rounded-full mt-0.5">
                     {selectedStaff.role}
                   </Badge>
                 </div>
