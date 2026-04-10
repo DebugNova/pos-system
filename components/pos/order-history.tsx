@@ -160,8 +160,8 @@ export function OrderHistory() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by order ID or customer..."
@@ -566,7 +566,7 @@ export function OrderHistory() {
 
         {/* Refund Dialog */}
         <AlertDialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-          <AlertDialogContent>
+          <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
              <AlertDialogHeader>
                <AlertDialogTitle>Process Refund</AlertDialogTitle>
                <AlertDialogDescription>

@@ -49,7 +49,7 @@ export function SplitBillDialog({ order, open, onOpenChange }: SplitBillDialogPr
       if (!open) setSelectedItems([]);
       onOpenChange(open);
     }}>
-      <DialogContent className="max-w-2xl bg-card border-border">
+      <DialogContent className="w-[95vw] max-w-lg sm:max-w-md md:max-w-2xl max-h-[85vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">Split Bill - Order {order.id.toUpperCase()}</DialogTitle>
           <DialogDescription className="text-muted-foreground">

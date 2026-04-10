@@ -416,7 +416,7 @@ export function Settings() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Staff Member</AlertDialogTitle>
                               <AlertDialogDescription>

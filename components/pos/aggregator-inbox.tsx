@@ -175,7 +175,7 @@ export function AggregatorInbox() {
         </TabsList>
 
         <TabsContent value={activeTab} className="flex-1 mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 h-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 h-full">
             {/* Pending Orders */}
             <div className="flex flex-col rounded-xl bg-destructive/5 p-4">
               <div className="mb-4 flex items-center gap-2">
@@ -237,7 +237,7 @@ export function AggregatorInbox() {
                         <Button
                           variant="outline"
                           size="default"
-                          className="flex-1 border-destructive text-destructive hover:bg-destructive/10 h-11"
+                          className="flex-1 border-destructive text-destructive hover:bg-destructive/10 h-12"
                           onClick={() => handleReject(order.id)}
                         >
                           <XCircle className="mr-1 h-5 w-5" />
@@ -245,7 +245,7 @@ export function AggregatorInbox() {
                         </Button>
                         <Button
                           size="default"
-                          className="flex-1 h-11"
+                          className="flex-1 h-12"
                           onClick={() => handleAccept(order.id)}
                         >
                           <CheckCircle2 className="mr-1 h-5 w-5" />

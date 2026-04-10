@@ -178,7 +178,7 @@ export function TableManagement() {
                     {table.status !== "available" && order && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -235,7 +235,7 @@ export function TableManagement() {
                 {order && (
                   <div className="mt-3 space-y-2 rounded-lg bg-background/50 p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground truncate max-w-[80px] sm:max-w-none">
                         {order.id.toUpperCase()}
                       </span>
                       <span className="text-sm font-semibold text-foreground">
@@ -276,7 +276,7 @@ export function TableManagement() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-3 w-full gap-1.5 border-success/50 text-success hover:bg-success/10"
+                    className="mt-3 w-full gap-1.5 h-10 sm:h-auto border-success/50 text-success hover:bg-success/10 active:bg-success/20"
                   >
                     <Plus className="h-3 w-3" />
                     New Order

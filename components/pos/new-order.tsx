@@ -262,7 +262,7 @@ export function NewOrder() {
       {/* Menu Section */}
       <div className="flex flex-1 flex-col min-h-0 border-r border-border bg-background">
         {/* Order Type Selection */}
-        <div className="flex items-center gap-2 border-b border-border h-20 lg:h-24 px-3 lg:px-4 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-border h-14 sm:h-20 lg:h-24 px-2 sm:px-3 lg:px-4 shrink-0">
           {orderTypes.map((type) => {
             const Icon = type.icon;
             const isActive = orderType === type.id;
@@ -272,13 +272,13 @@ export function NewOrder() {
                 variant={isActive ? "default" : "secondary"}
                 size="lg"
                 className={cn(
-                  "flex-1 gap-1.5 h-12 text-sm lg:h-14 lg:gap-2 lg:text-base",
+                  "flex-1 gap-1 sm:gap-1.5 h-10 sm:h-12 text-xs sm:text-sm lg:h-14 lg:gap-2 lg:text-base",
                   isActive && "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                 )}
                 onClick={() => setOrderType(type.id as typeof orderType)}
               >
                 <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
-                <span className="hidden sm:inline">{type.label}</span>
+                <span className="text-[11px] sm:text-sm">{type.label}</span>
               </Button>
             );
           })}
@@ -314,7 +314,7 @@ export function NewOrder() {
                         {Array.from({ length: Math.min(table.capacity, 4) }).map((_, i) => (
                           <div key={i} className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-primary-foreground" : isOccupied ? "bg-warning" : "bg-success")} />
                         ))}
-                        {table.capacity > 4 && <div className="h-1.5 w-1.5 rounded-full bg-transparent text-[8px] leading-[6px] tracking-tighter opacity-70">+</div>}
+                        {table.capacity > 4 && <div className="h-1.5 w-1.5 rounded-full bg-transparent text-[10px] leading-[8px] tracking-tighter opacity-70">+</div>}
                       </div>
                     </button>
                   )
@@ -416,7 +416,7 @@ export function NewOrder() {
         </div>
 
         {/* Menu Grid */}
-        <div className="flex-1 overflow-y-auto p-3 lg:p-4 min-h-0 bg-[#FAF6F1] dark:bg-[#1A1410]">
+        <div className="flex-1 overflow-y-auto p-3 pb-20 md:pb-3 lg:p-4 min-h-0 bg-[#FAF6F1] dark:bg-[#1A1410]">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-4">
             {filteredItems.map((item) => {
               const isCoffee = item.category === "coffee";
@@ -439,7 +439,7 @@ export function NewOrder() {
                   className="group cursor-pointer relative flex flex-col items-start overflow-hidden rounded-2xl bg-card shadow-sm border border-border/40 text-left transition-all duration-200 hover:shadow-md active:shadow-sm hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 >
                   {/* Image or Gradient Placeholder */}
-                  <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                  <div className="relative w-full aspect-square sm:aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
                     {item.image_url ? (
                       <img
                         src={item.image_url}
@@ -479,14 +479,14 @@ export function NewOrder() {
                           Options
                         </Badge>
                       ) : (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 transition-all group-hover:opacity-100 group-focus:opacity-100 hidden">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-100 sm:opacity-0 transition-all sm:group-hover:opacity-100 sm:group-focus:opacity-100">
                           <Plus className="h-4 w-4" />
                         </div>
                       )}
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="h-7 text-[11px] sm:text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-7 text-[11px] sm:text-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                         onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
                       >
                         Customize
@@ -502,7 +502,7 @@ export function NewOrder() {
 
       {/* Mobile Cart Floating Button */}
       {!showMobileCart && cart.length > 0 && (
-        <div className="md:hidden fixed bottom-6 left-4 right-4 z-30 flex items-center justify-center pointer-events-none">
+        <div className="md:hidden fixed bottom-20 left-4 right-4 z-30 flex items-center justify-center pointer-events-none">
           <Button 
             className="w-auto h-14 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-primary text-primary-foreground font-bold text-base flex items-center gap-3 px-6 pointer-events-auto hover:scale-105 transition-transform"
             onClick={() => setShowMobileCart(true)}
@@ -531,10 +531,13 @@ export function NewOrder() {
       <div className={cn(
         "flex shrink-0 flex-col bg-card z-40 md:border-l border-border/50",
         "md:relative md:w-72 sm:w-80 lg:w-80 xl:w-96 md:transform-none md:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] md:flex",
-        "fixed inset-x-0 bottom-0 h-[85vh] rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300",
+        "fixed inset-x-0 bottom-14 md:bottom-0 h-[75vh] md:h-auto rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300",
         showMobileCart ? "translate-y-0 flex" : "translate-y-full md:translate-y-0"
       )}>
-        <CardHeader className="flex flex-col justify-center border-b border-border h-20 lg:h-24 px-5 py-3 shrink-0 bg-background/50 backdrop-blur-sm space-y-1">
+        <div className="md:hidden flex justify-center pt-2 pb-1">
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+        </div>
+        <CardHeader className="flex flex-col justify-center border-b border-border h-20 lg:h-24 px-5 py-3 pt-2 sm:pt-3 shrink-0 bg-background/50 backdrop-blur-sm space-y-1">
           {isEditing && (
             <div className={cn("mb-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 shadow-sm", editMode === "supplementary" ? "bg-warning/10" : "bg-primary/10")}>
               {editMode === "supplementary" ? <Lock className="h-3.5 w-3.5 text-warning" /> : <Pencil className="h-3.5 w-3.5 text-primary" />}
@@ -827,7 +830,7 @@ export function NewOrder() {
 
       {/* Modifier Dialog */}
       <Dialog open={showModifierDialog} onOpenChange={setShowModifierDialog}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{currentMenuItem?.name}</DialogTitle>
             <DialogDescription>
@@ -901,7 +904,7 @@ export function NewOrder() {
 
       {/* Edit Notes Dialog */}
       <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Notes</DialogTitle>
             <DialogDescription>
@@ -929,7 +932,7 @@ export function NewOrder() {
 
       {/* Admin Remove Item Dialog */}
       <AlertDialog open={!!itemToRemove} onOpenChange={(open) => !open && setItemToRemove(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Item (Admin)</AlertDialogTitle>
             <AlertDialogDescription>

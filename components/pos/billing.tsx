@@ -212,7 +212,7 @@ export function Billing() {
             {pendingPaymentOrders.length} orders waiting
           </p>
         </div>
-        <div className="overflow-y-auto p-4 space-y-2">
+        <div className="overflow-y-auto p-4 pb-20 md:pb-4 space-y-2">
           {pendingPaymentOrders.map((o) => (
             <button
               key={o.id}
@@ -261,7 +261,7 @@ export function Billing() {
           </div>
         ) : paymentComplete ? (
           /* Payment Success */
-          <div className="flex flex-1 flex-col items-center justify-center p-8">
+          <div className="flex flex-1 flex-col items-center justify-center p-8 pb-24 md:pb-8">
             <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-success/20">
               <CheckCircle2 className="h-12 w-12 text-success" />
             </div>
@@ -291,15 +291,18 @@ export function Billing() {
           </div>
         ) : (
           /* Payment Form */
-          <div className="flex flex-1 flex-col p-3 sm:p-4 lg:p-6">
+          <div className="flex flex-1 flex-col p-3 pb-20 md:pb-6 sm:p-4 lg:p-6">
+            <div className="flex md:hidden items-center gap-2 mb-4 border-b border-border pb-3">
+              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setSelectedOrder(null)}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <span className="font-semibold text-foreground">Back to Orders</span>
+            </div>
             {/* Order Summary */}
             <Card className="mb-6 bg-card border-border">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="md:hidden mr-1" onClick={() => setSelectedOrder(null)}>
-                      <ArrowLeft className="h-5 w-5" />
-                    </Button>
                     <CardTitle className="text-lg">{order.id.toUpperCase()}</CardTitle>
                   </div>
                   <div className="flex items-center gap-2">
@@ -445,11 +448,11 @@ export function Billing() {
             {/* Payment Methods */}
             <div className="mb-6">
               <Label className="mb-2 block text-sm">Payment Method</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6">
                 <button
                   onClick={() => setPaymentMethod("cash")}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 min-h-[60px] transition-all hover:bg-secondary/50 active:bg-secondary/70",
                     paymentMethod === "cash" && "border-primary bg-primary/10"
                   )}
                 >
@@ -459,7 +462,7 @@ export function Billing() {
                 <button
                   onClick={() => setPaymentMethod("upi")}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 min-h-[60px] transition-all hover:bg-secondary/50 active:bg-secondary/70",
                     paymentMethod === "upi" && "border-primary bg-primary/10"
                   )}
                 >
@@ -469,7 +472,7 @@ export function Billing() {
                 <button
                   onClick={() => setPaymentMethod("card")}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 min-h-[60px] transition-all hover:bg-secondary/50 active:bg-secondary/70",
                     paymentMethod === "card" && "border-primary bg-primary/10"
                   )}
                 >
@@ -479,7 +482,7 @@ export function Billing() {
                 <button
                   onClick={() => setPaymentMethod("split")}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 min-h-[60px] transition-all hover:bg-secondary/50 active:bg-secondary/70",
                     paymentMethod === "split" && "border-primary bg-primary/10"
                   )}
                 >
@@ -605,7 +608,7 @@ export function Billing() {
                     Void Order
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Void Order</AlertDialogTitle>
                     <AlertDialogDescription>
