@@ -291,21 +291,24 @@ export function Billing() {
           </div>
         ) : (
           /* Payment Form */
-          <div className="flex flex-1 flex-col p-3 pb-20 md:pb-6 sm:p-4 lg:p-6">
-            <div className="flex md:hidden items-center gap-2 mb-4 border-b border-border pb-3">
+          <div className="flex flex-1 flex-col h-full overflow-hidden">
+            {/* Mobile Back Header */}
+            <div className="flex md:hidden items-center gap-2 px-4 py-3 border-b border-border shrink-0">
               <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setSelectedOrder(null)}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <span className="font-semibold text-foreground">Back to Orders</span>
             </div>
-            {/* Order Summary */}
-            <Card className="mb-6 bg-card border-border">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">{order.id.toUpperCase()}</CardTitle>
-                  </div>
-                  <div className="flex items-center gap-2">
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4 pb-44 md:pb-6 sm:p-5 lg:p-6">
+              {/* Order Summary */}
+              <Card className="mb-5 bg-card border-border">
+                <CardHeader className="p-4 sm:p-5 pb-3">
+                  {/* Order ID */}
+                  <CardTitle className="text-base sm:text-lg font-semibold truncate">{order.id.toUpperCase()}</CardTitle>
+                  {/* Badges Row */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
                     {order.tableId && (
                       <Badge variant="secondary">Table {order.tableId.replace("t", "")}</Badge>
                     )}
@@ -313,10 +316,13 @@ export function Billing() {
                     {order.createdBy && (
                       <Badge variant="outline" className="opacity-70 font-normal">By {order.createdBy}</Badge>
                     )}
+                  </div>
+                  {/* Action Buttons Row */}
+                  <div className="flex items-center gap-2 mt-3">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="ml-1 gap-1.5"
+                      className="gap-1.5 h-8"
                       onClick={() => setShowSplitDialog(true)}
                     >
                       <Split className="h-3.5 w-3.5" />
@@ -325,80 +331,84 @@ export function Billing() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="ml-1 gap-1.5"
+                      className="gap-1.5 h-8"
                       onClick={() => startEditOrder(order.id)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                       Edit
                     </Button>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isSupplementary && unpaidBills.length > 0 ? (
-                  <ul className="space-y-3">
-                    {unpaidBills.map(bill => bill.items.map((item) => {
-                      const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
-                      return (
-                        <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                          <div className="flex justify-between">
-                            <span className="text-foreground font-medium"><Badge variant="outline" className="mr-2 text-[11px] sm:text-xs h-5 px-1 bg-warning/10 text-warning border-transparent">+ADD</Badge>{item.quantity}x {item.name}</span>
-                            <span className="text-muted-foreground">
-                              {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                            </span>
-                          </div>
-                          {item.variant && <span className="text-xs text-muted-foreground ml-8 mt-0.5">{item.variant}</span>}
-                          {item.modifiers && item.modifiers.length > 0 && (
-                            <span className="text-xs text-muted-foreground ml-8 mt-0.5">
-                              + {item.modifiers.map(m => m.name).join(", ")}
-                            </span>
-                          )}
-                        </li>
-                      )
-                    }))}
-                  </ul>
-                ) : (
-                  <ul className="space-y-3">
-                    {order.items.map((item) => {
-                      const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
-                      return (
-                        <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                          <div className="flex justify-between">
-                            <span className="text-foreground font-medium">{item.quantity}x {item.name}</span>
-                            <span className="text-muted-foreground">
-                              {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                            </span>
-                          </div>
-                          {item.variant && <span className="text-xs text-muted-foreground ml-4 mt-0.5">{item.variant}</span>}
-                          {item.modifiers && item.modifiers.length > 0 && (
-                            <span className="text-xs text-muted-foreground ml-4 mt-0.5">
-                              + {item.modifiers.map(m => m.name).join(", ")}
-                            </span>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-5 pt-0">
+                  <div className="border-t border-border pt-3">
+                    {isSupplementary && unpaidBills.length > 0 ? (
+                      <ul className="space-y-2.5">
+                        {unpaidBills.map(bill => bill.items.map((item) => {
+                          const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                          return (
+                            <li key={item.id} className="flex flex-col text-sm border-b border-border/30 pb-2.5 last:border-0 last:pb-0">
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="text-foreground font-medium flex items-center min-w-0">
+                                  <Badge variant="outline" className="mr-2 text-[10px] sm:text-xs h-5 px-1.5 bg-warning/10 text-warning border-transparent shrink-0">+ADD</Badge>
+                                  <span className="truncate">{item.quantity}x {item.name}</span>
+                                </span>
+                                <span className="text-foreground font-medium tabular-nums shrink-0">
+                                  {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                                </span>
+                              </div>
+                              {item.variant && <span className="text-xs text-muted-foreground ml-[3.25rem] mt-1">{item.variant}</span>}
+                              {item.modifiers && item.modifiers.length > 0 && (
+                                <span className="text-xs text-muted-foreground ml-[3.25rem] mt-0.5">
+                                  + {item.modifiers.map(m => m.name).join(", ")}
+                                </span>
+                              )}
+                            </li>
+                          )
+                        }))}
+                      </ul>
+                    ) : (
+                      <ul className="space-y-2.5">
+                        {order.items.map((item) => {
+                          const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                          return (
+                            <li key={item.id} className="flex flex-col text-sm border-b border-border/30 pb-2.5 last:border-0 last:pb-0">
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="text-foreground font-medium truncate">{item.quantity}x {item.name}</span>
+                                <span className="text-foreground font-medium tabular-nums shrink-0">
+                                  {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                                </span>
+                              </div>
+                              {item.variant && <span className="text-xs text-muted-foreground ml-5 mt-1">{item.variant}</span>}
+                              {item.modifiers && item.modifiers.length > 0 && (
+                                <span className="text-xs text-muted-foreground ml-5 mt-0.5">
+                                  + {item.modifiers.map(m => m.name).join(", ")}
+                                </span>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Discount - only Admin and Cashier can apply */}
-            {permissions.canApplyDiscounts && (
-              <div className="mb-6 flex gap-4">
-                <div className="flex-1">
-                  <Label className="text-sm">Discount</Label>
-                  <div className="mt-1 flex gap-2">
+              {/* Discount - only Admin and Cashier can apply */}
+              {permissions.canApplyDiscounts && (
+                <div className="mb-5">
+                  <Label className="text-sm font-medium mb-1.5 block">Discount</Label>
+                  <div className="flex items-center gap-2">
                     <Input
                       type="number"
                       placeholder="0"
                       value={discount}
                       onChange={(e) => setDiscount(e.target.value)}
-                      className="bg-secondary border-none"
+                      className="flex-1 bg-secondary border-none"
                     />
                     <Button
                       variant={discountType === "percent" ? "default" : "outline"}
                       size="icon"
+                      className="h-9 w-9 shrink-0"
                       onClick={() => setDiscountType("percent")}
                     >
                       <Percent className="h-4 w-4" />
@@ -406,248 +416,252 @@ export function Billing() {
                     <Button
                       variant={discountType === "amount" ? "default" : "outline"}
                       size="icon"
+                      className="h-9 w-9 shrink-0"
                       onClick={() => setDiscountType("amount")}
                     >
                       ₹
                     </Button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Bill Summary */}
-            <div className="mb-6 rounded-lg bg-secondary/50 p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="text-foreground">
-                  {subtotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                </span>
-              </div>
-              {discountAmount > 0 && (
+              {/* Bill Summary */}
+              <div className="mb-5 rounded-lg bg-secondary/50 p-4 space-y-2.5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-success">Discount</span>
-                  <span className="text-success">
-                    -{discountAmount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-foreground tabular-nums">
+                    {subtotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                   </span>
                 </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax ({settings.gstEnabled ? `${settings.taxRate}% GST` : "disabled"})</span>
-                <span className="text-foreground">
-                  {tax.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-border pt-2 text-lg font-bold">
-                <span className="text-foreground">Grand Total</span>
-                <span className="text-primary">
-                  {grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                </span>
-              </div>
-            </div>
-
-            {/* Payment Methods */}
-            <div className="mb-6">
-              <Label className="mb-2 block text-sm">Payment Method</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6">
-                <button
-                  onClick={() => setPaymentMethod("cash")}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 min-h-[60px] transition-all hover:bg-secondary/50 active:bg-secondary/70",
-                    paymentMethod === "cash" && "border-primary bg-primary/10"
-                  )}
-                >
-                  <Banknote className="h-6 w-6 text-success" />
-                  <span className="text-sm font-medium text-foreground">Cash</span>
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("upi")}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 min-h-[60px] transition-all hover:bg-secondary/50 active:bg-secondary/70",
-                    paymentMethod === "upi" && "border-primary bg-primary/10"
-                  )}
-                >
-                  <Smartphone className="h-6 w-6 text-chart-1" />
-                  <span className="text-sm font-medium text-foreground">UPI</span>
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("card")}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 min-h-[60px] transition-all hover:bg-secondary/50 active:bg-secondary/70",
-                    paymentMethod === "card" && "border-primary bg-primary/10"
-                  )}
-                >
-                  <CreditCard className="h-6 w-6 text-chart-3" />
-                  <span className="text-sm font-medium text-foreground">Card</span>
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("split")}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 min-h-[60px] transition-all hover:bg-secondary/50 active:bg-secondary/70",
-                    paymentMethod === "split" && "border-primary bg-primary/10"
-                  )}
-                >
-                  <Split className="h-6 w-6 text-chart-4" />
-                  <span className="text-sm font-medium text-foreground">Split</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Cash Input */}
-            {paymentMethod === "cash" && (
-              <div className="mb-6 space-y-3">
-                <Label className="text-sm">Cash Received</Label>
-                <Input
-                  type="number"
-                  placeholder="Enter amount"
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
-                  className="h-14 bg-secondary border-none text-xl"
-                />
-                <div className="flex flex-wrap gap-2">
-                  {quickCashAmounts.map((amount) => (
-                    <Button
-                      key={amount}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCashReceived(String(amount))}
-                    >
-                      ₹{amount}
-                    </Button>
-                  ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCashReceived(String(Math.ceil(grandTotal)))}
-                  >
-                    Exact
-                  </Button>
-                </div>
-                {cashReceived && parseFloat(cashReceived) >= grandTotal && (
-                  <div className="rounded-lg bg-success/10 p-3 text-center">
-                    <span className="text-sm text-muted-foreground">Change: </span>
-                    <span className="text-lg font-bold text-success">
-                      {cashChange.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-success">Discount</span>
+                    <span className="text-success tabular-nums">
+                      -{discountAmount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                     </span>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* UPI QR */}
-            {paymentMethod === "upi" && (
-              <div className="mb-6 flex flex-col items-center gap-4">
-                <div className="rounded-xl bg-white p-4">
-                  <QRCodeSVG
-                    value={`upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.cafeName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${order.id}`)}`}
-                    size={192}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Scan QR code or enter UPI ID: {settings.upiId}
-                </p>
-              </div>
-            )}
-
-            {/* Split Payment */}
-            {paymentMethod === "split" && (
-              <div className="mb-6 space-y-3">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-sm">Cash</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={splitAmounts.cash}
-                      onChange={(e) => setSplitAmounts({ ...splitAmounts, cash: e.target.value })}
-                      className="mt-1 bg-secondary border-none"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">UPI</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={splitAmounts.upi}
-                      onChange={(e) => setSplitAmounts({ ...splitAmounts, upi: e.target.value })}
-                      className="mt-1 bg-secondary border-none"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Card</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={splitAmounts.card}
-                      onChange={(e) => setSplitAmounts({ ...splitAmounts, card: e.target.value })}
-                      className="mt-1 bg-secondary border-none"
-                    />
-                  </div>
-                </div>
-                <div className="rounded-lg bg-secondary/50 p-3 text-center">
-                  <span className="text-sm text-muted-foreground">Split Total: </span>
-                  <span className={cn(
-                    "text-lg font-bold",
-                    (parseFloat(splitAmounts.cash || "0") + parseFloat(splitAmounts.upi || "0") + parseFloat(splitAmounts.card || "0")) >= grandTotal
-                      ? "text-success"
-                      : "text-destructive"
-                  )}>
-                    {(parseFloat(splitAmounts.cash || "0") + parseFloat(splitAmounts.upi || "0") + parseFloat(splitAmounts.card || "0")).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tax ({settings.gstEnabled ? `${settings.taxRate}% GST` : "disabled"})</span>
+                  <span className="text-foreground tabular-nums">
+                    {tax.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                   </span>
-                  <span className="text-sm text-muted-foreground"> / {grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                </div>
+                <div className="border-t border-border my-1" />
+                <div className="flex justify-between items-baseline pt-1">
+                  <span className="text-base sm:text-lg font-bold text-foreground">Grand Total</span>
+                  <span className="text-xl sm:text-2xl font-bold text-primary tabular-nums">
+                    {grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                  </span>
                 </div>
               </div>
-            )}
 
-            {/* Actions */}
-            <div className="mt-auto flex gap-3">
-              {/* Void Order */}
-              <AlertDialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="gap-2 text-destructive border-destructive hover:bg-destructive/10">
-                    <RotateCcw className="h-4 w-4" />
-                    Void Order
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Void Order</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to void this order? The customer's table will be released.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <div className="space-y-4 pt-4">
+              {/* Payment Methods */}
+              <div className="mb-5">
+                <Label className="mb-2 block text-sm font-medium">Payment Method</Label>
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                  <button
+                    onClick={() => setPaymentMethod("cash")}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                      paymentMethod === "cash" && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <Banknote className="h-6 w-6 text-success" />
+                    <span className="text-sm font-medium text-foreground">Cash</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("upi")}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                      paymentMethod === "upi" && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <Smartphone className="h-6 w-6 text-chart-1" />
+                    <span className="text-sm font-medium text-foreground">UPI</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("card")}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                      paymentMethod === "card" && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <CreditCard className="h-6 w-6 text-chart-3" />
+                    <span className="text-sm font-medium text-foreground">Card</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("split")}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                      paymentMethod === "split" && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <Split className="h-6 w-6 text-chart-4" />
+                    <span className="text-sm font-medium text-foreground">Split</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Cash Input */}
+              {paymentMethod === "cash" && (
+                <div className="mb-5 space-y-3">
+                  <Label className="text-sm font-medium">Cash Received</Label>
+                  <Input
+                    type="number"
+                    placeholder="Enter amount"
+                    value={cashReceived}
+                    onChange={(e) => setCashReceived(e.target.value)}
+                    className="h-14 bg-secondary border-none text-xl"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {quickCashAmounts.map((amount) => (
+                      <Button
+                        key={amount}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCashReceived(String(amount))}
+                      >
+                        ₹{amount}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCashReceived(String(Math.ceil(grandTotal)))}
+                    >
+                      Exact
+                    </Button>
+                  </div>
+                  {cashReceived && parseFloat(cashReceived) >= grandTotal && (
+                    <div className="rounded-lg bg-success/10 p-3 text-center">
+                      <span className="text-sm text-muted-foreground">Change: </span>
+                      <span className="text-lg font-bold text-success">
+                        {cashChange.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* UPI QR */}
+              {paymentMethod === "upi" && (
+                <div className="mb-5 flex flex-col items-center gap-4">
+                  <div className="rounded-xl bg-white p-4">
+                    <QRCodeSVG
+                      value={`upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.cafeName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${order.id}`)}`}
+                      size={192}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Scan QR code or enter UPI ID: {settings.upiId}
+                  </p>
+                </div>
+              )}
+
+              {/* Split Payment */}
+              {paymentMethod === "split" && (
+                <div className="mb-5 space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <Label className="text-sm">Reason (Optional)</Label>
-                      <Textarea
-                        placeholder="e.g., Customer walked away..."
-                        value={voidReason}
-                        onChange={(e) => setVoidReason(e.target.value)}
-                        className="mt-1 bg-secondary border-none resize-none"
+                      <Label className="text-sm">Cash</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={splitAmounts.cash}
+                        onChange={(e) => setSplitAmounts({ ...splitAmounts, cash: e.target.value })}
+                        className="mt-1 bg-secondary border-none"
                       />
                     </div>
-                    <AlertDialogFooter className="pt-2">
-                      <AlertDialogCancel onClick={() => setShowVoidDialog(false)} className="flex-1 mt-0">
-                        Cancel
-                      </AlertDialogCancel>
-                      <AlertDialogAction onClick={handleVoidOrder} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Confirm Void
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
+                    <div>
+                      <Label className="text-sm">UPI</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={splitAmounts.upi}
+                        onChange={(e) => setSplitAmounts({ ...splitAmounts, upi: e.target.value })}
+                        className="mt-1 bg-secondary border-none"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Card</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={splitAmounts.card}
+                        onChange={(e) => setSplitAmounts({ ...splitAmounts, card: e.target.value })}
+                        className="mt-1 bg-secondary border-none"
+                      />
+                    </div>
                   </div>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Button variant="outline" className="gap-2" onClick={() => window.print()}>
-                <Printer className="h-4 w-4" />
-                Print Bill
-              </Button>
-              <Button
-                className="flex-1 h-14 text-lg"
-                disabled={!paymentMethod || (paymentMethod === "cash" && (!cashReceived || parseFloat(cashReceived) < grandTotal)) || (paymentMethod === "split" && (parseFloat(splitAmounts.cash || "0") + parseFloat(splitAmounts.upi || "0") + parseFloat(splitAmounts.card || "0")) < grandTotal)}
-                onClick={handlePayment}
-              >
-                <Receipt className="mr-2 h-5 w-5" />
-                Complete Payment
-              </Button>
+                  <div className="rounded-lg bg-secondary/50 p-3 text-center">
+                    <span className="text-sm text-muted-foreground">Split Total: </span>
+                    <span className={cn(
+                      "text-lg font-bold",
+                      (parseFloat(splitAmounts.cash || "0") + parseFloat(splitAmounts.upi || "0") + parseFloat(splitAmounts.card || "0")) >= grandTotal
+                        ? "text-success"
+                        : "text-destructive"
+                    )}>
+                      {(parseFloat(splitAmounts.cash || "0") + parseFloat(splitAmounts.upi || "0") + parseFloat(splitAmounts.card || "0")).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                    </span>
+                    <span className="text-sm text-muted-foreground"> / {grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Fixed Bottom Action Bar */}
+            <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-card p-3 md:static md:bottom-auto md:z-auto md:shrink-0 md:p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:gap-3">
+                {/* Void Order */}
+                <AlertDialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10 h-11 md:h-12 text-sm">
+                      <RotateCcw className="h-4 w-4" />
+                      Void Order
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Void Order</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to void this order? The customer's table will be released.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div>
+                        <Label className="text-sm">Reason (Optional)</Label>
+                        <Textarea
+                          placeholder="e.g., Customer walked away..."
+                          value={voidReason}
+                          onChange={(e) => setVoidReason(e.target.value)}
+                          className="mt-1 bg-secondary border-none resize-none"
+                        />
+                      </div>
+                      <AlertDialogFooter className="pt-2">
+                        <AlertDialogCancel onClick={() => setShowVoidDialog(false)} className="flex-1 mt-0">
+                          Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction onClick={handleVoidOrder} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Confirm Void
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </div>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button variant="outline" className="gap-2 h-11 md:h-12 text-sm" onClick={() => window.print()}>
+                  <Printer className="h-4 w-4" />
+                  Print Bill
+                </Button>
+                <Button
+                  className="flex-1 h-12 md:h-14 text-base md:text-lg font-semibold"
+                  disabled={!paymentMethod || (paymentMethod === "cash" && (!cashReceived || parseFloat(cashReceived) < grandTotal)) || (paymentMethod === "split" && (parseFloat(splitAmounts.cash || "0") + parseFloat(splitAmounts.upi || "0") + parseFloat(splitAmounts.card || "0")) < grandTotal)}
+                  onClick={handlePayment}
+                >
+                  <Receipt className="mr-2 h-5 w-5" />
+                  Complete Payment
+                </Button>
+              </div>
             </div>
           </div>
         )}

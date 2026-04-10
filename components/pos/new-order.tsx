@@ -258,11 +258,11 @@ export function NewOrder() {
   });
 
   return (
-    <div className="flex h-full flex-row">
+    <div className="flex h-full flex-row overflow-x-hidden">
       {/* Menu Section */}
-      <div className="flex flex-1 flex-col min-h-0 border-r border-border bg-background">
+      <div className="flex flex-1 flex-col min-h-0 min-w-0 border-r border-border bg-background">
         {/* Order Type Selection */}
-        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-border h-14 sm:h-20 lg:h-24 px-2 sm:px-3 lg:px-4 shrink-0">
+        <div className="grid grid-cols-4 gap-1 sm:gap-2 border-b border-border p-1.5 sm:p-3 shrink-0 bg-background">
           {orderTypes.map((type) => {
             const Icon = type.icon;
             const isActive = orderType === type.id;
@@ -270,15 +270,14 @@ export function NewOrder() {
               <Button
                 key={type.id}
                 variant={isActive ? "default" : "secondary"}
-                size="lg"
                 className={cn(
-                  "flex-1 gap-1 sm:gap-1.5 h-10 sm:h-12 text-xs sm:text-sm lg:h-14 lg:gap-2 lg:text-base",
-                  isActive && "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                  "flex-col sm:flex-row gap-0.5 sm:gap-1 h-auto py-1.5 sm:py-2 sm:h-11 px-0.5 sm:px-3 text-[9px] sm:text-xs lg:h-14 lg:gap-2 lg:py-0 lg:text-sm",
+                  isActive && "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
                 )}
                 onClick={() => setOrderType(type.id as typeof orderType)}
               >
-                <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
-                <span className="text-[11px] sm:text-sm">{type.label}</span>
+                <Icon className="h-4 w-4 shrink-0 lg:h-5 lg:w-5" />
+                <span className="truncate">{type.label}</span>
               </Button>
             );
           })}
@@ -286,12 +285,12 @@ export function NewOrder() {
 
         {/* Table Selection for Dine-in */}
         {orderType === "dine-in" && (
-          <div className="flex flex-col gap-2 border-b border-border p-3 lg:gap-3 lg:p-4 bg-card/50">
+          <div className="flex flex-col gap-1.5 border-b border-border p-2 md:gap-2 md:p-3 lg:gap-3 lg:p-4 bg-card/50">
             <span className="flex items-center text-xs font-semibold text-foreground lg:text-sm">
               Select Table
             </span>
             {availableTables.length > 0 ? (
-              <div className="flex flex-wrap gap-2 lg:gap-3">
+              <div className="flex flex-wrap gap-1.5 md:gap-2 lg:gap-3">
                 {availableTables.map((table) => {
                   const isSelected = selectedTable === table.id;
                   const isOccupied = table.status === "occupied" || table.status === "waiting-payment";
@@ -300,7 +299,7 @@ export function NewOrder() {
                       key={table.id}
                       onClick={() => setSelectedTable(table.id)}
                       className={cn(
-                        "flex flex-col items-center justify-center rounded-xl border p-2 transition-all min-w-[64px] lg:min-w-[72px]",
+                        "flex flex-col items-center justify-center rounded-xl border p-1.5 md:p-2 transition-all min-w-[56px] md:min-w-[64px] lg:min-w-[72px]",
                         isSelected
                           ? "border-primary bg-primary text-primary-foreground shadow-md"
                           : isOccupied
@@ -308,13 +307,13 @@ export function NewOrder() {
                             : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
                       )}
                     >
-                      <span className="text-sm font-bold lg:text-base">T{table.number}</span>
-                      <span className="text-[11px] sm:text-xs opacity-80">{table.capacity}p</span>
-                      <div className="mt-1 flex gap-0.5">
+                      <span className="text-xs font-bold md:text-sm lg:text-base">T{table.number}</span>
+                      <span className="text-[10px] sm:text-xs opacity-80">{table.capacity}p</span>
+                      <div className="mt-0.5 md:mt-1 flex gap-0.5">
                         {Array.from({ length: Math.min(table.capacity, 4) }).map((_, i) => (
-                          <div key={i} className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-primary-foreground" : isOccupied ? "bg-warning" : "bg-success")} />
+                          <div key={i} className={cn("h-1 w-1 md:h-1.5 md:w-1.5 rounded-full", isSelected ? "bg-primary-foreground" : isOccupied ? "bg-warning" : "bg-success")} />
                         ))}
-                        {table.capacity > 4 && <div className="h-1.5 w-1.5 rounded-full bg-transparent text-[10px] leading-[8px] tracking-tighter opacity-70">+</div>}
+                        {table.capacity > 4 && <div className="h-1 w-1 md:h-1.5 md:w-1.5 rounded-full bg-transparent text-[10px] leading-[8px] tracking-tighter opacity-70">+</div>}
                       </div>
                     </button>
                   )
@@ -329,13 +328,13 @@ export function NewOrder() {
         )}
 
         {/* Customer & Note Chip */}
-        <div className="border-b border-border p-3 lg:p-4">
+        <div className="border-b border-border p-2 md:p-3 lg:p-4">
           {!showCustomerNote && (!customerName && !orderNotes) ? (
             <button
               onClick={() => setShowCustomerNote(true)}
-              className="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              className="inline-flex items-center text-xs md:text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             >
-              <Plus className="mr-1 h-4 w-4" />
+              <Plus className="mr-1 h-3.5 w-3.5 md:h-4 md:w-4" />
               Add customer / note
             </button>
           ) : (
@@ -365,59 +364,58 @@ export function NewOrder() {
           )}
         </div>
 
-        {/* Search & Categories */}
-        <div className="flex gap-3 border-b border-border p-3 lg:gap-4 lg:p-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="search-input"
-              autoFocus
-              placeholder="Search menu..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-16 h-10 bg-card border border-border rounded-full text-sm lg:h-12 shadow-sm focus-visible:ring-primary/50"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1 pointer-events-none">
-              <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[11px] sm:text-xs font-medium text-muted-foreground opacity-100">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </div>
-          </div>
-        </div>
-
         {/* Category Tabs */}
-        <div className="flex gap-1.5 overflow-x-auto border-b border-border px-3 py-2.5 lg:gap-2 lg:px-4 lg:py-3 sticky top-0 z-10 bg-background snap-x snap-mandatory hide-scrollbar">
-          <Button
-            variant={activeCategory === "all" ? "default" : "secondary"}
-            size="sm"
+        <div className="flex gap-1.5 md:gap-2 md:flex-wrap border-b border-border p-1.5 sm:p-3 sticky top-0 z-10 bg-background/95 backdrop-blur overflow-x-hidden md:overflow-x-visible">
+          <button
             onClick={() => setActiveCategory("all")}
-            className="shrink-0 rounded-full font-medium snap-start"
+            className={cn(
+              "flex items-center justify-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 font-semibold text-[11px] sm:text-sm transition-all",
+              activeCategory === "all"
+                ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary ring-offset-1 ring-offset-background"
+                : "bg-secondary/70 text-secondary-foreground hover:bg-secondary border border-border/40"
+            )}
           >
-            All Items
-            <Badge variant="outline" className={cn("ml-1.5 h-5 px-1.5 text-[11px] sm:text-xs bg-background/50 border-transparent", activeCategory === "all" ? "text-primary-foreground" : "text-muted-foreground")}>{menuItems.length}</Badge>
-          </Button>
+            <UtensilsCrossed className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            <span>All</span>
+            <span className={cn(
+              "flex items-center justify-center rounded-full text-[9px] sm:text-[11px] font-bold px-1 sm:px-1.5 min-w-[16px] sm:min-w-[18px] h-3.5 sm:h-4 transition-colors",
+              activeCategory === "all" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background shadow-sm text-muted-foreground"
+            )}>
+              {menuItems.length}
+            </span>
+          </button>
+          
           {categories.map((cat) => {
             const Icon = categoryIcons[cat.id];
             const catCount = menuItems.filter(m => m.category === cat.id).length;
+            const isActive = activeCategory === cat.id;
             return (
-              <Button
+              <button
                 key={cat.id}
-                variant={activeCategory === cat.id ? "default" : "secondary"}
-                size="sm"
                 onClick={() => setActiveCategory(cat.id)}
-                className="shrink-0 gap-1.5 rounded-full font-medium snap-start"
+                className={cn(
+                  "flex items-center justify-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 font-semibold text-[11px] sm:text-sm transition-all",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary ring-offset-1 ring-offset-background"
+                    : "bg-secondary/70 text-secondary-foreground hover:bg-secondary border border-border/40"
+                )}
               >
-                {Icon && <Icon className="h-4 w-4" />}
-                {cat.name}
-                <Badge variant="outline" className={cn("h-5 px-1.5 text-[11px] sm:text-xs bg-background/50 border-transparent", activeCategory === cat.id ? "text-primary-foreground" : "text-muted-foreground")}>{catCount}</Badge>
-              </Button>
+                {Icon && <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+                <span className="capitalize">{cat.name}</span>
+                <span className={cn(
+                  "flex items-center justify-center rounded-full text-[9px] sm:text-[11px] font-bold px-1 sm:px-1.5 min-w-[16px] sm:min-w-[18px] h-3.5 sm:h-4 transition-colors",
+                  isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background shadow-sm text-muted-foreground"
+                )}>
+                  {catCount}
+                </span>
+              </button>
             );
           })}
         </div>
 
         {/* Menu Grid */}
-        <div className="flex-1 overflow-y-auto p-3 pb-20 md:pb-3 lg:p-4 min-h-0 bg-[#FAF6F1] dark:bg-[#1A1410]">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 pb-20 md:pb-3 lg:p-4 min-h-0 bg-[#FAF6F1] dark:bg-[#1A1410]">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-4">
             {filteredItems.map((item) => {
               const isCoffee = item.category === "coffee";
               const isTea = item.category === "tea";
@@ -438,8 +436,8 @@ export function NewOrder() {
                   }}
                   className="group cursor-pointer relative flex flex-col items-start overflow-hidden rounded-2xl bg-card shadow-sm border border-border/40 text-left transition-all duration-200 hover:shadow-md active:shadow-sm hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 >
-                  {/* Image or Gradient Placeholder */}
-                  <div className="relative w-full aspect-square sm:aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                  {/* Desktop Image - Only visible on md and up */}
+                  <div className="hidden md:block relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
                     {item.image_url ? (
                       <img
                         src={item.image_url}
@@ -454,20 +452,20 @@ export function NewOrder() {
 
                     {/* Ribbons */}
                     {item.bestseller && (
-                      <div className="absolute top-0 left-0 bg-primary/95 text-primary-foreground text-[11px] sm:text-xs uppercase font-bold px-2 py-1 rounded-br-lg shadow-sm backdrop-blur-sm z-10">
+                      <div className="absolute top-0 left-0 bg-primary/95 text-primary-foreground text-[10px] md:text-xs uppercase font-bold px-2 py-1 rounded-br-lg shadow-sm backdrop-blur-sm z-10">
                         Bestseller
                       </div>
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="flex flex-1 w-full flex-col p-3 lg:p-4">
-                    <span className="text-sm font-semibold text-foreground leading-tight lg:text-base">
+                  {/* Desktop Content - Only visible on md and up */}
+                  <div className="hidden md:flex flex-1 w-full flex-col p-4">
+                    <span className="text-base font-semibold text-foreground leading-tight">
                       {item.name}
                     </span>
 
                     <div className="mt-auto pt-3 flex items-center justify-between w-full">
-                      <span className="text-sm font-bold text-primary lg:text-base">
+                      <span className="text-base font-bold text-primary">
                         {item.price.toLocaleString("en-IN", {
                           style: "currency",
                           currency: "INR",
@@ -475,22 +473,87 @@ export function NewOrder() {
                         })}
                       </span>
                       {item.variants && item.variants.length > 0 ? (
-                        <Badge variant="secondary" className="text-[11px] sm:text-xs font-medium bg-secondary text-secondary-foreground">
+                        <Badge variant="secondary" className="text-xs font-medium bg-secondary text-secondary-foreground">
                           Options
                         </Badge>
                       ) : (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-100 sm:opacity-0 transition-all sm:group-hover:opacity-100 sm:group-focus:opacity-100">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all">
                           <Plus className="h-4 w-4" />
                         </div>
                       )}
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="h-7 text-[11px] sm:text-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                        className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
                       >
                         Customize
                       </Button>
+                    </div>
+                  </div>
+
+                  {/* Mobile Content - Hidden on md and up */}
+                  <div className="flex flex-col w-full md:hidden p-2.5 sm:p-3 gap-2">
+                    <div className="flex gap-2.5 sm:gap-3 items-start w-full">
+                      <div className="flex-1 flex flex-col justify-start min-w-0">
+                        <span className="text-[14px] font-bold text-foreground leading-tight truncate">
+                          {item.name}
+                        </span>
+                        
+                        <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug pr-2">
+                          {(item as any).description || "Fresh and delicious"}
+                        </span>
+                        
+                        <div className="mt-2 flex flex-wrap items-center justify-start gap-2">
+                          <span className="text-[13px] font-bold text-foreground">
+                            {item.price.toLocaleString("en-IN", {
+                              style: "currency",
+                              currency: "INR",
+                              minimumFractionDigits: 0,
+                            })}
+                          </span>
+                          
+                          <button
+                            className="text-[10px] font-bold text-muted-foreground uppercase opacity-80 hover:opacity-100 active:scale-95 transition-all flex items-center ml-1"
+                            onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
+                          >
+                            Customize
+                          </button>
+                      
+                          {item.variants && item.variants.length > 0 && (
+                            <span className="text-[9px] px-1 py-0.5 rounded-sm bg-warning/10 font-bold text-warning uppercase shrink-0">Customisable</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-center shrink-0 mt-0.5">
+                        <div className="w-[84px] h-[84px] rounded-xl overflow-hidden shadow-sm border border-border/40 relative bg-muted/30">
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => e.currentTarget.src = '/menu/_fallback.png'}
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-3xl opacity-50">{emoji}</div>
+                          )}
+                          {item.bestseller && (
+                            <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[8px] uppercase font-bold px-1.5 py-0.5 rounded-bl-lg shadow-sm z-10">
+                              Best
+                            </div>
+                          )}
+                        </div>
+                        
+                        <Button 
+                          size="sm" 
+                          className="h-8 -mt-3.5 z-10 w-[72px] px-0 rounded-lg font-bold text-[11px] bg-[#EA7531] text-white shadow-md uppercase tracking-wider border-2 border-background hover:bg-[#D56525] transition-all flex items-center justify-center gap-1"
+                          onClick={(e) => { e.stopPropagation(); item.variants?.length ? openModifierDialog(item) : handleAddItem(item); }}
+                        >
+                          ADD <Plus className="h-3 w-3" strokeWidth={3} />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -502,19 +565,32 @@ export function NewOrder() {
 
       {/* Mobile Cart Floating Button */}
       {!showMobileCart && cart.length > 0 && (
-        <div className="md:hidden fixed bottom-20 left-4 right-4 z-30 flex items-center justify-center pointer-events-none">
+        <div className="md:hidden fixed bottom-[72px] left-4 right-4 z-30 flex pointer-events-none drop-shadow-2xl">
           <Button 
-            className="w-auto h-14 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-primary text-primary-foreground font-bold text-base flex items-center gap-3 px-6 pointer-events-auto hover:scale-105 transition-transform"
+            className="w-full h-14 rounded-2xl bg-gradient-to-r from-primary to-[#D56525] text-white font-bold flex items-center justify-between px-4 pointer-events-auto active:scale-[0.98] transition-transform overflow-hidden ring-1 ring-white/20 shadow-[0_8px_30px_rgb(234,117,49,0.3)] relative"
             onClick={() => setShowMobileCart(true)}
           >
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5" />
-              <span>Cart ({cart.length})</span>
+            <div className="flex items-center gap-3 z-10">
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/20 backdrop-blur-md">
+                <ShoppingBag className="h-4 w-4 text-white" strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-col items-start justify-center gap-0.5">
+                <span className="text-[14px] leading-none tracking-tight">View Cart</span>
+                <span className="text-[10px] font-semibold text-white/80 uppercase tracking-widest leading-none">
+                  {cart.length} {cart.length === 1 ? 'Item' : 'Items'}
+                </span>
+              </div>
             </div>
-            <div className="w-px h-6 bg-primary-foreground/30" />
-            <span>
-              {getCartTotal().toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-            </span>
+            <div className="flex items-center gap-2 z-10">
+              <span className="text-[16px] tracking-tight">
+                {getCartTotal().toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+              </span>
+              <div className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 ml-1">
+                <div className="h-2 w-2 border-t-2 border-r-2 border-white rotate-45 mr-0.5" />
+              </div>
+            </div>
+            {/* Gloss reflection effect */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
           </Button>
         </div>
       )}
@@ -529,9 +605,9 @@ export function NewOrder() {
 
       {/* Cart Section */}
       <div className={cn(
-        "flex shrink-0 flex-col bg-card z-40 md:border-l border-border/50",
-        "md:relative md:w-72 sm:w-80 lg:w-80 xl:w-96 md:transform-none md:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] md:flex",
-        "fixed inset-x-0 bottom-14 md:bottom-0 h-[75vh] md:h-auto rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300",
+        "flex shrink-0 flex-col overflow-hidden bg-card z-40 md:border-l border-border/50",
+        "md:relative md:w-72 sm:w-80 lg:w-80 xl:w-96 md:transform-none md:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] md:flex md:overflow-visible",
+        "fixed inset-x-0 bottom-14 md:bottom-0 max-h-[75vh] md:max-h-none md:h-auto rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300",
         showMobileCart ? "translate-y-0 flex" : "translate-y-full md:translate-y-0"
       )}>
         <div className="md:hidden flex justify-center pt-2 pb-1">
@@ -610,9 +686,9 @@ export function NewOrder() {
           </div>
         </CardHeader>
 
-        <CardContent className="flex flex-1 flex-col p-0">
+        <CardContent className="flex flex-1 flex-col p-0 min-h-0 overflow-hidden">
           {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto min-h-0 p-4">
             {cart.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-6 text-center">
                 <div className="relative mb-6 h-32 w-32 opacity-80">
@@ -743,7 +819,7 @@ export function NewOrder() {
           </div>
 
           {/* Cart Summary */}
-          <div className="border-t border-border p-4">
+          <div className="border-t border-border p-4 shrink-0">
             <div className="mb-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
@@ -830,55 +906,92 @@ export function NewOrder() {
 
       {/* Modifier Dialog */}
       <Dialog open={showModifierDialog} onOpenChange={setShowModifierDialog}>
-        <DialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{currentMenuItem?.name}</DialogTitle>
-            <DialogDescription>
-              Select variant and add notes
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
+        <DialogContent variant="bottom-sheet" showCloseButton={false} className="max-w-lg sm:max-w-md grid grid-rows-[auto_minmax(0,1fr)_auto] p-0 gap-0 border-none rounded-t-[24px] sm:rounded-[24px] bg-[#f8f9fa] dark:bg-[#121212] overflow-hidden shadow-2xl">
+          
+          {/* ROW 1: HEADER (Back Button + Image + Title) */}
+          <div className="relative flex flex-col shrink-0 bg-background rounded-t-[24px]">
+            <Button 
+              size="icon"
+              variant="ghost" 
+              className={cn(
+                "absolute top-3 left-3 z-50 h-8 w-8 rounded-full backdrop-blur-md shadow-sm border transition-all",
+                currentMenuItem?.image_url 
+                  ? "bg-black/40 border-white/20 text-white hover:bg-black/60" 
+                  : "bg-background/90 border-border shadow-black/10 text-foreground hover:bg-secondary"
+              )}
+              onClick={() => setShowModifierDialog(false)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+
+            {currentMenuItem?.image_url && (
+              <div className="w-full h-[150px] sm:h-[220px] relative shrink-0">
+                <img src={currentMenuItem.image_url} alt={currentMenuItem.name} className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              </div>
+            )}
+            
+            <div className={cn(
+               "px-5 py-4 sm:px-6 sm:py-5 shrink-0 bg-background z-10", 
+               currentMenuItem?.image_url && "-mt-6 rounded-t-[24px] relative shadow-[0_-8px_20px_rgb(0,0,0,0.08)]"
+            )}>
+              <DialogHeader className="text-left space-y-1">
+                <DialogTitle className="text-[20px] sm:text-[22px] font-black text-foreground tracking-tight leading-tight">{currentMenuItem?.name}</DialogTitle>
+                <DialogDescription className="text-[13px] sm:text-sm font-medium text-muted-foreground/90">
+                  {(currentMenuItem as any)?.description || "Customise as per your taste"}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+          </div>
+
+          {/* ROW 2: SCROLLABLE CONTENT */}
+          <div className="overflow-y-auto px-5 pb-6 sm:px-6 space-y-6 bg-background outline-none scroll-smooth">
             {/* Variants */}
             {currentMenuItem?.variants && currentMenuItem.variants.length > 0 && (
-              <div className="space-y-2">
-                <Label>Variant</Label>
-                <div className="flex flex-wrap gap-2">
-                  {currentMenuItem.variants.map((variant) => (
-                    <Button
-                      key={variant.name}
-                      variant={selectedVariant === variant.name ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedVariant(variant.name)}
-                    >
-                      {variant.name} - {variant.price.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                    </Button>
-                  ))}
+              <div className="space-y-3">
+                <Label className="text-[14px] sm:text-[15px] font-bold text-foreground flex items-center gap-2">
+                  Variant <span className="bg-primary/10 text-primary text-[9px] sm:text-[10px] uppercase px-1.5 py-0.5 rounded-sm">Required</span>
+                </Label>
+                <div className="flex flex-col gap-2">
+                  {currentMenuItem.variants.map((variant) => {
+                    const isSelected = selectedVariant === variant.name;
+                    return (
+                      <div 
+                        key={variant.name}
+                        onClick={() => setSelectedVariant(variant.name)}
+                        className={cn(
+                          "flex items-center justify-between p-3.5 rounded-xl border-[1.5px] transition-all cursor-pointer select-none",
+                          isSelected ? "border-[#EA7531] bg-[#EA7531]/5 shadow-sm" : "border-border/60 hover:border-border hover:bg-muted/30"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors",
+                            isSelected ? "border-[#EA7531] bg-[#EA7531]" : "border-muted-foreground/40 bg-background"
+                          )}>
+                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                          <span className="font-semibold text-[13px] sm:text-sm">{variant.name}</span>
+                        </div>
+                        <span className="font-bold text-[13px] sm:text-sm">
+                          {variant.price.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label>Special Instructions</Label>
-              <Textarea
-                placeholder="Add notes (e.g., less sugar, extra hot)"
-                value={itemNotes}
-                onChange={(e) => setItemNotes(e.target.value)}
-                className="bg-secondary border-none"
-              />
-            </div>
-
             {/* Modifiers */}
-            <div className="space-y-2">
-              <Label>Add-ons</Label>
-              <div className="flex flex-wrap gap-2">
+            <div className="space-y-3">
+              <Label className="text-[14px] sm:text-[15px] font-bold text-foreground">Add-ons</Label>
+              <div className="flex flex-col gap-2">
                 {defaultModifiers.map((mod) => {
                   const isSelected = selectedModifiers.some(m => m.id === mod.id);
                   return (
-                    <Button
+                    <div 
                       key={mod.id}
-                      variant={isSelected ? "default" : "outline"}
-                      size="sm"
                       onClick={() => {
                         if (isSelected) {
                           setSelectedModifiers(selectedModifiers.filter(m => m.id !== mod.id));
@@ -886,17 +999,51 @@ export function NewOrder() {
                           setSelectedModifiers([...selectedModifiers, mod]);
                         }
                       }}
+                      className={cn(
+                        "flex items-center justify-between p-3.5 rounded-xl border-[1.5px] transition-all cursor-pointer select-none",
+                        isSelected ? "border-[#EA7531] bg-[#EA7531]/5 shadow-sm" : "border-border/60 hover:border-border hover:bg-muted/30"
+                      )}
                     >
-                      {mod.name}
-                      {mod.price > 0 && ` (+₹${mod.price})`}
-                    </Button>
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-4 h-4 rounded flex items-center justify-center border-2 transition-colors",
+                          isSelected ? "bg-[#EA7531] border-[#EA7531]" : "border-muted-foreground/40 bg-background"
+                        )}>
+                          {isSelected && <div className="w-2 h-2 bg-white rounded-[1px]" style={{ clipPath: "polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%)", transform: "scale(0.8)" }} />}
+                        </div>
+                        <span className="font-semibold text-[13px] sm:text-sm">{mod.name}</span>
+                      </div>
+                      <span className="font-bold text-[13px] sm:text-sm text-foreground/90">
+                        {mod.price > 0 ? `+₹${mod.price}` : "Free"}
+                      </span>
+                    </div>
                   )
                 })}
               </div>
             </div>
-
-            <Button className="w-full" onClick={handleAddWithModifiers}>
-              Add to Order
+            
+            {/* Notes */}
+            <div className="space-y-3 pt-2">
+              <Label className="text-[14px] sm:text-[15px] font-bold text-foreground">Add instructions</Label>
+              <Textarea
+                placeholder="eg. don't make it too spicy"
+                value={itemNotes}
+                onChange={(e) => setItemNotes(e.target.value)}
+                className="bg-muted/40 border-border/80 resize-none min-h-[80px] text-[13px] sm:text-sm focus-visible:ring-[#EA7531] rounded-xl"
+              />
+            </div>
+          </div>
+          
+          {/* ROW 3: FIXED FOOTER */}
+          <div className="p-4 sm:p-5 bg-background border-t border-border shadow-[0_-15px_30px_rgb(0,0,0,0.04)] z-20">
+            <Button 
+               className="w-full h-[52px] sm:h-14 text-[16px] sm:text-lg font-bold rounded-xl bg-[#EA7531] hover:bg-[#D56525] text-white shadow-[0_8px_20px_rgba(234,117,49,0.25)] flex justify-between px-6 active:scale-[0.98] transition-transform" 
+               onClick={handleAddWithModifiers}
+            >
+              <span className="tracking-wide">Add item</span>
+              <span className="bg-white/20 px-3 py-1 rounded-md text-[15px] sm:text-[16px] tracking-tight backdrop-blur-sm">
+                {((currentMenuItem?.variants?.find(v => v.name === selectedVariant)?.price || currentMenuItem?.price || 0) + selectedModifiers.reduce((acc, m) => acc + m.price, 0)).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+              </span>
             </Button>
           </div>
         </DialogContent>
