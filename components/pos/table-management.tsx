@@ -153,21 +153,21 @@ export function TableManagement() {
             <Card
               key={table.id}
               className={cn(
-                "cursor-pointer border-2 transition-all hover:scale-[1.02] active:scale-[0.98]",
+                "cursor-pointer border-2 transition-all hover:scale-[1.02] active:scale-[0.98] flex flex-col",
                 statusColors[table.status]
               )}
               onClick={() => handleTableClick(table.id, table.status)}
             >
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl text-foreground">
+              <CardHeader className="p-3 pb-2 sm:p-6 sm:pb-2">
+                <div className="flex flex-row flex-nowrap items-center justify-between w-full">
+                  <CardTitle className="text-base sm:text-xl text-foreground whitespace-nowrap overflow-hidden text-ellipsis mr-1 sm:mr-2 shrink">
                     Table {table.number}
                   </CardTitle>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                     <Badge
                       variant="outline"
                       className={cn(
-                        "border-current",
+                        "border-current whitespace-nowrap text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 flex items-center justify-center h-5 sm:h-auto leading-none",
                         table.status === "available" && "text-success",
                         table.status === "occupied" && "text-warning",
                         table.status === "waiting-payment" && "text-destructive"
@@ -178,7 +178,7 @@ export function TableManagement() {
                     {table.status !== "available" && order && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-8 sm:w-8 -mr-2 sm:mr-0">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -226,14 +226,14 @@ export function TableManagement() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  <span>{table.capacity} seats</span>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 flex flex-col flex-1">
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mb-auto">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="leading-none flex items-center translate-y-[1px]">{table.capacity} seats</span>
                 </div>
 
                 {order && (
-                  <div className="mt-3 space-y-2 rounded-lg bg-background/50 p-3">
+                  <div className="mt-3 space-y-2 rounded-lg bg-background/50 p-2.5 sm:p-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground truncate max-w-[80px] sm:max-w-none">
                         {order.id.toUpperCase()}
@@ -246,41 +246,43 @@ export function TableManagement() {
                         })}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground" suppressHydrationWarning>
-                      <Clock className="h-3 w-3" />
-                      <span>
+                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground" suppressHydrationWarning>
+                      <Clock className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">
                         {formatDistanceToNow(order.createdAt, { addSuffix: true })}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                       {order.items.length} items &bull; {order.status}
                     </p>
 
                     {table.status === "waiting-payment" && (
                       <Button
                         size="sm"
-                        className="mt-2 w-full gap-1.5"
+                        className="mt-2 w-full gap-1.5 h-8 sm:h-9 text-xs sm:text-sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleProcessPayment(table.id);
                         }}
                       >
-                        <CreditCard className="h-3 w-3" />
-                        Process Payment
+                        <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
+                        <span className="truncate">Process Payment</span>
                       </Button>
                     )}
                   </div>
                 )}
 
                 {table.status === "available" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 w-full gap-1.5 h-10 sm:h-auto border-success/50 text-success hover:bg-success/10 active:bg-success/20"
-                  >
-                    <Plus className="h-3 w-3" />
-                    New Order
-                  </Button>
+                  <div className="w-full mt-3 flex justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1.5 h-9 sm:h-10 border-success/50 text-success hover:bg-success/10 active:bg-success/20 flex items-center justify-center font-medium"
+                    >
+                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                      New Order
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
