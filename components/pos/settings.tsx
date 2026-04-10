@@ -43,94 +43,88 @@ export function Settings() {
   const permissions = getPermissions(currentUser?.role || "Kitchen");
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto p-3 sm:p-4 lg:p-6">
+    <div className="flex h-full flex-col overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-5xl mx-auto scroll-smooth">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+      <div className="mb-6 flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground">
           Configure your POS system preferences
         </p>
       </div>
 
-      <Tabs defaultValue="general" className="flex-1">
-        <TabsList className="mb-6 bg-secondary flex overflow-x-auto flex-nowrap w-full justify-start md:w-auto h-auto min-h-10 py-1 snap-x snap-mandatory">
-          <TabsTrigger value="general" className="gap-2 shrink-0 snap-start">
-            <Store className="h-4 w-4" />
-            General
+      <Tabs defaultValue="general" className="flex-1 w-full flex flex-col">
+        <TabsList className="mb-6 bg-secondary/80 flex overflow-x-auto flex-nowrap w-full justify-start md:justify-start h-auto min-h-[60px] p-1.5 gap-2 snap-x snap-mandatory scrollbar-none rounded-2xl border border-border/40">
+          <TabsTrigger value="general" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+            <Store className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="printers" className="gap-2 snap-start">
-            <Printer className="h-4 w-4" />
-            Printers
+          <TabsTrigger value="printers" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+            <Printer className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="staff" className="gap-2 snap-start">
-            <Users className="h-4 w-4" />
-            Staff
+          <TabsTrigger value="staff" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+            <Users className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="payments" className="gap-2 snap-start">
-            <CreditCard className="h-4 w-4" />
-            Payments
+          <TabsTrigger value="payments" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+            <CreditCard className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-2 snap-start">
-            <Wifi className="h-4 w-4" />
-            Integrations
+          <TabsTrigger value="integrations" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+            <Wifi className="h-5 w-5" />
           </TabsTrigger>
           {permissions.canManageStaff && (
-            <TabsTrigger value="audit" className="gap-2 snap-start">
-              <ShieldAlert className="h-4 w-4" />
-              Audit Log
+            <TabsTrigger value="audit" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+              <ShieldAlert className="h-5 w-5" />
             </TabsTrigger>
           )}
         </TabsList>
 
         {/* General Settings */}
-        <TabsContent value="general" className="space-y-4">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base">Cafe Information</CardTitle>
-              <CardDescription>
+        <TabsContent value="general" className="space-y-6 outline-none focus-visible:ring-0 mt-0 pb-10">
+          <Card className="bg-card border-border overflow-hidden">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold tracking-tight">Cafe Information</CardTitle>
+              <CardDescription className="text-sm">
                 Basic details about your cafe
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="cafeName">Cafe Name</Label>
+            <CardContent className="space-y-6">
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label htmlFor="cafeName" className="text-sm font-medium w-full text-left">Cafe Name</Label>
                   <Input
                     id="cafeName"
                     value={settings.cafeName}
                     onChange={(e) => updateSettings({ cafeName: e.target.value })}
-                    className="bg-secondary border-none"
+                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gst">GST Number</Label>
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label htmlFor="gst" className="text-sm font-medium w-full text-left">GST Number</Label>
                   <Input
                     id="gst"
                     value={settings.gstNumber}
                     onChange={(e) => updateSettings({ gstNumber: e.target.value })}
-                    className="bg-secondary border-none"
+                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+              <div className="space-y-2.5 flex flex-col items-start w-full">
+                <Label htmlFor="address" className="text-sm font-medium w-full text-left">Address</Label>
                 <Input
                   id="address"
                   placeholder="Enter cafe address"
                   value={settings.address}
                   onChange={(e) => updateSettings({ address: e.target.value })}
-                  className="bg-secondary border-none"
+                  className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
                 />
               </div>
 
               {/* Install App Settings */}
-              <div className="space-y-4 pt-4 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h3 className="font-medium text-foreground">App Installation</h3>
-                    <p className="text-sm text-muted-foreground">Show prompt to install POS on your device.</p>
+              <div className="pt-6 border-t border-border/60">
+                <div className="flex flex-row items-center justify-between gap-4 w-full">
+                  <div className="space-y-1.5 flex-1 min-w-0 pr-2 text-left">
+                    <h3 className="font-medium text-foreground text-sm sm:text-base tracking-tight truncate">App Installation</h3>
+                    <p className="text-sm text-muted-foreground leading-snug break-words">Show prompt to install POS on your device.</p>
                   </div>
-                  <Button onClick={() => updateSettings({ installPromptDismissed: false })} variant="outline" className="gap-2 shrink-0">
+                  <Button onClick={() => updateSettings({ installPromptDismissed: false })} variant="outline" className="gap-2 shrink-0 h-11 px-4 sm:px-5 rounded-xl border-border/60 shadow-sm whitespace-nowrap">
                     <Download className="h-4 w-4" />
                     Install App
                   </Button>
@@ -139,11 +133,13 @@ export function Settings() {
 
               {/* Sync settings if admin */}
               {permissions.canManageStaff && (
-                <div className="space-y-4 pt-4 border-t border-border">
-                  <h3 className="font-semibold text-foreground">Advanced Data Sync</h3>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">Force retry synchronization for pending actions.</p>
-                    <Button onClick={() => syncPendingMutations()} variant="outline" className="gap-2">
+                <div className="pt-6 border-t border-border/60">
+                  <div className="flex flex-row items-center justify-between gap-4 w-full">
+                    <div className="space-y-1.5 flex-1 min-w-0 pr-2 text-left">
+                      <h3 className="font-medium text-foreground text-sm sm:text-base tracking-tight truncate">Advanced Data Sync</h3>
+                      <p className="text-sm text-muted-foreground leading-snug break-words">Force retry synchronization for pending actions.</p>
+                    </div>
+                    <Button onClick={() => syncPendingMutations()} variant="outline" className="gap-2 shrink-0 h-11 px-4 sm:px-5 rounded-xl border-border/60 shadow-sm whitespace-nowrap">
                       <RefreshCw className="h-4 w-4" />
                       Retry Sync
                     </Button>
@@ -444,20 +440,21 @@ export function Settings() {
               <DialogHeader>
                 <DialogTitle>{editingStaffId ? "Edit Staff Member" : "Add Staff Member"}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="staffName">Name</Label>
+              <div className="space-y-5 py-4">
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label htmlFor="staffName" className="text-left w-full text-sm font-medium">Name</Label>
                   <Input 
                     id="staffName" 
                     value={staffForm.name} 
                     onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} 
-                    placeholder="e.g. Rahul Sharma" 
+                    placeholder="e.g. Rahul Sharma"
+                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="staffRole">Role</Label>
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label htmlFor="staffRole" className="text-left w-full text-sm font-medium">Role</Label>
                   <Select value={staffForm.role} onValueChange={(val) => setStaffForm({ ...staffForm, role: val })}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm">
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
@@ -468,14 +465,15 @@ export function Settings() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="staffPin">PIN (for login)</Label>
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label htmlFor="staffPin" className="text-left w-full text-sm font-medium">PIN (for login)</Label>
                   <Input 
                     id="staffPin" 
                     value={staffForm.pin} 
                     onChange={(e) => setStaffForm({ ...staffForm, pin: e.target.value.replace(/\D/g, '') })} 
                     maxLength={4} 
-                    placeholder="4-digit PIN" 
+                    placeholder="4-digit PIN"
+                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
                   />
                 </div>
               </div>
@@ -538,14 +536,14 @@ export function Settings() {
                   </div>
                   <Switch defaultChecked />
                 </div>
-                <div className="pl-8 space-y-2">
-                  <Label>UPI ID</Label>
+                <div className="pl-1 sm:pl-8 space-y-2.5 w-full flex flex-col items-start pt-2">
+                  <Label className="text-sm font-medium w-full text-left">UPI ID</Label>
                   <Input
                     id="upiId"
                     value={settings.upiId}
                     onChange={(e) => updateSettings({ upiId: e.target.value })}
                     placeholder="e.g. cafe@upi"
-                    className="bg-secondary border-none"
+                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
                   />
                 </div>
               </div>

@@ -230,116 +230,128 @@ export function DataManager({ onBack }: DataManagerProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-background">
       {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4 lg:p-6">
+      <div className="flex flex-col gap-3 sm:gap-4 border-b border-border p-4 lg:p-6 lg:flex-row lg:items-center lg:justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 -ml-1">
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
-          <div>
-            <h1 className="text-lg font-bold text-foreground lg:text-xl">Data Manager</h1>
-            <p className="text-xs text-muted-foreground">View, edit, and manage all stored data</p>
+          <div className="pt-1 sm:pt-0">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground lg:text-2xl leading-none">Data Manager</h1>
+            <p className="text-[11px] sm:text-sm text-muted-foreground mt-1">View, edit, and manage all stored data</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Export</span>
+        <div className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 mt-1 sm:mt-0 lg:w-auto">
+          <Button variant="outline" onClick={handleExport} className="justify-center h-8 sm:h-9 px-3 text-[11px] sm:text-sm font-medium bg-background shadow-sm">
+            <Download className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+            Download
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)} className="gap-1.5">
-            <Upload className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Import</span>
+          <Button variant="outline" onClick={() => setShowImportDialog(true)} className="justify-center h-8 sm:h-9 px-3 text-[11px] sm:text-sm font-medium bg-background shadow-sm">
+            <Upload className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+            Upload
           </Button>
-          <Button variant="destructive" size="sm" onClick={() => setShowClearConfirm(true)} className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Reset</span>
+          <Button variant="destructive" onClick={() => setShowClearConfirm(true)} className="col-span-2 sm:col-span-1 justify-center h-8 sm:h-9 px-3 text-[11px] sm:text-sm font-medium shadow-sm">
+            <RefreshCw className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+            Sync / Refresh
           </Button>
         </div>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-4 sm:p-4 lg:gap-6 lg:p-6">
-        <Card className="bg-card border-border">
-          <CardContent className="p-3 lg:p-4">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-lg font-bold text-foreground">{totalOrders}</p>
-                <p className="text-xs text-muted-foreground">Total Orders</p>
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        {/* Stats Summary */}
+        <div className="grid grid-cols-2 gap-3 p-4 shrink-0 lg:gap-4 lg:p-6 xl:grid-cols-4">
+          <Card className="bg-card shadow-[0_1px_3px_0_rgb(0,0,0,0.05)] border-border/60">
+            <CardContent className="p-4 md:p-5 flex flex-col gap-3 lg:gap-2">
+              <div className="flex flex-row items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground text-left">Total Orders</p>
+                <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <ShoppingBag className="h-4 w-4 lg:h-4 lg:w-4 text-primary stroke-[2px]" />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-3 lg:p-4">
-            <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-success" />
-              <div>
-                <p className="text-lg font-bold text-foreground">{completedOrders}</p>
-                <p className="text-xs text-muted-foreground">Completed</p>
+              <div className="flex items-start">
+                <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground text-left">{totalOrders}</h3>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-3 lg:p-4">
-            <div className="flex items-center gap-2">
-              <Coffee className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-lg font-bold text-foreground">{menuItems.length}</p>
-                <p className="text-xs text-muted-foreground">Menu Items</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-card shadow-[0_1px_3px_0_rgb(0,0,0,0.05)] border-border/60">
+            <CardContent className="p-4 md:p-5 flex flex-col gap-3 lg:gap-2">
+              <div className="flex flex-row items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground text-left">Completed</p>
+                <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-lg bg-success/10">
+                  <Package className="h-4 w-4 lg:h-4 lg:w-4 text-success stroke-[2px]" />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-3 lg:p-4">
-            <div className="flex items-center gap-2">
-              <Grid3X3 className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-lg font-bold text-foreground">
-                  {totalRevenue.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                </p>
-                <p className="text-xs text-muted-foreground">Total Revenue</p>
+              <div className="flex items-start">
+                <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground text-left">{completedOrders}</h3>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-card shadow-[0_1px_3px_0_rgb(0,0,0,0.05)] border-border/60">
+            <CardContent className="p-4 md:p-5 flex flex-col gap-3 lg:gap-2">
+              <div className="flex flex-row items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground text-left">Menu Items</p>
+                <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                  <Coffee className="h-4 w-4 lg:h-4 lg:w-4 text-blue-500 stroke-[2px]" />
+                </div>
+              </div>
+              <div className="flex items-start">
+                <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground text-left">{menuItems.length}</h3>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-card shadow-[0_1px_3px_0_rgb(0,0,0,0.05)] border-border/60">
+            <CardContent className="p-4 md:p-5 flex flex-col gap-3 lg:gap-2">
+              <div className="flex flex-row items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground text-left">Total Revenue</p>
+                <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
+                  <Grid3X3 className="h-4 w-4 lg:h-4 lg:w-4 text-orange-500 stroke-[2px]" />
+                </div>
+              </div>
+              <div className="flex items-start">
+                <h3 className="text-xl md:text-2xl xl:text-3xl font-bold tracking-tight text-foreground text-left truncate">
+                  {totalRevenue.toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 })}
+                </h3>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Tabs */}
-      <div className="flex-1 overflow-hidden p-3 sm:p-4 lg:p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TabsList className="grid w-full grid-cols-4 sm:w-auto">
-              <TabsTrigger value="orders" className="gap-1 text-xs lg:text-sm">
-                <ShoppingBag className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Orders</span>
-              </TabsTrigger>
-              <TabsTrigger value="menu" className="gap-1 text-xs lg:text-sm">
-                <Coffee className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Menu</span>
-              </TabsTrigger>
-              <TabsTrigger value="tables" className="gap-1 text-xs lg:text-sm">
-                <Grid3X3 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Tables</span>
-              </TabsTrigger>
-              <TabsTrigger value="staff" className="gap-1 text-xs lg:text-sm">
-                <Users className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Staff</span>
-              </TabsTrigger>
-            </TabsList>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 bg-secondary border-none"
-              />
+        {/* Tabs */}
+        <div className="flex-1 flex flex-col p-4 pt-0 lg:p-6 lg:pt-0 pb-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col h-full min-h-[400px]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0 mb-4">
+              <TabsList className="grid w-full grid-cols-4 sm:flex sm:w-auto h-12 sm:h-11 p-1 bg-muted/60 rounded-lg">
+                <TabsTrigger value="orders" className="flex items-center justify-center gap-1.5 h-full rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <ShoppingBag className="h-4 w-4 sm:h-4 sm:w-4 shrink-0 transition-all" />
+                  <span className="hidden sm:inline text-sm font-medium">Orders</span>
+                </TabsTrigger>
+                <TabsTrigger value="menu" className="flex items-center justify-center gap-1.5 h-full rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Coffee className="h-4 w-4 sm:h-4 sm:w-4 shrink-0 transition-all" />
+                  <span className="hidden sm:inline text-sm font-medium">Menu</span>
+                </TabsTrigger>
+                <TabsTrigger value="tables" className="flex items-center justify-center gap-1.5 h-full rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Grid3X3 className="h-4 w-4 sm:h-4 sm:w-4 shrink-0 transition-all" />
+                  <span className="hidden sm:inline text-sm font-medium">Tables</span>
+                </TabsTrigger>
+                <TabsTrigger value="staff" className="flex items-center justify-center gap-1.5 h-full rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Users className="h-4 w-4 sm:h-4 sm:w-4 shrink-0 transition-all" />
+                  <span className="hidden sm:inline text-sm font-medium">Staff</span>
+                </TabsTrigger>
+              </TabsList>
+              <div className="relative w-full sm:w-64 shrink-0">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-11 sm:h-11 bg-secondary/50 border-border/50 focus-visible:ring-1 text-sm shadow-sm rounded-lg"
+                />
+              </div>
             </div>
-          </div>
 
           {/* Orders Tab */}
           <TabsContent value="orders" className="mt-3 flex-1 overflow-hidden">
@@ -585,9 +597,11 @@ export function DataManager({ onBack }: DataManagerProps) {
                 </Table>
               </CardContent>
             </Card>
+            {/* Staff Tab Content remains same internally but requires parent div to be closed later */}
           </TabsContent>
         </Tabs>
       </div>
+    </div>
 
       {/* Edit Order Dialog */}
       <Dialog open={!!editingOrder} onOpenChange={() => setEditingOrder(null)}>

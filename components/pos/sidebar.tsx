@@ -201,49 +201,52 @@ export function POSSidebar() {
                 <span className="mt-0.5 text-[11px] sm:text-xs font-medium leading-tight">More</span>
               </button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="max-h-[85vh] rounded-t-xl safe-bottom">
-              <SheetHeader className="text-left">
+            <SheetContent side="bottom" className="min-h-[55vh] max-h-[85vh] flex flex-col rounded-t-xl safe-bottom px-4 pt-2 pb-0">
+              <SheetHeader className="text-left px-2 pb-0 shrink-0">
                 <SheetTitle>More</SheetTitle>
                 <SheetDescription className="sr-only">Access additional views and settings.</SheetDescription>
               </SheetHeader>
-              <div className="grid grid-cols-4 gap-4 py-6">
-                {mobileMoreItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeView === item.id;
-                  const showBadge = "showBadge" in item && item.showBadge && pendingAggregatorOrders > 0;
-                  
-                  return (
-                    <SheetTrigger asChild key={item.id}>
-                      <button
-                        onClick={() => setActiveView(item.id as typeof activeView)}
-                        className={cn(
-                          "relative flex flex-col items-center justify-center gap-2 rounded-xl p-3 transition-all active:scale-95 touch-target",
-                          isActive
-                            ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                            : "bg-muted/50 text-muted-foreground hover:bg-primary/10 active:bg-primary/20 hover:text-primary active:bg-primary/20"
-                        )}
-                      >
-                        <Icon className="h-6 w-6" />
-                        <span className="text-[11px] font-medium text-center">{item.label}</span>
-                        {showBadge && (
-                          <span className="absolute -top-1 -right-1 flex h-5 min-w-[24px] px-1.5 items-center justify-center rounded-full bg-destructive text-[11px] sm:text-xs font-bold text-destructive-foreground shadow-sm">
-                            {pendingAggregatorOrders}
-                          </span>
-                        )}
-                      </button>
-                    </SheetTrigger>
-                  );
-                })}
+              
+              <div className="flex-1 overflow-y-auto -mx-2 px-2 py-4">
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-4 py-2">
+                  {mobileMoreItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeView === item.id;
+                    const showBadge = "showBadge" in item && item.showBadge && pendingAggregatorOrders > 0;
+                    
+                    return (
+                      <SheetTrigger asChild key={item.id}>
+                        <button
+                          onClick={() => setActiveView(item.id as typeof activeView)}
+                          className={cn(
+                            "relative flex flex-col items-center justify-center gap-2 rounded-xl p-3 transition-all active:scale-95 touch-target",
+                            isActive
+                              ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                              : "bg-muted/50 text-muted-foreground hover:bg-primary/10 active:bg-primary/20 hover:text-primary active:bg-primary/20"
+                          )}
+                        >
+                          <Icon className="h-6 w-6" />
+                          <span className="text-[11px] font-medium text-center">{item.label}</span>
+                          {showBadge && (
+                            <span className="absolute -top-1 -right-1 flex h-5 min-w-[24px] px-1.5 items-center justify-center rounded-full bg-destructive text-[11px] sm:text-xs font-bold text-destructive-foreground shadow-sm">
+                              {pendingAggregatorOrders}
+                            </span>
+                          )}
+                        </button>
+                      </SheetTrigger>
+                    );
+                  })}
+                </div>
               </div>
               
-              <div className="mt-auto border-t pt-4 flex items-center justify-between">
+              <div className="mt-auto shrink-0 border-t pt-6 pb-12 sm:pb-14 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
                     {currentUser?.name.split(" ").map((n) => n[0]).join("").slice(0, 2) || "??"}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{currentUser?.name}</span>
-                    <span className="text-[11px] sm:text-xs text-muted-foreground">{currentUser?.role || "Guest"}</span>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="text-sm font-medium truncate">{currentUser?.name}</span>
+                    <span className="text-[11px] sm:text-xs text-muted-foreground truncate">{currentUser?.role || "Guest"}</span>
                   </div>
                 </div>
                 
