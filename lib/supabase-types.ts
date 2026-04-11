@@ -156,6 +156,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           customer_name: string | null
+          customer_phone: string | null
           discount_amount: number | null
           discount_type: string | null
           discount_value: number | null
@@ -180,6 +181,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           customer_name?: string | null
+          customer_phone?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null
@@ -204,6 +206,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           customer_name?: string | null
+          customer_phone?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           discount_value?: number | null

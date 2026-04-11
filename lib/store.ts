@@ -6,7 +6,7 @@ import { getDefaultView } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 9;
+const STORE_VERSION = 10;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -54,7 +54,7 @@ interface POSState {
   deleteStaffMember: (id: string) => void;
 
   // Navigation
-  activeView: "dashboard" | "orders" | "tables" | "kitchen" | "reports" | "settings" | "aggregator" | "billing" | "history";
+  activeView: "dashboard" | "orders" | "tables" | "kitchen" | "reports" | "settings" | "billing" | "history";
   setActiveView: (view: POSState["activeView"]) => void;
 
   // Settings
@@ -66,6 +66,7 @@ interface POSState {
   orderType: OrderType;
   selectedTable: string | null;
   customerName: string;
+  customerPhone: string;
   orderNotes: string;
   editingOrderId: string | null;
   editMode: "none" | "pre-payment" | "supplementary";
@@ -80,6 +81,7 @@ interface POSState {
   setOrderType: (type: OrderType) => void;
   setSelectedTable: (tableId: string | null) => void;
   setCustomerName: (name: string) => void;
+  setCustomerPhone: (phone: string) => void;
   setOrderNotes: (notes: string) => void;
   startEditOrder: (orderId: string) => void;
   saveEditOrder: () => void;
@@ -304,6 +306,7 @@ export const usePOSStore = create<POSState>()(
       orderType: "dine-in",
       selectedTable: null,
       customerName: "",
+      customerPhone: "",
       orderNotes: "",
       editingOrderId: null,
       editMode: "none",
@@ -400,7 +403,7 @@ export const usePOSStore = create<POSState>()(
         }));
       },
 
-      clearCart: () => set({ cart: [], selectedTable: null, customerName: "", orderNotes: "", editingOrderId: null, editMode: "none", lockedItemIds: [] }),
+      clearCart: () => set({ cart: [], selectedTable: null, customerName: "", customerPhone: "", orderNotes: "", editingOrderId: null, editMode: "none", lockedItemIds: [] }),
 
       startEditOrder: (orderId) => {
         const order = get().orders.find((o) => o.id === orderId);
@@ -433,6 +436,7 @@ export const usePOSStore = create<POSState>()(
           orderType: order.type,
           selectedTable: order.tableId || null,
           customerName: order.customerName || "",
+          customerPhone: order.customerPhone || "",
           orderNotes: order.orderNotes || "",
           activeView: "orders",
           editMode,
@@ -441,7 +445,7 @@ export const usePOSStore = create<POSState>()(
       },
 
       saveEditOrder: () => {
-        const { editingOrderId, cart, orderType, selectedTable, customerName, orderNotes, editMode, lockedItemIds } = get();
+        const { editingOrderId, cart, orderType, selectedTable, customerName, customerPhone, orderNotes, editMode, lockedItemIds } = get();
         if (!editingOrderId || cart.length === 0) return;
 
         const oldOrder = get().orders.find((o) => o.id === editingOrderId);
@@ -487,6 +491,7 @@ export const usePOSStore = create<POSState>()(
             editingOrderId: null,
             selectedTable: null,
             customerName: "",
+            customerPhone: "",
             orderNotes: "",
             editMode: "none",
             lockedItemIds: [],
@@ -532,6 +537,7 @@ export const usePOSStore = create<POSState>()(
                   type: orderType,
                   tableId: newTableId,
                   customerName: customerName || undefined,
+                  customerPhone: customerPhone || undefined,
                   orderNotes: orderNotes || undefined,
                 }
               : order
@@ -540,6 +546,7 @@ export const usePOSStore = create<POSState>()(
           editingOrderId: null,
           selectedTable: null,
           customerName: "",
+          customerPhone: "",
           orderNotes: "",
           editMode: "none",
           lockedItemIds: [],
@@ -570,6 +577,7 @@ export const usePOSStore = create<POSState>()(
           cart: [],
           selectedTable: null,
           customerName: "",
+          customerPhone: "",
           orderNotes: "",
           editMode: "none",
           lockedItemIds: [],
@@ -579,6 +587,7 @@ export const usePOSStore = create<POSState>()(
       setOrderType: (type) => set({ orderType: type }),
       setSelectedTable: (tableId) => set({ selectedTable: tableId }),
       setCustomerName: (name) => set({ customerName: name }),
+      setCustomerPhone: (phone) => set({ customerPhone: phone }),
       setOrderNotes: (notes) => set({ orderNotes: notes }),
 
       // Menu Items

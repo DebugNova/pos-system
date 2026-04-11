@@ -49,6 +49,7 @@ import {
   Pencil,
   Lock,
   ChevronDown,
+  Phone,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -57,7 +58,6 @@ const orderTypes = [
   { id: "dine-in", label: "Dine In", icon: UtensilsCrossed },
   { id: "takeaway", label: "Takeaway", icon: ShoppingBag },
   { id: "delivery", label: "Delivery", icon: Bike },
-  { id: "aggregator", label: "Online", icon: Store },
 ] as const;
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -78,7 +78,6 @@ export function NewOrder() {
   const [showModifierDialog, setShowModifierDialog] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
-  const [showCustomerNote, setShowCustomerNote] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<{ orderId: string, itemId: string, tempId: string, name: string } | null>(null);
 
   const {
@@ -86,9 +85,11 @@ export function NewOrder() {
     orderType,
     selectedTable,
     customerName,
+    customerPhone,
     orderNotes,
     editingOrderId,
     tables,
+    orders,
     menuItems,
     addToCart,
     removeFromCart,
@@ -99,6 +100,7 @@ export function NewOrder() {
     setOrderType,
     setSelectedTable,
     setCustomerName,
+    setCustomerPhone,
     setOrderNotes,
     addOrder,
     setPendingBillingOrderId,
@@ -126,9 +128,10 @@ export function NewOrder() {
 
   // When editing, include the table currently assigned to this order as available
   const editingOrder = isEditing ? usePOSStore.getState().orders.find((o) => o.id === editingOrderId) : null;
-  const availableTables = tables.filter((t) =>
-    t.status === "available" || (isEditing && editingOrder?.tableId === t.id)
-  );
+
+  // Count active orders per table (for displaying on table cards)
+  const activeOrdersByTable = (tableId: string) =>
+    orders.filter((o) => o.tableId === tableId && !['completed', 'cancelled'].includes(o.status));
 
 
   const handleAddItem = (item: MenuItem) => {
@@ -183,12 +186,25 @@ export function NewOrder() {
       });
       return;
     }
+    if (!customerName.trim()) {
+      toast.error("Customer name required", {
+        description: "Please enter the customer's name before proceeding.",
+      });
+      return;
+    }
+    if (!customerPhone.trim()) {
+      toast.error("Phone number required", {
+        description: "Please enter the customer's phone number before proceeding.",
+      });
+      return;
+    }
 
     const newId = addOrder({
       type: orderType,
       status: "awaiting-payment",
       tableId: orderType === "dine-in" ? selectedTable || undefined : undefined,
       customerName: customerName || undefined,
+      customerPhone: customerPhone || undefined,
       orderNotes: orderNotes || undefined,
       items: cart.map((item, index) => ({
         id: `oi-${Date.now()}-${index}`,
@@ -248,7 +264,7 @@ export function NewOrder() {
       // Quick Table Selection (1-9)
       if (e.key >= '1' && e.key <= '9') {
         const tableNum = parseInt(e.key);
-        const table = availableTables.find(t => t.number === tableNum);
+        const table = tables.find(t => t.number === tableNum);
         if (table) setSelectedTable(table.id);
       }
 
@@ -295,31 +311,38 @@ export function NewOrder() {
             <span className="flex items-center text-xs font-semibold text-foreground lg:text-sm">
               Select Table
             </span>
-            {availableTables.length > 0 ? (
+            {tables.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 md:gap-2 lg:gap-3">
-                {availableTables.map((table) => {
+                {tables.map((table) => {
                   const isSelected = selectedTable === table.id;
-                  const isOccupied = table.status === "occupied" || table.status === "waiting-payment";
+                  const tableOrders = activeOrdersByTable(table.id);
+                  const hasActiveOrders = tableOrders.length > 0;
+                  const statusColor = table.status === "available"
+                    ? "bg-success" 
+                    : table.status === "waiting-payment" 
+                      ? "bg-destructive" 
+                      : "bg-warning";
                   return (
                     <button
                       key={table.id}
-                      onClick={() => setSelectedTable(table.id)}
+                      onClick={() => setSelectedTable(isSelected ? null : table.id)}
                       className={cn(
-                        "flex flex-col items-center justify-center rounded-xl border p-1.5 md:p-2 transition-all min-w-[56px] md:min-w-[64px] lg:min-w-[72px]",
+                        "flex flex-col items-center justify-center rounded-xl border p-1.5 md:p-2 transition-all min-w-[56px] md:min-w-[64px] lg:min-w-[72px] relative",
                         isSelected
                           ? "border-primary bg-primary text-primary-foreground shadow-md"
-                          : isOccupied
-                            ? "border-warning/50 bg-warning/10 text-foreground"
+                          : hasActiveOrders
+                            ? "border-warning/50 bg-warning/10 text-foreground hover:border-primary/50"
                             : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
                       )}
                     >
                       <span className="text-xs font-bold md:text-sm lg:text-base">T{table.number}</span>
-                      <span className="text-[10px] sm:text-xs opacity-80">{table.capacity}p</span>
+                      {hasActiveOrders ? (
+                        <span className="text-[10px] sm:text-xs opacity-80">{tableOrders.length} order{tableOrders.length > 1 ? 's' : ''}</span>
+                      ) : (
+                        <span className="text-[10px] sm:text-xs opacity-80">Open</span>
+                      )}
                       <div className="mt-0.5 md:mt-1 flex gap-0.5">
-                        {Array.from({ length: Math.min(table.capacity, 4) }).map((_, i) => (
-                          <div key={i} className={cn("h-1 w-1 md:h-1.5 md:w-1.5 rounded-full", isSelected ? "bg-primary-foreground" : isOccupied ? "bg-warning" : "bg-success")} />
-                        ))}
-                        {table.capacity > 4 && <div className="h-1 w-1 md:h-1.5 md:w-1.5 rounded-full bg-transparent text-[10px] leading-[8px] tracking-tighter opacity-70">+</div>}
+                        <div className={cn("h-1.5 w-1.5 md:h-2 md:w-2 rounded-full", isSelected ? "bg-primary-foreground" : statusColor)} />
                       </div>
                     </button>
                   )
@@ -327,47 +350,51 @@ export function NewOrder() {
               </div>
             ) : (
               <span className="text-xs text-muted-foreground lg:text-sm">
-                No tables available
+                No tables configured
               </span>
             )}
           </div>
         )}
 
-        {/* Customer & Note Chip */}
+        {/* Customer Info (Always visible, mandatory) */}
         <div className="border-b border-border p-2 md:p-3 lg:p-4">
-          {!showCustomerNote && (!customerName && !orderNotes) ? (
-            <button
-              onClick={() => setShowCustomerNote(true)}
-              className="inline-flex items-center text-xs md:text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              <Plus className="mr-1 h-3.5 w-3.5 md:h-4 md:w-4" />
-              Add customer / note
-            </button>
-          ) : (
-            <div className="flex flex-col gap-2 lg:flex-row lg:gap-4">
+          <div className="flex flex-col gap-2 lg:gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 lg:gap-4">
               <div className="flex flex-1 items-center gap-2">
                 <User className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
-                  placeholder="Customer name (optional)"
+                  placeholder="Customer name *"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="flex-1 h-9 bg-card border-border border text-sm lg:h-10"
+                  className={cn("flex-1 h-9 bg-card border text-sm lg:h-10", !customerName.trim() && cart.length > 0 ? "border-destructive/50 focus-visible:ring-destructive" : "border-border")}
                 />
               </div>
               <div className="flex flex-1 items-center gap-2">
-                <Edit3 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
-                  placeholder="Order note (optional)"
-                  value={orderNotes}
-                  onChange={(e) => setOrderNotes(e.target.value)}
-                  className="flex-1 h-9 bg-card border-border border text-sm lg:h-10"
+                  type="tel"
+                  placeholder="Phone number *"
+                  value={customerPhone}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^\d*$/.test(value)) {
+                      setCustomerPhone(value);
+                    }
+                  }}
+                  className={cn("flex-1 h-9 bg-card border text-sm lg:h-10", !customerPhone.trim() && cart.length > 0 ? "border-destructive/50 focus-visible:ring-destructive" : "border-border")}
                 />
               </div>
-              <Button variant="ghost" size="icon" onClick={() => { setCustomerName(""); setOrderNotes(""); setShowCustomerNote(false); }} className="h-9 w-9 shrink-0 lg:h-10 lg:w-10">
-                <X className="h-4 w-4" />
-              </Button>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <Edit3 className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                placeholder="Order note (optional)"
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                className="flex-1 h-9 bg-card border-border border text-sm lg:h-10"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Category Tabs */}
@@ -682,6 +709,12 @@ export function NewOrder() {
             {customerName && (
               <Badge variant="outline" className="px-2 py-0.5 text-[11px] sm:text-xs font-medium border-border/80 text-foreground">
                 {customerName}
+              </Badge>
+            )}
+            {customerPhone && (
+              <Badge variant="outline" className="px-2 py-0.5 text-[11px] sm:text-xs font-medium border-border/80 text-muted-foreground">
+                <Phone className="h-3 w-3 mr-1" />
+                {customerPhone}
               </Badge>
             )}
             {orderNotes && (

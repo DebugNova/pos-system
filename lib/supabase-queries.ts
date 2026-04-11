@@ -405,6 +405,7 @@ function mapDbOrderToLocal(db: any): Order {
     total: Number(db.total),
     createdAt: new Date(db.created_at),
     customerName: db.customer_name,
+    customerPhone: db.customer_phone,
     orderNotes: db.order_notes,
     platform: db.platform,
     payment: db.payment || undefined,
@@ -446,6 +447,7 @@ function mapLocalOrderToDb(order: any) {
   if (order.tableId !== undefined) mapped.table_id = order.tableId;
   if (order.total !== undefined) mapped.total = order.total;
   if (order.customerName !== undefined) mapped.customer_name = order.customerName;
+  if (order.customerPhone !== undefined) mapped.customer_phone = order.customerPhone;
   if (order.orderNotes !== undefined) mapped.order_notes = order.orderNotes;
   if (order.platform !== undefined) mapped.platform = order.platform;
   if (order.subtotal !== undefined) mapped.subtotal = order.subtotal;

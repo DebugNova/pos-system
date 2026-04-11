@@ -29,17 +29,15 @@ const orderTypeIcons = {
   "dine-in": UtensilsCrossed,
   takeaway: ShoppingBag,
   delivery: Bike,
-  aggregator: Store,
 };
 
 const orderTypeLabels: Record<string, string> = {
   "dine-in": "Dine In",
   takeaway: "Takeaway",
   delivery: "Delivery",
-  aggregator: "Online",
 };
 
-type FilterType = "all" | "dine-in" | "takeaway" | "delivery" | "aggregator";
+type FilterType = "all" | "dine-in" | "takeaway" | "delivery";
 type SortType = "oldest" | "newest";
 
 /** Returns elapsed minutes since order creation */
@@ -207,7 +205,6 @@ export function KitchenDisplay() {
     { id: "dine-in", label: "Dine In", icon: UtensilsCrossed },
     { id: "takeaway", label: "Takeaway", icon: ShoppingBag },
     { id: "delivery", label: "Delivery", icon: Bike },
-    { id: "aggregator", label: "Online", icon: Store },
   ];
 
   return (
@@ -496,24 +493,6 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
             <Badge variant="secondary" className="text-[11px] sm:text-xs lg:text-xs">
               {orderTypeLabels[order.type] || order.type}
             </Badge>
-            {/* Aggregator platform badge — prominent */}
-            {order.platform && (
-              <Badge
-                className="text-[11px] sm:text-xs font-bold lg:text-xs"
-                style={{
-                  backgroundColor:
-                    order.platform === "swiggy"
-                      ? "rgba(252,128,25,0.15)"
-                      : "rgba(226,55,68,0.15)",
-                  borderColor:
-                    order.platform === "swiggy" ? "#fc8019" : "#e23744",
-                  color:
-                    order.platform === "swiggy" ? "#fc8019" : "#e23744",
-                }}
-              >
-                {order.platform === "swiggy" ? "🟠 Swiggy" : "🔴 Zomato"}
-              </Badge>
-            )}
             {/* Pay Later indicator */}
             {order.payLater && (
               <Badge
@@ -542,6 +521,11 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
           {order.customerName && (
             <Badge variant="outline" className="text-[11px] sm:text-xs lg:text-xs">
               {order.customerName}
+            </Badge>
+          )}
+          {order.customerPhone && (
+            <Badge variant="outline" className="text-[11px] sm:text-xs lg:text-xs border-dashed">
+              📞 {order.customerPhone}
             </Badge>
           )}
           {order.createdBy && (

@@ -294,6 +294,7 @@ export function Billing() {
               </div>
               <p className="mt-1 text-xs text-muted-foreground" suppressHydrationWarning>
                 {formatDistanceToNow(o.createdAt, { addSuffix: true })}
+                {o.customerName && ` • ${o.customerName}`}
               </p>
             </button>
           ))}
@@ -369,6 +370,13 @@ export function Billing() {
                       <Badge variant="outline" className="opacity-70 font-normal">By {order.createdBy}</Badge>
                     )}
                   </div>
+                  {/* Customer Info */}
+                  {(order.customerName || order.customerPhone) && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2 text-sm text-muted-foreground">
+                      {order.customerName && <span className="font-medium text-foreground">{order.customerName}</span>}
+                      {order.customerPhone && <span>📞 {order.customerPhone}</span>}
+                    </div>
+                  )}
                   {/* Action Buttons Row */}
                   <div className="flex items-center gap-2 mt-3">
                     <Button

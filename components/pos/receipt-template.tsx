@@ -34,6 +34,12 @@ export function ReceiptTemplate({ order, settings }: ReceiptTemplateProps) {
           <span>Type: {order.type}</span>
           {order.tableId && <span>Table {order.tableId.replace("t", "")}</span>}
         </div>
+        {(order.customerName || order.customerPhone) && (
+          <div className="mt-1 text-xs">
+            {order.customerName && <div>Customer: {order.customerName}</div>}
+            {order.customerPhone && <div>Phone: {order.customerPhone}</div>}
+          </div>
+        )}
       </div>
 
       <table className="w-full mb-4">

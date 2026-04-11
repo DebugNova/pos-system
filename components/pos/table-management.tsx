@@ -232,47 +232,72 @@ export function TableManagement() {
                   <span className="leading-none flex items-center translate-y-[1px]">{table.capacity} seats</span>
                 </div>
 
-                {order && (
-                  <div className="mt-3 space-y-2 rounded-lg bg-background/50 p-2.5 sm:p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground truncate max-w-[80px] sm:max-w-none">
-                        {order.id.toUpperCase()}
-                      </span>
-                      <span className="text-sm font-semibold text-foreground">
-                        {order.total.toLocaleString("en-IN", {
-                          style: "currency",
-                          currency: "INR",
-                          minimumFractionDigits: 0,
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground" suppressHydrationWarning>
-                      <Clock className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">
-                        {formatDistanceToNow(order.createdAt, { addSuffix: true })}
-                      </span>
-                    </div>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                      {order.items.length} items &bull; {order.status}
-                    </p>
+                {/* Show ALL active orders for this table */}
+                {(() => {
+                  const tableOrders = orders.filter(o => o.tableId === table.id && !['completed', 'cancelled'].includes(o.status));
+                  if (tableOrders.length === 0 && table.status === "available") {
+                    return (
+                      <div className="w-full mt-3 flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-1.5 h-9 sm:h-10 border-success/50 text-success hover:bg-success/10 active:bg-success/20 flex items-center justify-center font-medium"
+                        >
+                          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                          New Order
+                        </Button>
+                      </div>
+                    );
+                  }
+                  return tableOrders.map((tableOrder) => (
+                    <div key={tableOrder.id} className="mt-2 space-y-1.5 rounded-lg bg-background/50 p-2 sm:p-2.5 border border-border/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground truncate max-w-[80px] sm:max-w-none">
+                          {tableOrder.id.toUpperCase()}
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {tableOrder.total.toLocaleString("en-IN", {
+                            style: "currency",
+                            currency: "INR",
+                            minimumFractionDigits: 0,
+                          })}
+                        </span>
+                      </div>
+                      {(tableOrder.customerName || tableOrder.customerPhone) && (
+                        <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+                          {tableOrder.customerName && <span className="font-medium text-foreground">{tableOrder.customerName}</span>}
+                          {tableOrder.customerPhone && <span>• 📞 {tableOrder.customerPhone}</span>}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground" suppressHydrationWarning>
+                        <Clock className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">
+                          {formatDistanceToNow(tableOrder.createdAt, { addSuffix: true })}
+                        </span>
+                      </div>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                        {tableOrder.items.length} items &bull; {tableOrder.status}
+                      </p>
 
-                    {table.status === "waiting-payment" && (
-                      <Button
-                        size="sm"
-                        className="mt-2 w-full gap-1.5 h-8 sm:h-9 text-xs sm:text-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProcessPayment(table.id);
-                        }}
-                      >
-                        <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
-                        <span className="truncate">Process Payment</span>
-                      </Button>
-                    )}
-                  </div>
-                )}
+                      {tableOrder.status === "awaiting-payment" && (
+                        <Button
+                          size="sm"
+                          className="mt-1 w-full gap-1.5 h-7 sm:h-8 text-xs sm:text-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPendingBillingOrderId(tableOrder.id);
+                            setActiveView("billing");
+                          }}
+                        >
+                          <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
+                          <span className="truncate">Process Payment</span>
+                        </Button>
+                      )}
+                    </div>
+                  ));
+                })()}
 
-                {table.status === "available" && (
+                {table.status !== "available" && !orders.some(o => o.tableId === table.id && !['completed', 'cancelled'].includes(o.status)) && (
                   <div className="w-full mt-3 flex justify-center">
                     <Button
                       variant="outline"

@@ -115,6 +115,7 @@ export function DataManager({ onBack }: DataManagerProps) {
   const filteredOrders = orders.filter((o) =>
     o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     o.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    o.customerPhone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     o.status.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -189,6 +190,7 @@ export function DataManager({ onBack }: DataManagerProps) {
     updateOrder(editingOrder.id, {
       status: editingOrder.status,
       customerName: editingOrder.customerName,
+      customerPhone: editingOrder.customerPhone,
     });
     setEditingOrder(null);
   };
@@ -198,6 +200,7 @@ export function DataManager({ onBack }: DataManagerProps) {
     updateOrder(editingOrder.id, {
       status: editingOrder.status,
       customerName: editingOrder.customerName,
+      customerPhone: editingOrder.customerPhone,
     });
     setShowCancelOrderConfirm(false);
     setEditingOrder(null);
@@ -419,7 +422,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                             {order.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs">{order.customerName || "-"}</TableCell>
+                        <TableCell className="text-xs">{order.customerName || "-"}{order.customerPhone ? ` (${order.customerPhone})` : ""}</TableCell>
                         <TableCell className="text-xs">{order.items.length}</TableCell>
                         <TableCell className="text-xs font-medium">
                           {order.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
@@ -665,6 +668,19 @@ export function DataManager({ onBack }: DataManagerProps) {
                 <Input
                   value={editingOrder.customerName || ""}
                   onChange={(e) => setEditingOrder({ ...editingOrder, customerName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Customer Phone</Label>
+                <Input
+                  type="tel"
+                  value={editingOrder.customerPhone || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^\d*$/.test(value)) {
+                      setEditingOrder({ ...editingOrder, customerPhone: value });
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">

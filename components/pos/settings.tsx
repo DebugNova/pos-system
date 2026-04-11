@@ -66,9 +66,6 @@ export function Settings() {
           <TabsTrigger value="payments" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
             <CreditCard className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
-            <Wifi className="h-5 w-5" />
-          </TabsTrigger>
           {permissions.canManageStaff && (
             <TabsTrigger value="audit" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
               <ShieldAlert className="h-5 w-5" />
@@ -559,60 +556,6 @@ export function Settings() {
                 </div>
                 <Switch defaultChecked />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Integrations */}
-        <TabsContent value="integrations" className="space-y-4">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base">Aggregator Integrations</CardTitle>
-              <CardDescription>
-                Connect with food delivery platforms
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fc8019]">
-                    <span className="text-lg font-bold text-white">S</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Swiggy</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receive orders from Swiggy
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="gap-1.5 border-success/50 text-success">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Connected
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e23744]">
-                    <span className="text-lg font-bold text-white">Z</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Zomato</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receive orders from Zomato
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="gap-1.5 border-muted-foreground/50 text-muted-foreground">
-                  <XCircle className="h-3 w-3" />
-                  Not Connected
-                </Badge>
-              </div>
-
-              <Button variant="outline" className="w-full gap-2">
-                <Plus className="h-4 w-4" />
-                Add Integration
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>

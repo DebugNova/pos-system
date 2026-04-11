@@ -8,7 +8,6 @@ import { TableManagement } from "@/components/pos/table-management";
 import { KitchenDisplay } from "@/components/pos/kitchen-display";
 import { ReportsContent } from "@/components/pos/reports";
 import { Settings } from "@/components/pos/settings";
-import { AggregatorInbox } from "@/components/pos/aggregator-inbox";
 import { Billing } from "@/components/pos/billing";
 import { OrderHistory } from "@/components/pos/order-history";
 import { Login } from "@/components/pos/login";
@@ -99,7 +98,6 @@ export default function POSApp() {
             {activeView === "tables" && <TableManagement />}
             {activeView === "kitchen" && <KitchenDisplay />}
             {activeView === "reports" && <ReportsContent />}
-            {activeView === "aggregator" && <AggregatorInbox />}
             {activeView === "billing" && <Billing />}
             {activeView === "history" && <OrderHistory />}
             {activeView === "settings" && <Settings />}

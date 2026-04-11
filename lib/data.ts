@@ -81,7 +81,7 @@ export const tables: Table[] = [
   { id: "t5", number: 5, capacity: 6, status: "available" },
 ];
 
-export type OrderType = "dine-in" | "takeaway" | "delivery" | "aggregator";
+export type OrderType = "dine-in" | "takeaway" | "delivery";
 export type OrderStatus = "awaiting-payment" | "new" | "preparing" | "ready" | "served-unpaid" | "completed" | "cancelled";
 
 export interface OrderItem {
@@ -127,8 +127,8 @@ export interface Order {
   total: number;
   createdAt: Date;
   customerName?: string;
+  customerPhone?: string;
   orderNotes?: string;
-  platform?: "swiggy" | "zomato";
   payment?: PaymentRecord;
   subtotal?: number;
   discount?: {

@@ -10,7 +10,6 @@ export type ViewId =
   | "kitchen"
   | "reports"
   | "settings"
-  | "aggregator"
   | "billing"
   | "history";
 
@@ -19,7 +18,6 @@ export type SettingsTab =
   | "printers"
   | "staff"
   | "payments"
-  | "integrations"
   | "audit";
 
 // Which sidebar views each role can access
@@ -31,7 +29,6 @@ export const roleViewAccess: Record<UserRole, ViewId[]> = {
     "kitchen",
     "reports",
     "settings",
-    "aggregator",
     "billing",
     "history",
   ],
@@ -54,7 +51,7 @@ export const roleViewAccess: Record<UserRole, ViewId[]> = {
 
 // Which settings tabs each role can see (only Admin reaches settings, but just in case)
 export const roleSettingsAccess: Record<UserRole, SettingsTab[]> = {
-  Admin: ["general", "printers", "staff", "payments", "integrations", "audit"],
+  Admin: ["general", "printers", "staff", "payments", "audit"],
   Cashier: [], // Cashier cannot access settings at all
   Server: [],  // Server cannot access settings at all
   Kitchen: [], // Kitchen cannot access settings at all
@@ -66,7 +63,6 @@ export interface RolePermissions {
   canApplyDiscounts: boolean;
   canEditMenu: boolean;
   canEditTax: boolean;
-  canEditIntegrations: boolean;
   canManageStaff: boolean;
   canDeleteOrders: boolean;
   canEditOrders: boolean;
@@ -81,7 +77,6 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canApplyDiscounts: true,
     canEditMenu: true,
     canEditTax: true,
-    canEditIntegrations: true,
     canManageStaff: true,
     canDeleteOrders: true,
     canEditOrders: true,

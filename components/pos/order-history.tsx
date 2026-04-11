@@ -65,14 +65,12 @@ const typeFilters = [
   { id: "dine-in", label: "Dine-in" },
   { id: "takeaway", label: "Takeaway" },
   { id: "delivery", label: "Delivery" },
-  { id: "aggregator", label: "Online" },
 ] as const;
 
 const orderTypeIcons = {
   "dine-in": UtensilsCrossed,
   takeaway: ShoppingBag,
   delivery: Bike,
-  aggregator: Store,
 };
 
 export function OrderHistory() {
@@ -91,7 +89,8 @@ export function OrderHistory() {
     
     const matchesSearch =
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerName?.toLowerCase().includes(searchQuery.toLowerCase());
+      order.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customerPhone?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     const matchesType = typeFilter === "all" || order.type === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
@@ -246,19 +245,6 @@ export function OrderHistory() {
                               Table {o.tableId.replace("t", "")}
                             </Badge>
                           )}
-                          {o.platform && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs"
-                              style={{
-                                borderColor:
-                                  o.platform === "swiggy" ? "#fc8019" : "#e23744",
-                                color: o.platform === "swiggy" ? "#fc8019" : "#e23744",
-                              }}
-                            >
-                              {o.platform}
-                            </Badge>
-                          )}
                         </div>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           <span>{o.items.length} items</span>
@@ -270,6 +256,12 @@ export function OrderHistory() {
                             <>
                               <span>&bull;</span>
                               <span>{o.customerName}</span>
+                            </>
+                          )}
+                          {o.customerPhone && (
+                            <>
+                              <span>&bull;</span>
+                              <span>📞 {o.customerPhone}</span>
                             </>
                           )}
                           {o.createdBy && (
@@ -334,17 +326,6 @@ export function OrderHistory() {
                 {order.tableId && (
                   <Badge variant="secondary">Table {order.tableId.replace("t", "")}</Badge>
                 )}
-                {order.platform && (
-                  <Badge
-                    variant="outline"
-                    style={{
-                      borderColor: order.platform === "swiggy" ? "#fc8019" : "#e23744",
-                      color: order.platform === "swiggy" ? "#fc8019" : "#e23744",
-                    }}
-                  >
-                    {order.platform}
-                  </Badge>
-                )}
               </div>
 
               {/* Customer and Staff Info */}
@@ -354,6 +335,9 @@ export function OrderHistory() {
                     <div>
                       <p className="text-sm text-muted-foreground">Customer</p>
                       <p className="font-medium text-foreground">{order.customerName}</p>
+                      {order.customerPhone && (
+                        <p className="text-sm text-muted-foreground">📞 {order.customerPhone}</p>
+                      )}
                     </div>
                   )}
                   {order.createdBy && (

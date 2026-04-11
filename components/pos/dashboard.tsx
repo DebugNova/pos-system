@@ -45,13 +45,6 @@ export function Dashboard() {
   const kitchenQueue = orders.filter((o) => o.status === "preparing").length;
   const awaitingPaymentOrders = orders.filter((o) => o.status === "awaiting-payment").length;
 
-  const swiggyOrders = orders.filter(
-    (o) => o.platform === "swiggy" && o.status !== "completed"
-  ).length;
-  const zomatoOrders = orders.filter(
-    (o) => o.platform === "zomato" && o.status !== "completed"
-  ).length;
-
   const recentOrders = orders.slice(0, 5);
 
   if (showReports) {
@@ -200,37 +193,10 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Aggregator + Alerts Row */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Aggregator Orders */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-base">Aggregator Orders</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 rounded-lg bg-[#fc8019]/10 p-4">
-              <div className="flex shrink-0 h-10 w-10 items-center justify-center rounded-lg bg-[#fc8019]">
-                <span className="text-sm font-bold text-white">S</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold text-foreground truncate">{swiggyOrders}</p>
-                <p className="text-xs text-muted-foreground truncate">Swiggy</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg bg-[#e23744]/10 p-4">
-              <div className="flex shrink-0 h-10 w-10 items-center justify-center rounded-lg bg-[#e23744]">
-                <span className="text-sm font-bold text-white">Z</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold text-foreground truncate">{zomatoOrders}</p>
-                <p className="text-xs text-muted-foreground truncate">Zomato</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* Alerts Row */}
+      <div className="grid grid-cols-1 gap-4">
         {/* Alerts */}
-        <Card className="bg-card border-border lg:col-span-2">
+        <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-base">Alerts</CardTitle>
           </CardHeader>

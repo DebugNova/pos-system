@@ -33,7 +33,6 @@ const navItems = [
   { id: "orders" as ViewId, label: "New Order", icon: ShoppingCart },
   { id: "tables" as ViewId, label: "Tables", icon: Grid3X3 },
   { id: "kitchen" as ViewId, label: "Kitchen", icon: ChefHat },
-  { id: "aggregator" as ViewId, label: "Online", icon: Store, showBadge: true },
   { id: "billing" as ViewId, label: "Billing", icon: CreditCard },
   { id: "history" as ViewId, label: "History", icon: ClipboardList },
   { id: "settings" as ViewId, label: "Settings", icon: Settings },
@@ -54,10 +53,6 @@ export function POSSidebar() {
   const visibleNavItems = navItems.filter((item) =>
     canAccessView(userRole, item.id)
   );
-
-  const pendingAggregatorOrders = orders.filter(
-    (o) => o.type === "aggregator" && o.status === "new"
-  ).length;
 
   const handleLogoutClick = () => {
     if (currentShift) {
@@ -94,7 +89,6 @@ export function POSSidebar() {
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
-            const showBadge = "showBadge" in item && item.showBadge && pendingAggregatorOrders > 0;
 
             return (
               <div key={item.id} className="relative w-full px-1.5 lg:px-2 snap-start">
@@ -113,11 +107,6 @@ export function POSSidebar() {
                 >
                   <Icon className={cn("h-5 w-5 lg:h-6 lg:w-6", isActive ? "text-primary-foreground" : "")} />
                   <span className="hidden lg:block mt-1.5 text-xs font-medium leading-tight">{item.label}</span>
-                  {showBadge && (
-                    <span className="absolute -top-1 -right-1 flex h-5 min-w-[24px] px-1.5 items-center justify-center rounded-full bg-destructive text-[11px] sm:text-xs font-bold text-destructive-foreground shadow-sm lg:h-6 lg:min-w-[24px] lg:px-2 lg:text-xs">
-                      {pendingAggregatorOrders}
-                    </span>
-                  )}
                 </button>
               </div>
             );
@@ -169,7 +158,6 @@ export function POSSidebar() {
         {mobileBottomItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
-          const showBadge = "showBadge" in item && item.showBadge && pendingAggregatorOrders > 0;
 
           return (
             <button
@@ -184,11 +172,6 @@ export function POSSidebar() {
             >
               <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "")} />
               <span className="mt-0.5 text-[11px] sm:text-xs font-medium leading-tight">{item.label}</span>
-              {showBadge && (
-                <span className="absolute top-1 right-[calc(50%-16px)] flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground shadow-sm">
-                  {pendingAggregatorOrders}
-                </span>
-              )}
             </button>
           );
         })}
@@ -212,7 +195,6 @@ export function POSSidebar() {
                   {mobileMoreItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeView === item.id;
-                    const showBadge = "showBadge" in item && item.showBadge && pendingAggregatorOrders > 0;
                     
                     return (
                       <SheetTrigger asChild key={item.id}>
@@ -227,11 +209,6 @@ export function POSSidebar() {
                         >
                           <Icon className="h-6 w-6" />
                           <span className="text-[11px] font-medium text-center">{item.label}</span>
-                          {showBadge && (
-                            <span className="absolute -top-1 -right-1 flex h-5 min-w-[24px] px-1.5 items-center justify-center rounded-full bg-destructive text-[11px] sm:text-xs font-bold text-destructive-foreground shadow-sm">
-                              {pendingAggregatorOrders}
-                            </span>
-                          )}
                         </button>
                       </SheetTrigger>
                     );
