@@ -514,6 +514,15 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
                 {order.platform === "swiggy" ? "🟠 Swiggy" : "🔴 Zomato"}
               </Badge>
             )}
+            {/* Pay Later indicator */}
+            {order.payLater && (
+              <Badge
+                variant="outline"
+                className="text-[11px] sm:text-xs font-bold lg:text-xs bg-chart-3/10 text-chart-3 border-chart-3/30"
+              >
+                Pay Later
+              </Badge>
+            )}
           </div>
         </div>
 

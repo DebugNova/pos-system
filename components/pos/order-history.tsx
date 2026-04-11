@@ -87,7 +87,7 @@ export function OrderHistory() {
   const [refundAmount, setRefundAmount] = useState("");
 
   const filteredOrders = orders.filter((order) => {
-    if (order.status === "awaiting-payment") return false;
+    if (order.status === "awaiting-payment" || order.status === "served-unpaid") return false;
     
     const matchesSearch =
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,6 +109,8 @@ export function OrderHistory() {
         return "bg-success/10 text-success border-success/30";
       case "completed":
         return "bg-success/10 text-success border-success/30";
+      case "served-unpaid":
+        return "bg-destructive/10 text-destructive border-destructive/30";
       case "cancelled":
         return "bg-destructive/10 text-destructive border-destructive/30";
       default:

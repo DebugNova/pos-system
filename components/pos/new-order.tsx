@@ -51,6 +51,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const orderTypes = [
   { id: "dine-in", label: "Dine In", icon: UtensilsCrossed },
@@ -176,7 +177,12 @@ export function NewOrder() {
 
   const handleProceedToPayment = () => {
     if (cart.length === 0) return;
-    if (orderType === "dine-in" && !selectedTable) return;
+    if (orderType === "dine-in" && !selectedTable) {
+      toast.error("Table not selected", {
+        description: "Please select a table for the dine-in order before proceeding to payment.",
+      });
+      return;
+    }
 
     const newId = addOrder({
       type: orderType,
@@ -853,6 +859,13 @@ export function NewOrder() {
               </div>
             </div>
 
+            {cart.length > 0 && orderType === "dine-in" && !selectedTable && (
+              <div className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-destructive/10 p-2 sm:p-2.5 text-xs sm:text-sm font-medium text-destructive border border-destructive/20 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                <UtensilsCrossed className="h-4 w-4 sm:h-5 sm:w-5" />
+                Select a table to proceed
+              </div>
+            )}
+
             {isEditing ? (
               <div className="flex gap-2">
                 <Button
@@ -869,10 +882,15 @@ export function NewOrder() {
                   className={cn("flex-1 h-14", editMode === "supplementary" ? "bg-warning hover:bg-warning/90 text-warning-foreground" : "bg-primary hover:bg-primary/90 text-primary-foreground")}
                   disabled={
                     cart.length === 0 ||
-                    (orderType === "dine-in" && !selectedTable) ||
                     (editMode === "supplementary" && !cart.some(c => !c.originalItemId || !lockedItemIds.includes(c.originalItemId)))
                   }
                   onClick={() => {
+                    if (orderType === "dine-in" && !selectedTable) {
+                      toast.error("Table not selected", {
+                        description: "Please select a table to update the order.",
+                      });
+                      return;
+                    }
                     saveEditOrder();
                     setActiveView("billing");
                   }}
@@ -889,10 +907,7 @@ export function NewOrder() {
                     "flex-1 h-14 bg-primary text-primary-foreground hover:bg-primary/90 transition-all",
                     cart.length > 0 && "shadow-[0_4px_14px_0_rgba(245,158,11,0.39)] animate-pulse-subtle"
                   )}
-                  disabled={
-                    cart.length === 0 ||
-                    (orderType === "dine-in" && !selectedTable)
-                  }
+                  disabled={cart.length === 0}
                   onClick={handleProceedToPayment}
                 >
                   <CreditCard className="mr-2 h-4 w-4" />

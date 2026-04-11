@@ -82,7 +82,7 @@ export const tables: Table[] = [
 ];
 
 export type OrderType = "dine-in" | "takeaway" | "delivery" | "aggregator";
-export type OrderStatus = "awaiting-payment" | "new" | "preparing" | "ready" | "completed" | "cancelled";
+export type OrderStatus = "awaiting-payment" | "new" | "preparing" | "ready" | "served-unpaid" | "completed" | "cancelled";
 
 export interface OrderItem {
   id: string;
@@ -148,6 +148,7 @@ export interface Order {
     refundedBy: string;
   };
   createdBy?: string;
+  payLater?: boolean;
 }
 
 export interface Shift {

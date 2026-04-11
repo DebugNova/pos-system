@@ -100,6 +100,8 @@ interface POSState {
   updateOrderStatus: (orderId: string, status: Order["status"]) => void;
   deleteOrder: (orderId: string) => void;
   confirmPaymentAndSendToKitchen: (orderId: string, payment: import("./data").PaymentRecord) => void;
+  sendToKitchenPayLater: (orderId: string) => void;
+  confirmPaymentForServedOrder: (orderId: string, payment: import("./data").PaymentRecord) => void;
   cancelAwaitingPaymentOrder: (orderId: string, reason?: string) => void;
   markOrderServed: (orderId: string) => void;
 
@@ -753,6 +755,111 @@ export const usePOSStore = create<POSState>()(
         });
       },
 
+      sendToKitchenPayLater: (orderId) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order || order.status !== "awaiting-payment") return;
+
+        const userName = get().currentUser?.name || "System";
+
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === orderId ? {
+              ...o,
+              status: "new" as const,
+              payLater: true,
+              subtotal: o.total,
+            } : o
+          ),
+        }));
+        get().enqueueMutation("order.update", {
+          id: orderId,
+          changes: { status: "new", payLater: true }
+        });
+
+        // Direct write-through for real-time KDS
+        if (get().supabaseEnabled) {
+          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+            (window as any).__posMarkOwnWrite(orderId);
+          }
+          import("./supabase-queries").then(({ updateOrderInDb }) => {
+            updateOrderInDb(orderId, {
+              status: "new",
+              payLater: true,
+              subtotal: order.total,
+            }).catch(err => {
+              console.error("[store] Direct write failed for sendToKitchenPayLater:", err);
+            });
+          });
+        }
+
+        if (order.type === "dine-in" && order.tableId) {
+          get().updateTableStatus(order.tableId, "occupied", orderId);
+        }
+
+        get().addAuditEntry({
+          action: "order_sent_to_kitchen",
+          userId: userName,
+          details: `Order ${orderId.toUpperCase()} sent to kitchen (Pay Later)`,
+          orderId,
+          metadata: { table: order.tableId, sentBy: userName, payLater: true }
+        });
+      },
+
+      confirmPaymentForServedOrder: (orderId, payment) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order || order.status !== "served-unpaid") return;
+
+        const userName = get().currentUser?.name || "System";
+        const paidAtISO = new Date().toISOString();
+
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === orderId ? {
+              ...o,
+              status: "completed" as const,
+              payment,
+              paidAt: new Date(),
+              paidBy: userName,
+              payLater: false,
+            } : o
+          ),
+        }));
+        get().enqueueMutation("order.update", {
+          id: orderId,
+          changes: { status: "completed", payment, paidAt: paidAtISO, paidBy: userName, payLater: false }
+        });
+
+        // Direct write-through
+        if (get().supabaseEnabled) {
+          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+            (window as any).__posMarkOwnWrite(orderId);
+          }
+          import("./supabase-queries").then(({ updateOrderInDb }) => {
+            updateOrderInDb(orderId, {
+              status: "completed",
+              payment,
+              paidAt: paidAtISO,
+              paidBy: userName,
+              payLater: false,
+            }).catch(err => {
+              console.error("[store] Direct write failed for confirmPaymentForServedOrder:", err);
+            });
+          });
+        }
+
+        if (order.tableId) {
+          get().updateTableStatus(order.tableId, "available");
+        }
+
+        get().addAuditEntry({
+          action: "payment_recorded",
+          userId: userName,
+          details: `Payment of ₹${payment.amount} recorded for pay-later order ${orderId}`,
+          orderId,
+          metadata: { method: payment.method, amount: payment.amount, transactionId: payment.transactionId, cashier: userName, payLater: true }
+        });
+      },
+
       cancelAwaitingPaymentOrder: (orderId, reason) => {
         const order = get().orders.find((o) => o.id === orderId);
         if (!order || order.status !== "awaiting-payment") return;
@@ -784,6 +891,41 @@ export const usePOSStore = create<POSState>()(
         if (!order) return;
 
         const userName = get().currentUser?.name || "System";
+
+        // If this is a pay-later order, move to served-unpaid instead of completed
+        if (order.payLater) {
+          set((state) => ({
+            orders: state.orders.map((o) =>
+              o.id === orderId ? { ...o, status: "served-unpaid" as const } : o
+            ),
+          }));
+          get().enqueueMutation("order.update", { id: orderId, changes: { status: "served-unpaid" } });
+
+          if (get().supabaseEnabled) {
+            if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+              (window as any).__posMarkOwnWrite(orderId);
+            }
+            import("./supabase-queries").then(({ updateOrderInDb }) => {
+              updateOrderInDb(orderId, { status: "served-unpaid" }).catch(err => {
+                console.error("[store] Direct write failed for markOrderServed (pay-later):", err);
+              });
+            });
+          }
+
+          // Keep table occupied — customer hasn't paid yet
+          // Redirect to billing
+          get().setPendingBillingOrderId(orderId);
+          get().setActiveView("billing");
+
+          get().addAuditEntry({
+            action: "order_served",
+            userId: userName,
+            details: `Order ${orderId.toUpperCase()} served (awaiting post-service payment)`,
+            orderId,
+            metadata: { table: order.tableId, servedBy: userName, payLater: true }
+          });
+          return;
+        }
 
         set((state) => ({
           orders: state.orders.map((o) =>
@@ -945,7 +1087,6 @@ export const usePOSStore = create<POSState>()(
 
       // Data Management
       clearAllData: () => {
-        const userName = get().currentUser?.name || "System";
         set({
           orders: [],
           tables: initialTables,
@@ -954,8 +1095,20 @@ export const usePOSStore = create<POSState>()(
           cart: [],
           isLoggedIn: false,
           currentUser: null,
+          auditLog: [],
+          syncQueue: [],
+          shifts: [],
+          currentShift: null,
         });
-        get().addAuditEntry({ action: "data_clear", userId: userName, details: "All data cleared" });
+
+        // Wipe all data from Supabase too (global reset across all devices)
+        if (get().supabaseEnabled) {
+          import("./supabase-queries").then(({ nukeAllData }) => {
+            nukeAllData().catch(err => {
+              console.error("[store] Failed to nuke Supabase data:", err);
+            });
+          });
+        }
       },
 
       exportData: () => {

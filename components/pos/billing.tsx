@@ -43,6 +43,8 @@ import {
   RotateCcw,
   QrCode,
   Pencil,
+  Clock,
+  UtensilsCrossed,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -64,6 +66,8 @@ export function Billing() {
     settings,
     addAuditEntry,
     confirmPaymentAndSendToKitchen,
+    sendToKitchenPayLater,
+    confirmPaymentForServedOrder,
     cancelAwaitingPaymentOrder,
     pendingBillingOrderId,
     setPendingBillingOrderId
@@ -81,7 +85,7 @@ export function Billing() {
   const [showSplitDialog, setShowSplitDialog] = useState(false);
 
   const pendingPaymentOrders = orders.filter(
-    (o) => o.status === "awaiting-payment" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
+    (o) => o.status === "awaiting-payment" || o.status === "served-unpaid" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
   );
 
   const order = selectedOrder ? orders.find((o) => o.id === selectedOrder) : null;
@@ -89,14 +93,15 @@ export function Billing() {
   useEffect(() => {
     if (pendingBillingOrderId) {
       const pendingOrder = orders.find((o) => o.id === pendingBillingOrderId);
-      if (pendingOrder && pendingOrder.status === "awaiting-payment") {
+      if (pendingOrder && (pendingOrder.status === "awaiting-payment" || pendingOrder.status === "served-unpaid")) {
         setSelectedOrder(pendingBillingOrderId);
       }
       setPendingBillingOrderId(null);
     }
   }, [pendingBillingOrderId, orders, setPendingBillingOrderId]);
 
-  const isSupplementary = order?.status && order.status !== "awaiting-payment";
+  const isServedUnpaid = order?.status === "served-unpaid";
+  const isSupplementary = order?.status && order.status !== "awaiting-payment" && order.status !== "served-unpaid";
   const unpaidBills = isSupplementary ? order?.supplementaryBills?.filter(b => !b.payment) || [] : [];
   const subtotal = isSupplementary ? unpaidBills.reduce((s, b) => s + b.total, 0) : (order?.total || 0);
   const discountAmount = discount
@@ -130,6 +135,40 @@ export function Billing() {
         }
       })
     };
+
+    // Handle served-unpaid (pay-later) orders
+    if (isServedUnpaid) {
+      updateOrder(selectedOrder, {
+        subtotal,
+        discount: discountAmount > 0 ? {
+          type: discountType,
+          amount: discountAmount,
+          value: parseFloat(discount)
+        } : undefined,
+        taxRate: settings.gstEnabled ? settings.taxRate : 0,
+        taxAmount: tax,
+        grandTotal,
+      });
+
+      if (discountAmount > 0) {
+        addAuditEntry({
+          action: "discount",
+          userId: currentUser?.name || "Unknown",
+          details: `Discount of ${discountAmount} applied to order ${selectedOrder.toUpperCase()}`,
+          orderId: selectedOrder
+        });
+      }
+
+      confirmPaymentForServedOrder(selectedOrder, payment);
+      setPaymentComplete(true);
+
+      setTimeout(() => {
+        if (settings.printCustomerCopy) {
+          window.print();
+        }
+      }, 100);
+      return;
+    }
 
     if (!isSupplementary) {
       updateOrder(selectedOrder, {
@@ -175,6 +214,17 @@ export function Billing() {
         window.print();
       }
     }, 100);
+  };
+
+  const handlePayLater = () => {
+    if (!selectedOrder) return;
+    sendToKitchenPayLater(selectedOrder);
+    toast.success("Order sent to kitchen", {
+      description: `Order ${selectedOrder.toUpperCase()} will be prepared. Payment will be collected after serving.`,
+    });
+    setSelectedOrder(null);
+    setPaymentMethod(null);
+    setDiscount("");
   };
 
   const handleCompleteBilling = () => {
@@ -228,8 +278,10 @@ export function Billing() {
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">{o.id.toUpperCase()}</span>
-                <Badge variant="secondary" className="text-warning border-warning/50">
-                  {o.status === "awaiting-payment" ? "Awaiting Payment" : "Supplementary Bill"}
+                <Badge variant="secondary" className={cn(
+                  o.status === "served-unpaid" ? "text-destructive border-destructive/50" : "text-warning border-warning/50"
+                )}>
+                  {o.status === "awaiting-payment" ? "Awaiting Payment" : o.status === "served-unpaid" ? "Pay Now" : "Supplementary Bill"}
                 </Badge>
               </div>
               <div className="mt-1 flex items-center justify-between text-sm">
@@ -237,7 +289,7 @@ export function Billing() {
                   {o.tableId ? `Table ${o.tableId.replace("t", "")}` : o.type}
                 </span>
                 <span className="font-semibold text-primary">
-                  {(o.status === "awaiting-payment" ? o.total : (o.supplementaryBills?.filter(b => !b.payment).reduce((sum, b) => sum + b.total, 0) || 0)).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                  {((o.status === "awaiting-payment" || o.status === "served-unpaid") ? o.total : (o.supplementaryBills?.filter(b => !b.payment).reduce((sum, b) => sum + b.total, 0) || 0)).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground" suppressHydrationWarning>
@@ -610,49 +662,77 @@ export function Billing() {
               )}
             </div>
 
+            {/* Served-unpaid banner */}
+            {isServedUnpaid && (
+              <div className="mx-4 mb-0 sm:mx-5 lg:mx-6 mt-0 flex items-center gap-2.5 rounded-lg bg-destructive/10 border border-destructive/20 p-3 sm:p-3.5">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-destructive/15 shrink-0">
+                  <UtensilsCrossed className="h-4 w-4 sm:h-5 sm:w-5 text-destructive" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm sm:text-base font-semibold text-destructive leading-tight">Food Served — Payment Due</span>
+                  <span className="text-[11px] sm:text-xs text-muted-foreground leading-snug mt-0.5">This order was served with "Pay Later". Collect payment to complete.</span>
+                </div>
+              </div>
+            )}
+
             {/* Fixed Bottom Action Bar */}
             <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-card p-3 md:static md:bottom-auto md:z-auto md:shrink-0 md:p-4">
               <div className="flex flex-col gap-2 md:flex-row md:gap-3">
-                {/* Void Order */}
-                <AlertDialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10 h-11 md:h-12 text-sm">
-                      <RotateCcw className="h-4 w-4" />
-                      Void Order
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Void Order</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to void this order? The customer's table will be released.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <div>
-                        <Label className="text-sm">Reason (Optional)</Label>
-                        <Textarea
-                          placeholder="e.g., Customer walked away..."
-                          value={voidReason}
-                          onChange={(e) => setVoidReason(e.target.value)}
-                          className="mt-1 bg-secondary border-none resize-none"
-                        />
+                {/* Void Order — only for awaiting-payment */}
+                {order.status === "awaiting-payment" && (
+                  <AlertDialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10 h-11 md:h-12 text-sm">
+                        <RotateCcw className="h-4 w-4" />
+                        Void Order
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Void Order</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to void this order? The customer's table will be released.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="space-y-4 pt-4">
+                        <div>
+                          <Label className="text-sm">Reason (Optional)</Label>
+                          <Textarea
+                            placeholder="e.g., Customer walked away..."
+                            value={voidReason}
+                            onChange={(e) => setVoidReason(e.target.value)}
+                            className="mt-1 bg-secondary border-none resize-none"
+                          />
+                        </div>
+                        <AlertDialogFooter className="pt-2">
+                          <AlertDialogCancel onClick={() => setShowVoidDialog(false)} className="flex-1 mt-0">
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction onClick={handleVoidOrder} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Confirm Void
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
                       </div>
-                      <AlertDialogFooter className="pt-2">
-                        <AlertDialogCancel onClick={() => setShowVoidDialog(false)} className="flex-1 mt-0">
-                          Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction onClick={handleVoidOrder} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          Confirm Void
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </div>
-                  </AlertDialogContent>
-                </AlertDialog>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
                 <Button variant="outline" className="gap-2 h-11 md:h-12 text-sm" onClick={() => window.print()}>
                   <Printer className="h-4 w-4" />
                   Print Bill
                 </Button>
+
+                {/* Pay Later button — only for awaiting-payment orders (not served-unpaid) */}
+                {order.status === "awaiting-payment" && !isSupplementary && (
+                  <Button
+                    variant="outline"
+                    className="gap-2 h-11 md:h-12 text-sm border-chart-3/50 text-chart-3 hover:bg-chart-3/10 hover:text-chart-3 font-semibold"
+                    onClick={handlePayLater}
+                  >
+                    <Clock className="h-4 w-4" />
+                    Pay Later
+                  </Button>
+                )}
+
                 <Button
                   className="flex-1 h-12 md:h-14 text-base md:text-lg font-semibold"
                   disabled={!paymentMethod || (paymentMethod === "cash" && (!cashReceived || parseFloat(cashReceived) < grandTotal)) || (paymentMethod === "split" && (parseFloat(splitAmounts.cash || "0") + parseFloat(splitAmounts.upi || "0") + parseFloat(splitAmounts.card || "0")) < grandTotal)}

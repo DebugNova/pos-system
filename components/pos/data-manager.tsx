@@ -284,7 +284,7 @@ export function DataManager({ onBack }: DataManagerProps) {
           </Button>
           <Button variant="destructive" onClick={() => setShowClearConfirm(true)} className="col-span-2 sm:col-span-1 justify-center h-8 sm:h-9 px-3 text-[11px] sm:text-sm font-medium shadow-sm">
             <RefreshCw className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-            Sync / Refresh
+            Reset
           </Button>
         </div>
       </div>
@@ -1005,7 +1005,7 @@ export function DataManager({ onBack }: DataManagerProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset All Data?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete ALL orders, reset tables to default, and restore default menu items and staff. This action cannot be undone.
+              This will permanently wipe ALL data across all devices — orders, audit logs, shifts, and more. Tables will reset to default, and default menu items and staff will be restored. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1014,6 +1014,7 @@ export function DataManager({ onBack }: DataManagerProps) {
               onClick={() => {
                 clearAllData();
                 setShowClearConfirm(false);
+                toast.success("All data has been wiped.");
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

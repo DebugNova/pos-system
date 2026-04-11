@@ -333,6 +333,57 @@ export async function deleteMenuImage(path: string): Promise<void> {
 }
 
 // ============================================================
+// NUCLEAR RESET — wipe ALL data from Supabase
+// ============================================================
+
+export async function nukeAllData(): Promise<void> {
+  const supabase = getSupabase();
+
+  // Verify we have an active session (RLS requires authenticated role)
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error("No active session — cannot wipe Supabase data without authentication");
+  }
+
+  // Delete in order respecting foreign key constraints.
+  // .not("id", "is", null) is the standard PostgREST pattern to match ALL rows.
+  // Using console.warn (not .error) to avoid triggering Next.js dev overlay.
+
+  // 1. supplementary_bill_items (FK → supplementary_bills)
+  const { error: e1 } = await supabase.from("supplementary_bill_items").delete().not("id", "is", null);
+  if (e1) console.warn("[nuke] supplementary_bill_items:", e1.message);
+
+  // 2. supplementary_bills (FK → orders)
+  const { error: e2 } = await supabase.from("supplementary_bills").delete().not("id", "is", null);
+  if (e2) console.warn("[nuke] supplementary_bills:", e2.message);
+
+  // 3. order_items (FK → orders)
+  const { error: e3 } = await supabase.from("order_items").delete().not("id", "is", null);
+  if (e3) console.warn("[nuke] order_items:", e3.message);
+
+  // 4. orders
+  const { error: e4 } = await supabase.from("orders").delete().not("id", "is", null);
+  if (e4) console.warn("[nuke] orders:", e4.message);
+
+  // 5. audit_log
+  const { error: e5 } = await supabase.from("audit_log").delete().not("id", "is", null);
+  if (e5) console.warn("[nuke] audit_log:", e5.message);
+
+  // 6. shifts
+  const { error: e6 } = await supabase.from("shifts").delete().not("id", "is", null);
+  if (e6) console.warn("[nuke] shifts:", e6.message);
+
+  // 7. Reset all tables to available, clear order_id
+  const { error: e7 } = await supabase
+    .from("tables")
+    .update({ status: "available", order_id: null })
+    .not("id", "is", null);
+  if (e7) console.warn("[nuke] tables reset:", e7.message);
+
+  console.log("[nuke] All Supabase data wiped.");
+}
+
+// ============================================================
 // MAPPERS: DB (snake_case) ↔ Local (camelCase)
 // ============================================================
 
@@ -370,6 +421,7 @@ function mapDbOrderToLocal(db: any): Order {
     paidBy: db.paid_by,
     refund: db.refund || undefined,
     createdBy: db.created_by,
+    payLater: db.pay_later || false,
   };
 }
 
@@ -411,6 +463,7 @@ function mapLocalOrderToDb(order: any) {
   if (order.refund !== undefined) mapped.refund = order.refund;
   if (order.createdBy !== undefined) mapped.created_by = order.createdBy;
   if (order.createdAt !== undefined) mapped.created_at = order.createdAt instanceof Date ? order.createdAt.toISOString() : order.createdAt;
+  if (order.payLater !== undefined) mapped.pay_later = order.payLater;
   return mapped;
 }
 
