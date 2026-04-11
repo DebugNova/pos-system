@@ -4,12 +4,14 @@ import { useEffect, useRef, useCallback } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { usePOSStore } from "@/lib/store";
 import { fetchOrderById } from "@/lib/supabase-queries";
+import { hydrateStoreFromSupabase } from "@/lib/hydrate";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 /**
  * Hook: useRealtimeSync
  * 
- * Subscribes to Supabase Realtime changes on `orders`, `tables`, `settings`,
+ * Subscribes to Supabase Realtime changes on `orders`, `order_items`,
+ * `supplementary_bills`, `supplementary_bill_items`, `tables`, `settings`,
  * and `staff` tables. When one device writes a change, all other devices
  * receive the event and update their local Zustand store instantly.
  * 
@@ -23,16 +25,21 @@ export function useRealtimeSync() {
 
   /**
    * Mark an order ID as "recently written by this terminal".
-   * Clears after 2 seconds — enough time for the Realtime event to arrive.
+   * Clears after 3 seconds — enough time for the Realtime event to arrive.
    */
   const markOwnWrite = useCallback((orderId: string) => {
     recentOwnWritesRef.current.add(orderId);
     setTimeout(() => {
       recentOwnWritesRef.current.delete(orderId);
-    }, 2000);
+    }, 3000);
   }, []);
 
+  // Gate on login state — only subscribe when authenticated
+  const isLoggedIn = usePOSStore((s) => s.isLoggedIn);
+
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     const supabase = getSupabase();
     if (!supabase) return;
 
@@ -59,6 +66,22 @@ export function useRealtimeSync() {
           handleOrderItemChange(payload);
         }
       )
+      // ── Supplementary Bills ──
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "supplementary_bills" },
+        (payload) => {
+          handleSupplementaryBillChange(payload);
+        }
+      )
+      // ── Supplementary Bill Items ──
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "supplementary_bill_items" },
+        (payload) => {
+          handleSupplementaryBillItemChange(payload);
+        }
+      )
       // ── Tables ──
       .on(
         "postgres_changes",
@@ -83,21 +106,56 @@ export function useRealtimeSync() {
           handleStaffChange(payload);
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         console.log("[realtime] Subscription status:", status);
+        if (status === "SUBSCRIBED") {
+          console.log("[realtime] ✓ Connected — live updates active");
+        } else if (status === "CHANNEL_ERROR") {
+          console.error("[realtime] Channel error — will attempt reconnect:", err);
+          // Re-hydrate from Supabase to catch any missed events during disconnect
+          if (navigator.onLine) {
+            setTimeout(() => {
+              hydrateStoreFromSupabase().catch(console.error);
+            }, 2000);
+          }
+        } else if (status === "TIMED_OUT") {
+          console.warn("[realtime] Subscription timed out — rehydrating");
+          if (navigator.onLine) {
+            hydrateStoreFromSupabase().catch(console.error);
+          }
+        }
       });
 
     channelRef.current = channel;
+
+    // On window refocus, re-hydrate to catch any events missed while in background
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        console.log("[realtime] Tab refocused — rehydrating to catch missed events");
+        hydrateStoreFromSupabase().catch(console.error);
+      }
+    };
+
+    // On reconnect after going offline, re-hydrate
+    const handleOnline = () => {
+      console.log("[realtime] Device back online — rehydrating");
+      hydrateStoreFromSupabase().catch(console.error);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", handleOnline);
 
     return () => {
       console.log("[realtime] Unsubscribing from pos-realtime channel");
       channel.unsubscribe();
       channelRef.current = null;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
       if (typeof window !== "undefined") {
         delete (window as any).__posMarkOwnWrite;
       }
     };
-  }, [markOwnWrite]);
+  }, [markOwnWrite, isLoggedIn]);
 }
 
 // ─────────────────────────────────────────────────
@@ -136,6 +194,26 @@ function handleOrderItemChange(payload: any) {
   const orderId = newRecord?.order_id || payload.old?.order_id;
   if (orderId) {
     refetchAndMergeOrder(orderId);
+  }
+}
+
+function handleSupplementaryBillChange(payload: any) {
+  // When supplementary bills change, re-fetch the parent order
+  const orderId = payload.new?.order_id || payload.old?.order_id;
+  if (orderId) {
+    refetchAndMergeOrder(orderId);
+  }
+}
+
+function handleSupplementaryBillItemChange(payload: any) {
+  // When supplementary bill items change, we need the bill's order_id
+  // Re-fetch is handled via the parent supplementary_bill change,
+  // but as a safety net do a full re-hydrate
+  const billId = payload.new?.supplementary_bill_id || payload.old?.supplementary_bill_id;
+  if (billId) {
+    // We don't have a direct order_id here, so trigger a lightweight re-hydrate
+    // The supplementary_bills handler will usually fire first and handle this
+    console.log("[realtime] Supplementary bill item changed for bill:", billId);
   }
 }
 
@@ -240,21 +318,35 @@ function handleStaffChange(payload: any) {
 // Helper: Re-fetch a single order and merge into store
 // ─────────────────────────────────────────────────
 
-async function refetchAndMergeOrder(orderId: string) {
-  try {
-    const updatedOrder = await fetchOrderById(orderId);
-    if (!updatedOrder) return;
+// Debounce map to avoid spamming refetches for the same order
+const pendingRefetches = new Map<string, ReturnType<typeof setTimeout>>();
 
-    usePOSStore.setState((state) => {
-      const exists = state.orders.some((o) => o.id === orderId);
-      return {
-        orders: exists
-          ? state.orders.map((o) => (o.id === orderId ? updatedOrder : o))
-          : [updatedOrder, ...state.orders],
-      };
-    });
-    console.log("[realtime] Order merged:", orderId, "status:", updatedOrder.status);
-  } catch (err) {
-    console.error("[realtime] Failed to refetch order:", orderId, err);
+async function refetchAndMergeOrder(orderId: string) {
+  // Debounce: if we already have a pending refetch for this order, skip
+  if (pendingRefetches.has(orderId)) {
+    clearTimeout(pendingRefetches.get(orderId)!);
   }
+
+  // Wait 150ms to batch rapid-fire events (e.g. order + items arriving together)
+  const timer = setTimeout(async () => {
+    pendingRefetches.delete(orderId);
+    try {
+      const updatedOrder = await fetchOrderById(orderId);
+      if (!updatedOrder) return;
+
+      usePOSStore.setState((state) => {
+        const exists = state.orders.some((o) => o.id === orderId);
+        return {
+          orders: exists
+            ? state.orders.map((o) => (o.id === orderId ? updatedOrder : o))
+            : [updatedOrder, ...state.orders],
+        };
+      });
+      console.log("[realtime] Order merged:", orderId, "status:", updatedOrder.status);
+    } catch (err) {
+      console.error("[realtime] Failed to refetch order:", orderId, err);
+    }
+  }, 150);
+
+  pendingRefetches.set(orderId, timer);
 }

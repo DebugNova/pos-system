@@ -504,6 +504,18 @@ export const usePOSStore = create<POSState>()(
             orderId: editingOrderId,
             metadata: { mode: "supplementary", addedItems: newItems }
           });
+
+          // Direct write-through: push supplementary bill to Supabase immediately
+          if (get().supabaseEnabled) {
+            if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+              (window as any).__posMarkOwnWrite(editingOrderId);
+            }
+            import("./supabase-queries").then(({ insertSupplementaryBill }) => {
+              insertSupplementaryBill(editingOrderId, newBill).catch(err => {
+                console.error("[store] Direct write failed for supplementary bill, will sync later:", err);
+              });
+            });
+          }
           
           get().setPendingBillingOrderId(editingOrderId);
           return;
@@ -621,6 +633,18 @@ export const usePOSStore = create<POSState>()(
 
         get().enqueueMutation("order.create", { order: newOrder });
 
+        // Direct write-through: push order to Supabase immediately for instant Realtime broadcast
+        if (get().supabaseEnabled) {
+          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+            (window as any).__posMarkOwnWrite(id);
+          }
+          import("./supabase-queries").then(({ upsertOrder }) => {
+            upsertOrder(newOrder).catch(err => {
+              console.error("[store] Direct write failed for addOrder, queued mutation will retry:", err);
+            });
+          });
+        }
+
         get().addAuditEntry({ action: "order_created", userId: newOrder.createdBy || "System", details: `Order ${id} created`, orderId: id });
 
         // Update table status if dine-in
@@ -640,6 +664,18 @@ export const usePOSStore = create<POSState>()(
           ),
         }));
         get().enqueueMutation("order.update", { id: orderId, changes: data });
+
+        // Direct write-through for instant cross-device sync
+        if (get().supabaseEnabled) {
+          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+            (window as any).__posMarkOwnWrite(orderId);
+          }
+          import("./supabase-queries").then(({ updateOrderInDb }) => {
+            updateOrderInDb(orderId, data).catch(err => {
+              console.error("[store] Direct write failed for updateOrder, queued mutation will retry:", err);
+            });
+          });
+        }
       },
 
       updateOrderStatus: (orderId, status) => {
@@ -692,6 +728,15 @@ export const usePOSStore = create<POSState>()(
           orders: state.orders.filter((o) => o.id !== orderId)
         }));
         get().enqueueMutation("order.delete", { id: orderId });
+
+        // Direct write-through for instant cross-device sync
+        if (get().supabaseEnabled) {
+          import("./supabase-queries").then(({ deleteOrderFromDb }) => {
+            deleteOrderFromDb(orderId).catch(err => {
+              console.error("[store] Direct write failed for deleteOrder, queued mutation will retry:", err);
+            });
+          });
+        }
 
         get().addAuditEntry({
           action: "void",
@@ -882,6 +927,18 @@ export const usePOSStore = create<POSState>()(
         }));
         get().enqueueMutation("order.update", { id: orderId, changes: { status: "cancelled" } });
 
+        // Direct write-through for instant cross-device sync
+        if (get().supabaseEnabled) {
+          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+            (window as any).__posMarkOwnWrite(orderId);
+          }
+          import("./supabase-queries").then(({ updateOrderInDb }) => {
+            updateOrderInDb(orderId, { status: "cancelled" }).catch(err => {
+              console.error("[store] Direct write failed for cancelAwaitingPaymentOrder, queued mutation will retry:", err);
+            });
+          });
+        }
+
         if (order.type === "dine-in" && order.tableId) {
           get().updateTableStatus(order.tableId, "available");
         }
@@ -986,6 +1043,15 @@ export const usePOSStore = create<POSState>()(
           ),
         }));
         get().enqueueMutation("table.update", { id: tableId, status, orderId });
+
+        // Direct write-through for instant cross-device table sync
+        if (get().supabaseEnabled) {
+          import("./supabase-queries").then(({ updateTableInDb }) => {
+            updateTableInDb(tableId, { status, orderId }).catch(err => {
+              console.error("[store] Direct write failed for updateTableStatus, queued mutation will retry:", err);
+            });
+          });
+        }
       },
 
       deleteTable: (tableId) => set((state) => ({

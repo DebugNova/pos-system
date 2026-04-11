@@ -71,6 +71,50 @@ export async function upsertOrder(order: any): Promise<void> {
   }
 }
 
+/**
+ * Insert a supplementary bill and its items into Supabase.
+ * Used for add-on orders after the main order has been placed.
+ */
+export async function insertSupplementaryBill(
+  orderId: string,
+  bill: { id: string; items: any[]; total: number; createdAt: Date; payment?: any; paidAt?: Date }
+): Promise<void> {
+  const supabase = getSupabase();
+
+  // Insert the supplementary bill
+  const { error: billError } = await supabase
+    .from("supplementary_bills")
+    .upsert({
+      id: bill.id,
+      order_id: orderId,
+      total: bill.total,
+      payment: bill.payment || null,
+      paid_at: bill.paidAt instanceof Date ? bill.paidAt.toISOString() : bill.paidAt || null,
+      created_at: bill.createdAt instanceof Date ? bill.createdAt.toISOString() : bill.createdAt,
+    }, { onConflict: "id" });
+  if (billError) throw billError;
+
+  // Insert bill items
+  if (bill.items && bill.items.length > 0) {
+    const dbItems = bill.items.map((item: any) => ({
+      id: item.id,
+      bill_id: bill.id,
+      menu_item_id: item.menuItemId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      variant: item.variant || null,
+      notes: item.notes || null,
+      modifiers: item.modifiers || [],
+    }));
+    const { error: itemsError } = await supabase
+      .from("supplementary_bill_items")
+      .upsert(dbItems, { onConflict: "id" });
+    if (itemsError) throw itemsError;
+  }
+}
+
+
 export async function updateOrderInDb(orderId: string, changes: Record<string, any>): Promise<void> {
   const supabase = getSupabase();
   const { error } = await supabase
