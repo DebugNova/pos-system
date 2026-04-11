@@ -81,6 +81,7 @@ export function Billing() {
   const [discountType, setDiscountType] = useState<"percent" | "amount">("percent");
   const [showVoidDialog, setShowVoidDialog] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
+  const [lastPayment, setLastPayment] = useState<{ amount: number, change: number } | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [showSplitDialog, setShowSplitDialog] = useState(false);
 
@@ -160,6 +161,7 @@ export function Billing() {
       }
 
       confirmPaymentForServedOrder(selectedOrder, payment);
+      setLastPayment({ amount: grandTotal, change: cashChange });
       setPaymentComplete(true);
 
       setTimeout(() => {
@@ -207,6 +209,7 @@ export function Billing() {
         metadata: { method: payment.method, amount: payment.amount, transactionId: payment.transactionId, cashier: currentUser?.name || "System" }
       });
     }
+    setLastPayment({ amount: grandTotal, change: cashChange });
     setPaymentComplete(true);
 
     setTimeout(() => {
@@ -234,6 +237,7 @@ export function Billing() {
     setCashReceived("");
     setSplitAmounts({ cash: "", upi: "", card: "" });
     setDiscount("");
+    setLastPayment(null);
     setPaymentComplete(false);
   };
 
@@ -320,14 +324,13 @@ export function Billing() {
             </div>
             <h2 className="mb-2 text-2xl font-bold text-foreground">Payment Successful!</h2>
             <p className="mb-6 text-muted-foreground">
-              {grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })} received via {paymentMethod}
+              {(lastPayment?.amount ?? grandTotal).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })} received via {paymentMethod}
             </p>
-            {paymentMethod === "cash" && cashChange > 0 && (
+            {paymentMethod === "cash" && (lastPayment?.change || 0) > 0 && (
               <div className="mb-6 rounded-lg bg-warning/10 p-4 text-center">
                 <p className="text-sm text-muted-foreground">Return Change</p>
                 <p className="text-2xl font-bold text-warning">
-                  {order?.payment?.change?.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }) ||
-                    cashChange.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                  {(lastPayment?.change || 0).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                 </p>
               </div>
             )}

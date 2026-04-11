@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { usePOSStore } from "@/lib/store";
 import { canAccessView, type ViewId } from "@/lib/roles";
@@ -45,7 +45,83 @@ export function POSSidebar() {
   const [showEndShift, setShowEndShift] = useState(false);
   const isOnline = useOnlineStatus();
 
-  useEffect(() => setMounted(true), []);
+  const prevPendingCountRef = useRef<number | null>(null);
+  const prevKitchenCountRef = useRef<number | null>(null);
+
+  const pendingBillsCount = orders.filter(
+    (o) => o.status === "awaiting-payment" || o.status === "served-unpaid" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
+  ).length;
+
+  const pendingKitchenCount = orders.filter(
+    (o) => o.status === "new"
+  ).length;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (prevPendingCountRef.current !== null && pendingBillsCount > prevPendingCountRef.current) {
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const ctx = new AudioContextClass();
+          const osc = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          osc.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, ctx.currentTime);
+          gainNode.gain.setValueAtTime(0.05, ctx.currentTime);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        }
+      } catch (e) {
+        console.error("Audio playback failed", e);
+      }
+    }
+    prevPendingCountRef.current = pendingBillsCount;
+  }, [pendingBillsCount, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (prevKitchenCountRef.current !== null && pendingKitchenCount > prevKitchenCountRef.current) {
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const ctx = new AudioContextClass();
+          
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          
+          osc1.type = "sine";
+          osc1.frequency.setValueAtTime(880, ctx.currentTime);
+          gain1.gain.setValueAtTime(0.05, ctx.currentTime);
+          gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+          osc1.start(ctx.currentTime);
+          osc1.stop(ctx.currentTime + 0.5);
+
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+
+          osc2.type = "sine";
+          osc2.frequency.setValueAtTime(1175, ctx.currentTime + 0.15);
+          gain2.gain.setValueAtTime(0.05, ctx.currentTime + 0.15);
+          gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.65);
+          osc2.start(ctx.currentTime + 0.15);
+          osc2.stop(ctx.currentTime + 0.65);
+        }
+      } catch (e) {
+        console.error("Audio playback failed", e);
+      }
+    }
+    prevKitchenCountRef.current = pendingKitchenCount;
+  }, [pendingKitchenCount, mounted]);
 
   const userRole = currentUser?.role || "Kitchen"; // Most restrictive fallback
 
@@ -105,7 +181,19 @@ export function POSSidebar() {
                   )}
                   title={item.label}
                 >
-                  <Icon className={cn("h-5 w-5 lg:h-6 lg:w-6", isActive ? "text-primary-foreground" : "")} />
+                  <div className="relative">
+                    <Icon className={cn("h-5 w-5 lg:h-6 lg:w-6", isActive ? "text-primary-foreground" : "")} />
+                    {item.id === "billing" && pendingBillsCount > 0 && mounted && (
+                      <span className="absolute -right-2.5 -top-2 flex h-4 w-4 lg:h-[18px] lg:w-[18px] items-center justify-center rounded-full bg-red-500 text-[9px] lg:text-[10px] font-bold text-white shadow-sm ring-1 ring-background">
+                        {pendingBillsCount > 99 ? "99+" : pendingBillsCount}
+                      </span>
+                    )}
+                    {item.id === "kitchen" && pendingKitchenCount > 0 && mounted && (
+                      <span className="absolute -right-2.5 -top-2 flex h-4 w-4 lg:h-[18px] lg:w-[18px] items-center justify-center rounded-full bg-red-500 text-[9px] lg:text-[10px] font-bold text-white shadow-sm ring-1 ring-background">
+                        {pendingKitchenCount > 99 ? "99+" : pendingKitchenCount}
+                      </span>
+                    )}
+                  </div>
                   <span className="hidden lg:block mt-1.5 text-xs font-medium leading-tight">{item.label}</span>
                 </button>
               </div>
@@ -170,7 +258,19 @@ export function POSSidebar() {
                   : "text-muted-foreground hover:text-primary active:bg-primary/5"
               )}
             >
-              <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "")} />
+              <div className="relative">
+                <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "")} />
+                {item.id === "billing" && pendingBillsCount > 0 && mounted && (
+                  <span className="absolute -right-2.5 -top-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white ring-1 ring-background">
+                    {pendingBillsCount > 99 ? "99+" : pendingBillsCount}
+                  </span>
+                )}
+                {item.id === "kitchen" && pendingKitchenCount > 0 && mounted && (
+                  <span className="absolute -right-2.5 -top-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white ring-1 ring-background">
+                    {pendingKitchenCount > 99 ? "99+" : pendingKitchenCount}
+                  </span>
+                )}
+              </div>
               <span className="mt-0.5 text-[11px] sm:text-xs font-medium leading-tight">{item.label}</span>
             </button>
           );
@@ -207,7 +307,19 @@ export function POSSidebar() {
                               : "bg-muted/50 text-muted-foreground hover:bg-primary/10 active:bg-primary/20 hover:text-primary active:bg-primary/20"
                           )}
                         >
-                          <Icon className="h-6 w-6" />
+                          <div className="relative">
+                            <Icon className="h-6 w-6" />
+                            {item.id === "billing" && pendingBillsCount > 0 && mounted && (
+                              <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-1 ring-background">
+                                {pendingBillsCount > 99 ? "99+" : pendingBillsCount}
+                              </span>
+                            )}
+                            {item.id === "kitchen" && pendingKitchenCount > 0 && mounted && (
+                              <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-1 ring-background">
+                                {pendingKitchenCount > 99 ? "99+" : pendingKitchenCount}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[11px] font-medium text-center">{item.label}</span>
                         </button>
                       </SheetTrigger>

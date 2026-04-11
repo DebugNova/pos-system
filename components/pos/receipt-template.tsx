@@ -7,6 +7,7 @@ interface CafeSettings {
   gstNumber: string;
   address: string;
   taxRate: number;
+  gstEnabled?: boolean;
 }
 
 interface ReceiptTemplateProps {
@@ -16,6 +17,24 @@ interface ReceiptTemplateProps {
 
 export function ReceiptTemplate({ order, settings }: ReceiptTemplateProps) {
   if (!order) return null;
+
+  const subtotal = order.subtotal || order.total || 0;
+  const discountAmount = order.discount?.amount || 0;
+  
+  let taxRatePercent = order.taxRate;
+  let taxAmount = order.taxAmount;
+  
+  if (taxAmount === undefined || taxAmount === null) {
+    if (settings.gstEnabled && settings.taxRate > 0) {
+      taxRatePercent = settings.taxRate;
+      taxAmount = (subtotal - discountAmount) * (settings.taxRate / 100);
+    } else {
+      taxRatePercent = 0;
+      taxAmount = 0;
+    }
+  }
+  
+  const grandTotal = order.grandTotal !== undefined && order.grandTotal !== null ? order.grandTotal : (subtotal - discountAmount + (taxAmount || 0));
 
   return (
     <div className="print-receipt hidden print:block bg-white text-black p-4 font-mono text-sm absolute top-0 left-0 w-[80mm] min-h-screen">
@@ -74,23 +93,23 @@ export function ReceiptTemplate({ order, settings }: ReceiptTemplateProps) {
       <div className="mb-4 pt-2 border-t border-dashed border-gray-400 space-y-1">
         <div className="flex justify-between text-gray-600">
           <span>Subtotal</span>
-          <span>{(order.subtotal || order.total).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+          <span>{subtotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
         </div>
-        {order.discount && order.discount.amount > 0 && (
+        {discountAmount > 0 && (
           <div className="flex justify-between text-gray-600">
             <span>Discount</span>
-            <span>-{order.discount.amount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+            <span>-{discountAmount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
           </div>
         )}
-        {(order.taxAmount || 0) > 0 && (
+        {(taxAmount || 0) > 0 && (
           <div className="flex justify-between text-gray-600">
-            <span>Tax ({order.taxRate}%)</span>
-            <span>{(order.taxAmount || 0).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+            <span>Tax ({taxRatePercent}%)</span>
+            <span>{(taxAmount || 0).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
           </div>
         )}
         <div className="flex justify-between font-bold text-base mt-2">
           <span>Total</span>
-          <span>{(order.grandTotal || order.total).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+          <span>{grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
         </div>
       </div>
 

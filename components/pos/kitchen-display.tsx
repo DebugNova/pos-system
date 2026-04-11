@@ -175,9 +175,6 @@ export function KitchenDisplay() {
     });
 
     if (hasNewArrival) {
-      // Play bell sound
-      playNewOrderSound();
-
       // Flash the "New Orders" column header
       setNewOrderFlash(true);
       const timeout = setTimeout(() => setNewOrderFlash(false), 3000);
