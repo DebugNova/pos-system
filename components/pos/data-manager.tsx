@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { usePOSStore } from "@/lib/store";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,9 +56,13 @@ import {
   ShoppingBag,
   Search,
   Coffee,
+  ImageIcon,
+  Loader2,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Order, MenuItem, Table as TableType } from "@/lib/data";
+import { uploadMenuImage } from "@/lib/supabase-queries";
 
 interface DataManagerProps {
   onBack: () => void;
@@ -97,6 +101,10 @@ export function DataManager({ onBack }: DataManagerProps) {
   const [importText, setImportText] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showCancelOrderConfirm, setShowCancelOrderConfirm] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Stats
   const totalOrders = orders.length;
@@ -196,15 +204,38 @@ export function DataManager({ onBack }: DataManagerProps) {
     toast.success(`Order ${editingOrder.id.toUpperCase()} has been cancelled.`);
   };
 
-  const handleSaveMenuItem = () => {
+  const handleSaveMenuItem = async () => {
     if (!editingMenuItem) return;
-    if (editingMenuItem.id.startsWith("new-")) {
-      const newId = `${editingMenuItem.category}-${Date.now()}`;
-      addMenuItem({ ...editingMenuItem, id: newId });
+
+    let finalItem = { ...editingMenuItem };
+
+    // Upload image if a file was selected
+    if (imageFile) {
+      setIsUploading(true);
+      try {
+        const ext = imageFile.name.split('.').pop() || 'png';
+        const safeName = (finalItem.name || 'item').toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const fileName = `${safeName}-${Date.now()}.${ext}`;
+        const publicUrl = await uploadMenuImage(imageFile, fileName);
+        finalItem.image_url = publicUrl;
+        toast.success("Image uploaded successfully");
+      } catch (err) {
+        console.error("[data-manager] Image upload failed:", err);
+        toast.error("Image upload failed — saving without image");
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
+    if (finalItem.id.startsWith("new-")) {
+      const newId = `${finalItem.category}-${Date.now()}`;
+      addMenuItem({ ...finalItem, id: newId });
     } else {
-      updateMenuItem(editingMenuItem.id, editingMenuItem);
+      updateMenuItem(finalItem.id, finalItem);
     }
     setEditingMenuItem(null);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleSaveTable = () => {
@@ -670,6 +701,72 @@ export function DataManager({ onBack }: DataManagerProps) {
           </DialogHeader>
           {editingMenuItem && (
             <div className="space-y-4">
+              {/* Image preview and upload */}
+              <div className="space-y-2">
+                <Label>Image</Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative h-16 w-16 rounded-lg bg-secondary/50 border border-border overflow-hidden flex items-center justify-center shrink-0">
+                    {(imagePreview || editingMenuItem.image_url) ? (
+                      <img
+                        src={imagePreview || editingMenuItem.image_url}
+                        alt={editingMenuItem.name || "Menu item"}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          // Fallback to local path if Supabase URL fails
+                          const target = e.target as HTMLImageElement;
+                          if (editingMenuItem.image_url && !editingMenuItem.image_url.startsWith('/menu/')) {
+                            target.src = '/menu/_fallback.png';
+                          }
+                        }}
+                      />
+                    ) : (
+                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setImageFile(file);
+                          setImagePreview(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-3 w-3" />
+                      {imageFile ? "Change" : "Upload"}
+                    </Button>
+                    {(imageFile || editingMenuItem.image_url) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 text-xs text-muted-foreground hover:text-destructive px-1"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview(null);
+                          setEditingMenuItem({ ...editingMenuItem, image_url: undefined });
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label>Name</Label>
                 <Input
@@ -719,9 +816,13 @@ export function DataManager({ onBack }: DataManagerProps) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingMenuItem(null)}>Cancel</Button>
-            <Button onClick={handleSaveMenuItem}>
-              {editingMenuItem?.id.startsWith("new-") ? "Add Item" : "Save Changes"}
+            <Button variant="outline" onClick={() => { setEditingMenuItem(null); setImageFile(null); setImagePreview(null); }}>Cancel</Button>
+            <Button onClick={handleSaveMenuItem} disabled={isUploading}>
+              {isUploading ? (
+                <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />Uploading...</>
+              ) : (
+                editingMenuItem?.id.startsWith("new-") ? "Add Item" : "Save Changes"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

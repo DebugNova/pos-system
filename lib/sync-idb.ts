@@ -126,7 +126,7 @@ export async function clearAllMutationsFromIDB(): Promise<void> {
  * This is called from the service worker's sync event handler
  * when the browser regains connectivity.
  * 
- * Phase 3: Replace the stub with actual Supabase API calls per kind.
+ * Uses the real sendMutation from sync.ts to write to Supabase.
  */
 export async function replayMutationsFromIDB(): Promise<void> {
   const mutations = await getAllPendingMutations();
@@ -134,12 +134,22 @@ export async function replayMutationsFromIDB(): Promise<void> {
 
   console.log(`[sync-idb] Replaying ${mutations.length} mutations from IDB`);
 
+  // Dynamic import to avoid circular dependency issues in service worker context
+  const { sendMutation } = await import("./sync");
+
   for (const m of mutations) {
     try {
-      // Phase 2 stub: log and resolve after 200ms
-      // Phase 3: POST to Supabase via fetch(), mapped per kind
-      await new Promise<void>((resolve) => setTimeout(resolve, 200));
-      console.log("[sync-idb] Replayed", m.kind, m.id, m.payload);
+      // Convert IDBMutation to QueuedMutation shape for sendMutation
+      await sendMutation({
+        id: m.id,
+        kind: m.kind as any,
+        payload: m.payload,
+        createdAt: m.createdAt,
+        attempts: 0,
+        status: "syncing",
+      });
+
+      console.log("[sync-idb] Replayed", m.kind, m.id);
 
       // Remove after successful sync
       await removeMutationFromIDB(m.id);

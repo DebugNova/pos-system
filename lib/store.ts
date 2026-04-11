@@ -6,7 +6,7 @@ import { getDefaultView } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 8;
+const STORE_VERSION = 9;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -127,6 +127,7 @@ interface POSState {
   isOnline: boolean;
   isSyncing: boolean;
   lastSyncedAt: string | null;
+  supabaseEnabled: boolean;
   enqueueMutation: (kind: MutationKind, payload: Record<string, unknown>) => void;
   markMutationSynced: (id: string) => void;
   markMutationFailed: (id: string, error: string) => void;
@@ -187,6 +188,7 @@ export const usePOSStore = create<POSState>()(
       isOnline: true,
       isSyncing: false,
       lastSyncedAt: null,
+      supabaseEnabled: false,
 
       enqueueMutation: (kind, payload) => {
         const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `mut-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -257,6 +259,13 @@ export const usePOSStore = create<POSState>()(
         const userName = get().currentUser?.name || "Unknown";
         set({ isLoggedIn: false, currentUser: null, activeView: "dashboard" });
         get().addAuditEntry({ action: "logout", userId: userName, details: `${userName} logged out` });
+
+        // Sign out of Supabase (fire-and-forget — offline logout still works)
+        import("./auth").then(({ logoutFromSupabase }) => {
+          logoutFromSupabase().catch((err) => {
+            console.warn("[store] Supabase signout failed (offline?):", err);
+          });
+        });
       },
       addStaffMember: (staff) => {
         set((state) => ({ staffMembers: [...state.staffMembers, staff] }));
@@ -641,6 +650,19 @@ export const usePOSStore = create<POSState>()(
         }));
         get().enqueueMutation("order.update", { id: orderId, changes: { status } });
 
+        // Task 14: Direct write-through for real-time KDS updates
+        if (get().supabaseEnabled) {
+          // Mark own write to prevent Realtime feedback loop
+          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+            (window as any).__posMarkOwnWrite(orderId);
+          }
+          import("./supabase-queries").then(({ updateOrderInDb }) => {
+            updateOrderInDb(orderId, { status }).catch(err => {
+              console.error("[store] Direct write failed for updateOrderStatus, queued mutation will retry:", err);
+            });
+          });
+        }
+
         get().addAuditEntry({ 
           action: "status_changed", 
           userId: get().currentUser?.name || "System", 
@@ -673,6 +695,7 @@ export const usePOSStore = create<POSState>()(
         if (!order || order.status !== "awaiting-payment") return;
 
         const userName = get().currentUser?.name || "System";
+        const paidAtISO = new Date().toISOString();
         
         set((state) => ({
           orders: state.orders.map((o) =>
@@ -688,8 +711,26 @@ export const usePOSStore = create<POSState>()(
         }));
         get().enqueueMutation("order.update", { 
           id: orderId, 
-          changes: { status: "new", payment, paidAt: new Date().toISOString(), paidBy: userName } 
+          changes: { status: "new", payment, paidAt: paidAtISO, paidBy: userName } 
         });
+
+        // Task 14: CRITICAL direct write — this triggers Realtime so KDS sees the order immediately
+        if (get().supabaseEnabled) {
+          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+            (window as any).__posMarkOwnWrite(orderId);
+          }
+          import("./supabase-queries").then(({ updateOrderInDb }) => {
+            updateOrderInDb(orderId, { 
+              status: "new", 
+              payment, 
+              paidAt: paidAtISO, 
+              paidBy: userName,
+              subtotal: order.total,
+            }).catch(err => {
+              console.error("[store] Direct write failed for confirmPayment, queued mutation will retry:", err);
+            });
+          });
+        }
 
         if (order.type === "dine-in" && order.tableId) {
           get().updateTableStatus(order.tableId, "occupied", orderId);
@@ -750,6 +791,18 @@ export const usePOSStore = create<POSState>()(
           ),
         }));
         get().enqueueMutation("order.update", { id: orderId, changes: { status: "completed" } });
+
+        // Task 14: Direct write-through for table release visibility
+        if (get().supabaseEnabled) {
+          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
+            (window as any).__posMarkOwnWrite(orderId);
+          }
+          import("./supabase-queries").then(({ updateOrderInDb }) => {
+            updateOrderInDb(orderId, { status: "completed" }).catch(err => {
+              console.error("[store] Direct write failed for markOrderServed, queued mutation will retry:", err);
+            });
+          });
+        }
 
         if (order.tableId) {
           get().updateTableStatus(order.tableId, "available");
@@ -1030,6 +1083,7 @@ export const usePOSStore = create<POSState>()(
         currentShift: state.currentShift,
         syncQueue: state.syncQueue,
         lastSyncedAt: state.lastSyncedAt,
+        supabaseEnabled: state.supabaseEnabled,
       }),
       migrate: (persistedState: any, version) => {
         // Reset tables and menuItems to default when version changes

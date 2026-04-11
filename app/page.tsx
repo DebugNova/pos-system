@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { POSSidebar } from "@/components/pos/sidebar";
 import { Dashboard } from "@/components/pos/dashboard";
 import { NewOrder } from "@/components/pos/new-order";
@@ -17,10 +17,16 @@ import { usePOSStore } from "@/lib/store";
 import { canAccessView, getDefaultView, type ViewId } from "@/lib/roles";
 import { SWRegister } from "@/components/sw-register";
 import { OfflineBanner } from "@/components/pos/offline-banner";
+import { hydrateStoreFromSupabase, startBackgroundSync } from "@/lib/hydrate";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 
 export default function POSApp() {
   const { activeView, isLoggedIn, login, currentUser, setActiveView } = usePOSStore();
   const [animationState, setAnimationState] = useState<{ isAnimating: boolean, origin: {x: number, y: number} | null }>({ isAnimating: false, origin: null });
+  const bgSyncCleanupRef = useRef<(() => void) | null>(null);
+
+  // Activate Supabase Realtime subscriptions when logged in (Task 11)
+  useRealtimeSync();
 
   // Enforce role-based access: if the current view isn't allowed, redirect to default
   useEffect(() => {
@@ -33,6 +39,26 @@ export default function POSApp() {
       }
     }
   }, [isLoggedIn, currentUser, activeView, setActiveView]);
+
+  // Start background sync when logged in, stop when logged out
+  useEffect(() => {
+    if (isLoggedIn) {
+      // Hydrate store from Supabase after login
+      if (navigator.onLine) {
+        hydrateStoreFromSupabase().catch(console.error);
+      }
+
+      // Start the background sync loop (mutation drain + periodic re-hydrate)
+      bgSyncCleanupRef.current = startBackgroundSync();
+    }
+
+    return () => {
+      if (bgSyncCleanupRef.current) {
+        bgSyncCleanupRef.current();
+        bgSyncCleanupRef.current = null;
+      }
+    };
+  }, [isLoggedIn]);
 
   const handleLogin = (user: any, origin?: {x: number, y: number}) => {
     if (origin) {

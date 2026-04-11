@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Clock, Wifi, ChevronRight, Fingerprint } from "lucide-react";
+import { User, Lock, Clock, Wifi, ChevronRight, Fingerprint, Loader2 } from "lucide-react";
 import { CatLogo } from "@/components/ui/cat-logo";
 import { useOnlineStatus } from "@/hooks/use-online-status";
+import { loginWithPin } from "@/lib/auth";
 
 interface LoginProps {
   onLogin: (user: { name: string; role: string; pin: string }, origin?: {x: number, y: number}) => void;
@@ -30,17 +31,35 @@ export function Login({ onLogin }: LoginProps) {
   const [error, setError] = useState("");
   const [shiftStarted, setShiftStarted] = useState(false);
   const [openingCash, setOpeningCash] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const isOnline = useOnlineStatus();
 
-  const handlePinSubmit = () => {
+  const handlePinSubmit = async () => {
     if (!selectedStaff) return;
-    
-    if (pin === selectedStaff.pin) {
-      setError("");
-      setShiftStarted(true);
-    } else {
-      setError("Incorrect PIN. Please try again.");
+    setError("");
+    setIsAuthenticating(true);
+
+    try {
+      if (isOnline) {
+        // Online: authenticate via Supabase Edge Function
+        await loginWithPin(pin);
+        setShiftStarted(true);
+      } else {
+        // Offline fallback: validate against local staff list
+        if (pin === selectedStaff.pin) {
+          setShiftStarted(true);
+        } else {
+          setError("Incorrect PIN. Please try again.");
+          setPin("");
+        }
+      }
+    } catch (err: any) {
+      // If the Edge Function says "Invalid PIN", show that
+      const msg = err?.message || "Authentication failed";
+      setError(msg === "Invalid PIN" ? "Incorrect PIN. Please try again." : msg);
       setPin("");
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -208,11 +227,16 @@ export function Login({ onLogin }: LoginProps) {
                 <Button
                   size="lg"
                   className="w-full h-11 sm:h-12 text-sm font-bold rounded-2xl shadow-md shadow-primary/20 transition-all hover:shadow-lg hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-50 disabled:hover:shadow-none"
-                  disabled={pin.length !== 4}
+                  disabled={pin.length !== 4 || isAuthenticating}
                   onClick={handlePinSubmit}
                 >
-                  {pin.length === 4 ? <Lock className="mr-2 h-4 w-4" /> : <Fingerprint className="mr-2 h-4 w-4" />}
-                  {pin.length === 4 ? "Unlock System" : "Enter PIN"}
+                  {isAuthenticating ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Authenticating…</>
+                  ) : pin.length === 4 ? (
+                    <><Lock className="mr-2 h-4 w-4" /> Unlock System</>
+                  ) : (
+                    <><Fingerprint className="mr-2 h-4 w-4" /> Enter PIN</>
+                  )}
                 </Button>
               </div>
             </CardContent>

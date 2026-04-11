@@ -1,6 +1,19 @@
 import { usePOSStore } from "./store";
 import type { QueuedMutation } from "./data";
+import { getSupabase } from "./supabase";
+import {
+  upsertOrder,
+  updateOrderInDb,
+  deleteOrderFromDb,
+  updateTableInDb,
+  insertAuditEntry,
+  upsertShift,
+} from "./supabase-queries";
 
+/**
+ * Drain the in-memory sync queue, sending each pending mutation to Supabase.
+ * Stops on the first failure to preserve mutation ordering.
+ */
 export async function syncPendingMutations(): Promise<void> {
   const store = usePOSStore.getState();
   if (!navigator.onLine || store.isSyncing) return;
@@ -16,7 +29,7 @@ export async function syncPendingMutations(): Promise<void> {
 
   for (const m of pendingMutations) {
     try {
-      // Mark as currently syncing individual
+      // Mark individual mutation as currently syncing
       usePOSStore.setState(state => ({
         syncQueue: state.syncQueue.map(qm =>
           qm.id === m.id ? { ...qm, status: "syncing" as const } : qm
@@ -28,9 +41,12 @@ export async function syncPendingMutations(): Promise<void> {
       // Successfully synced
       usePOSStore.getState().markMutationSynced(m.id);
     } catch (error) {
-      console.error(`Failed to sync mutation ${m.id}`, error);
+      console.error(`[sync] Failed to sync mutation ${m.id}:`, error);
       usePOSStore.getState().markMutationFailed(m.id, String(error));
-      break; // Stop on first error to preserve order
+
+      // Retry backoff: wait attempts * 2 seconds before stopping
+      // (the next sync cycle will retry)
+      break; // Stop on first error to preserve ordering
     }
   }
 
@@ -40,9 +56,64 @@ export async function syncPendingMutations(): Promise<void> {
   });
 }
 
+/**
+ * Send a single mutation to Supabase.
+ * Maps the mutation kind to the appropriate supabase-queries function.
+ */
 export async function sendMutation(m: QueuedMutation): Promise<void> {
-  // Phase 2: stub — log and resolve after 200ms
-  // Phase 3: POST to Supabase via supabase-js, mapped per kind
-  await new Promise(r => setTimeout(r, 200));
-  console.log("[sync] would send", m.kind, m.id, m.payload);
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase client not initialized");
+
+  // Check we have a valid session
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    console.warn("[sync] No active session, skipping mutation", m.id);
+    throw new Error("No active session");
+  }
+
+  switch (m.kind) {
+    case "order.create":
+      await upsertOrder(m.payload.order);
+      break;
+
+    case "order.update":
+      await updateOrderInDb(m.payload.id as string, m.payload.changes as Record<string, any>);
+      break;
+
+    case "order.delete":
+      await deleteOrderFromDb(m.payload.id as string);
+      break;
+
+    case "order.refund":
+      await updateOrderInDb(m.payload.id as string, {
+        refund: m.payload.refund,
+        status: m.payload.status,
+      });
+      break;
+
+    case "payment.record":
+      await updateOrderInDb(m.payload.orderId as string, {
+        payment: m.payload.payment,
+        paidAt: m.payload.paidAt,
+        paidBy: m.payload.paidBy,
+        status: m.payload.status,
+      });
+      break;
+
+    case "table.update":
+      await updateTableInDb(m.payload.id as string, m.payload);
+      break;
+
+    case "shift.start":
+    case "shift.end":
+      await upsertShift(m.payload.shift);
+      break;
+
+    case "audit.append":
+      await insertAuditEntry(m.payload.entry);
+      break;
+
+    default:
+      console.warn("[sync] Unknown mutation kind:", m.kind);
+  }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { usePOSStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,6 +11,8 @@ import {
   Smartphone,
   Clock,
   Calendar as CalendarIcon,
+  Database,
+  Loader2,
 } from "lucide-react";
 import {
   BarChart,
@@ -32,15 +34,141 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import {
+  fetchDailySales,
+  fetchHourlyRevenue,
+  fetchPaymentBreakdown,
+  fetchTopItems,
+  fetchStaffPerformance,
+} from "@/lib/supabase-queries";
+
+// Types for server-side report data
+interface HourlyData { hour: number; revenue: number; orderCount: number }
+interface PaymentData { method: string; count: number; total: number }
+interface TopItemData { name: string; menuItemId: string; totalQuantity: number; totalRevenue: number }
+interface StaffData { staffName: string; ordersCreated: number; ordersCompleted: number; totalRevenue: number }
 
 export function ReportsContent() {
-  const { orders } = usePOSStore();
+  const { orders, supabaseEnabled } = usePOSStore();
   const [date, setDate] = useState<DateRange | undefined>({
     from: startOfDay(new Date()),
     to: endOfDay(new Date()),
   });
 
+  // Server-side data states
+  const [serverLoading, setServerLoading] = useState(false);
+  const [useServer, setUseServer] = useState(false);
+  const [serverHourly, setServerHourly] = useState<HourlyData[]>([]);
+  const [serverPayments, setServerPayments] = useState<PaymentData[]>([]);
+  const [serverTopItems, setServerTopItems] = useState<TopItemData[]>([]);
+  const [serverStaff, setServerStaff] = useState<StaffData[]>([]);
+  const [serverTotals, setServerTotals] = useState<{ totalRevenue: number; totalOrders: number; avgOrderValue: number } | null>(null);
+
+  // Format dates for SQL queries
+  const formatDateForQuery = (d: Date) => format(d, "yyyy-MM-dd");
+
+  // Fetch server-side data
+  const loadServerData = useCallback(async () => {
+    if (!supabaseEnabled || !date?.from) return;
+    setServerLoading(true);
+    try {
+      const fromStr = formatDateForQuery(date.from);
+      const toStr = date.to ? formatDateForQuery(date.to) : fromStr;
+
+      // For single-day, fetch all views; for range, use daily sales aggregate
+      const isSingleDay = fromStr === toStr;
+
+      const [dailySales, hourly, payments, topItems, staff] = await Promise.all([
+        fetchDailySales(90),
+        isSingleDay ? fetchHourlyRevenue(fromStr) : Promise.resolve([]),
+        isSingleDay ? fetchPaymentBreakdown(fromStr) : Promise.resolve([]),
+        isSingleDay ? fetchTopItems(fromStr, 10) : Promise.resolve([]),
+        isSingleDay ? fetchStaffPerformance(fromStr) : Promise.resolve([]),
+      ]);
+
+      // Filter daily sales to the date range
+      const filteredDailySales = dailySales.filter((s: any) => s.saleDate >= fromStr && s.saleDate <= toStr);
+      const totalRevenue = filteredDailySales.reduce((sum: number, s: any) => sum + s.totalRevenue, 0);
+      const totalOrders = filteredDailySales.reduce((sum: number, s: any) => sum + s.totalOrders, 0);
+      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+      setServerTotals({ totalRevenue, totalOrders, avgOrderValue });
+      setServerHourly(hourly as HourlyData[]);
+
+      // Aggregate payment methods if multi-day
+      if (!isSingleDay) {
+        // For multi-day ranges, aggregate payments from all dates
+        const allPayments = await Promise.all(
+          filteredDailySales.map((s: any) => fetchPaymentBreakdown(s.saleDate))
+        );
+        const pmtMap = new Map<string, { count: number; total: number }>();
+        allPayments.flat().forEach((p: any) => {
+          const existing = pmtMap.get(p.method) || { count: 0, total: 0 };
+          pmtMap.set(p.method, { count: existing.count + p.count, total: existing.total + p.total });
+        });
+        setServerPayments(Array.from(pmtMap.entries()).map(([method, data]) => ({ method, ...data })));
+
+        // Same for top items
+        const allItems = await Promise.all(
+          filteredDailySales.map((s: any) => fetchTopItems(s.saleDate, 20))
+        );
+        const itemMap = new Map<string, TopItemData>();
+        allItems.flat().forEach((item: any) => {
+          const existing = itemMap.get(item.name);
+          if (existing) {
+            existing.totalQuantity += item.totalQuantity;
+            existing.totalRevenue += item.totalRevenue;
+          } else {
+            itemMap.set(item.name, { ...item });
+          }
+        });
+        setServerTopItems(Array.from(itemMap.values()).sort((a, b) => b.totalQuantity - a.totalQuantity).slice(0, 10));
+
+        // Staff
+        const allStaff = await Promise.all(
+          filteredDailySales.map((s: any) => fetchStaffPerformance(s.saleDate))
+        );
+        const staffMap = new Map<string, StaffData>();
+        allStaff.flat().forEach((s: any) => {
+          const existing = staffMap.get(s.staffName);
+          if (existing) {
+            existing.ordersCreated += s.ordersCreated;
+            existing.ordersCompleted += s.ordersCompleted;
+            existing.totalRevenue += s.totalRevenue;
+          } else {
+            staffMap.set(s.staffName, { ...s });
+          }
+        });
+        setServerStaff(Array.from(staffMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue));
+      } else {
+        setServerPayments(payments as PaymentData[]);
+        setServerTopItems((topItems as TopItemData[]).slice(0, 10));
+        setServerStaff(staff as StaffData[]);
+      }
+
+      setUseServer(true);
+    } catch (err) {
+      console.error("[reports] Server fetch failed, falling back to local:", err);
+      setUseServer(false);
+    } finally {
+      setServerLoading(false);
+    }
+  }, [supabaseEnabled, date]);
+
+  // Auto-fetch when date changes and supabase is enabled
+  useEffect(() => {
+    if (supabaseEnabled) {
+      loadServerData();
+    } else {
+      setUseServer(false);
+    }
+  }, [loadServerData, supabaseEnabled]);
+
+  // ============================================================
+  // LOCAL FALLBACK — original client-side computation
+  // ============================================================
   const filteredOrders = useMemo(() => {
+    if (useServer) return []; // don't compute if using server
     if (!date?.from) return [];
     const from = startOfDay(date.from);
     const to = endOfDay(date.to || date.from);
@@ -50,34 +178,71 @@ export function ReportsContent() {
       const orderDate = new Date(o.createdAt);
       return isWithinInterval(orderDate, { start: from, end: to });
     });
-  }, [orders, date]);
+  }, [orders, date, useServer]);
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.grandTotal || o.total || 0), 0);
-  const totalOrders = filteredOrders.length;
-  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-  // Since we don't track status transition timestamps right now, we default to N/A
+  // Stats — server or local
+  const totalRevenue = useServer
+    ? (serverTotals?.totalRevenue ?? 0)
+    : filteredOrders.reduce((sum, o) => sum + (o.grandTotal || o.total || 0), 0);
+  const totalOrders = useServer
+    ? (serverTotals?.totalOrders ?? 0)
+    : filteredOrders.length;
+  const avgOrderValue = useServer
+    ? (serverTotals?.avgOrderValue ?? 0)
+    : totalOrders > 0 ? totalRevenue / totalOrders : 0;
   const avgPrepTime = "N/A";
 
+  // Hourly data — server or local
   const hourlyRevenue = useMemo(() => {
+    if (useServer) {
+      return serverHourly.map((h) => {
+        const hour = h.hour;
+        const label = hour > 12 ? `${hour - 12}PM` : hour === 12 ? "12PM" : hour === 0 ? "12AM" : `${hour}AM`;
+        return { hour: label, revenue: h.revenue, _hour: hour };
+      }).sort((a, b) => a._hour - b._hour);
+    }
+
     const hours: Record<string, number> = {};
     filteredOrders.forEach((o) => {
       const hour = new Date(o.createdAt).getHours();
       const label = hour > 12 ? `${hour - 12}PM` : hour === 12 ? "12PM" : hour === 0 ? "12AM" : `${hour}AM`;
       hours[label] = (hours[label] || 0) + (o.grandTotal || o.total || 0);
     });
-    
-    const result = [];
-    for(let i=0; i<24; i++) {
-        const hLabel = i > 12 ? `${i - 12}PM` : i === 12 ? "12PM" : i === 0 ? "12AM" : `${i}AM`;
-        if (hours[hLabel] !== undefined) {
-            result.push({ hour: hLabel, revenue: hours[hLabel], _hour: i });
-        }
-    }
-    return result.sort((a,b) => a._hour - b._hour);
-  }, [filteredOrders]);
 
+    const result = [];
+    for (let i = 0; i < 24; i++) {
+      const hLabel = i > 12 ? `${i - 12}PM` : i === 12 ? "12PM" : i === 0 ? "12AM" : `${i}AM`;
+      if (hours[hLabel] !== undefined) {
+        result.push({ hour: hLabel, revenue: hours[hLabel], _hour: i });
+      }
+    }
+    return result.sort((a, b) => a._hour - b._hour);
+  }, [filteredOrders, useServer, serverHourly]);
+
+  // Payment breakdown — server or local
   const paymentBreakdown = useMemo(() => {
+    const colorMap: Record<string, string> = {
+      Cash: "#22c55e", cash: "#22c55e",
+      UPI: "#f59e0b", upi: "#f59e0b",
+      Card: "#3b82f6", card: "#3b82f6",
+      Split: "#ec4899", split: "#ec4899",
+      platform: "#8b5cf6",
+    };
+
+    if (useServer) {
+      const total = serverPayments.reduce((a, b) => a + b.count, 0);
+      return serverPayments
+        .filter((p) => p.count > 0)
+        .map((p) => {
+          const key = p.method?.charAt(0).toUpperCase() + (p.method?.slice(1) || "");
+          return {
+            name: p.method === "upi" ? "UPI" : key,
+            value: total > 0 ? Math.round((p.count / total) * 100) : 0,
+            color: colorMap[p.method] || "#94a3b8",
+          };
+        });
+    }
+
     const methods: Record<string, number> = { Cash: 0, UPI: 0, Card: 0, Split: 0 };
     filteredOrders.forEach((o) => {
       if (o.payment) {
@@ -85,25 +250,31 @@ export function ReportsContent() {
         const key = method.toLowerCase() === "upi" ? "UPI" : method.charAt(0).toUpperCase() + method.slice(1);
         methods[key] = (methods[key] || 0) + 1;
       } else {
-        // Fallback for orders without payment details
         methods["Unknown"] = (methods["Unknown"] || 0) + 1;
       }
     });
-
-    // Remove empty methods
     if (methods["Unknown"] === 0) delete methods["Unknown"];
-    
+
     const total = Object.values(methods).reduce((a, b) => a + b, 0);
     return Object.entries(methods)
       .filter(([, count]) => count > 0)
       .map(([name, count]) => ({
         name,
         value: total > 0 ? Math.round((count / total) * 100) : 0,
-        color: name === "Cash" ? "#22c55e" : name === "UPI" ? "#f59e0b" : name === "Card" ? "#3b82f6" : name === "Split" ? "#ec4899" : "#94a3b8",
+        color: colorMap[name] || "#94a3b8",
       }));
-  }, [filteredOrders]);
+  }, [filteredOrders, useServer, serverPayments]);
 
+  // Top items — server or local
   const topItems = useMemo(() => {
+    if (useServer) {
+      return serverTopItems.map((item) => ({
+        name: item.name,
+        orders: item.totalQuantity,
+        revenue: item.totalRevenue,
+      }));
+    }
+
     const itemMap: Record<string, { name: string; orders: number; revenue: number }> = {};
     filteredOrders.forEach((o) => {
       o.items.forEach((item) => {
@@ -115,9 +286,18 @@ export function ReportsContent() {
       });
     });
     return Object.values(itemMap).sort((a, b) => b.orders - a.orders).slice(0, 5);
-  }, [filteredOrders]);
+  }, [filteredOrders, useServer, serverTopItems]);
 
+  // Staff performance — server or local
   const staffPerformance = useMemo(() => {
+    if (useServer) {
+      return serverStaff.map((s) => ({
+        name: s.staffName,
+        orders: s.ordersCompleted,
+        revenue: s.totalRevenue,
+      }));
+    }
+
     const staffMap = new Map<string, { name: string; orders: number; revenue: number }>();
     filteredOrders.forEach((o) => {
       const staffName = o.createdBy || "Unknown";
@@ -129,7 +309,7 @@ export function ReportsContent() {
       });
     });
     return Array.from(staffMap.values()).sort((a, b) => b.revenue - a.revenue);
-  }, [filteredOrders]);
+  }, [filteredOrders, useServer, serverStaff]);
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-3 sm:p-4 lg:p-6">
@@ -137,11 +317,18 @@ export function ReportsContent() {
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Reports & Analytics</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
             Performance overview
+            {serverLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            {useServer && !serverLoading && (
+              <span className="inline-flex items-center gap-1 text-xs text-primary">
+                <Database className="h-3 w-3" />
+                Live
+              </span>
+            )}
           </p>
         </div>
-        
+
         {/* Date Filter */}
         <div className="flex items-center gap-2">
           <Popover>
@@ -484,4 +671,3 @@ export function ReportsContent() {
     </div>
   );
 }
-

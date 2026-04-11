@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { usePOSStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import {
   Filter,
   ArrowUpDown,
   Timer,
+  BellRing,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Pencil } from "lucide-react";
@@ -80,6 +81,43 @@ function sortOrders(orders: Order[], sort: SortType): Order[] {
   });
 }
 
+/**
+ * Play a notification sound for new KDS orders.
+ * Uses the Web Audio API to generate a clean bell-like tone.
+ */
+function playNewOrderSound() {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + 0.5);
+
+    // Second tone (higher pitch) for a two-tone bell effect
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(1175, audioCtx.currentTime + 0.15); // D6
+    gain2.gain.setValueAtTime(0.25, audioCtx.currentTime + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.65);
+    osc2.start(audioCtx.currentTime + 0.15);
+    osc2.stop(audioCtx.currentTime + 0.65);
+  } catch (e) {
+    console.warn("[KDS] Could not play notification sound:", e);
+  }
+}
+
 export function KitchenDisplay() {
   const { orders, updateOrderStatus, startEditOrder, markOrderServed } = usePOSStore();
 
@@ -88,6 +126,11 @@ export function KitchenDisplay() {
   const [mobileTab, setMobileTab] = useState<"new" | "preparing" | "ready">("new");
   // Force re-render every 30 seconds to keep timestamps fresh
   const [, setTick] = useState(0);
+
+  // ── Task 12: KDS new-order detection ──
+  const [newOrderFlash, setNewOrderFlash] = useState(false);
+  const prevNewOrderIdsRef = useRef<Set<string>>(new Set());
+  const isInitialRenderRef = useRef(true);
 
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 30000);
@@ -112,6 +155,40 @@ export function KitchenDisplay() {
     applyFilter(orders.filter((o) => o.status === "ready")),
     sort
   );
+
+  // ── Task 12: Detect newly arrived orders and play notification ──
+  useEffect(() => {
+    const currentNewIds = new Set(newOrders.map((o) => o.id));
+    const prevIds = prevNewOrderIdsRef.current;
+
+    // Skip on initial render (don't beep for orders already in the store)
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false;
+      prevNewOrderIdsRef.current = currentNewIds;
+      return;
+    }
+
+    // Check if there's any genuinely new order ID we haven't seen before
+    let hasNewArrival = false;
+    currentNewIds.forEach((id) => {
+      if (!prevIds.has(id)) {
+        hasNewArrival = true;
+      }
+    });
+
+    if (hasNewArrival) {
+      // Play bell sound
+      playNewOrderSound();
+
+      // Flash the "New Orders" column header
+      setNewOrderFlash(true);
+      const timeout = setTimeout(() => setNewOrderFlash(false), 3000);
+      prevNewOrderIdsRef.current = currentNewIds;
+      return () => clearTimeout(timeout);
+    }
+
+    prevNewOrderIdsRef.current = currentNewIds;
+  }, [newOrders]);
 
   const handleAccept = (orderId: string) => {
     updateOrderStatus(orderId, "preparing");
@@ -246,11 +323,17 @@ export function KitchenDisplay() {
       <div className="flex flex-1 flex-col gap-3 sm:gap-4 lg:gap-6 overflow-hidden p-3 sm:p-4 lg:p-6 md:flex-row">
         {/* New Orders Column */}
         <div className={cn("min-h-[200px] flex-1 flex-col rounded-lg bg-secondary/30 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "new" ? "flex" : "hidden md:flex")}>
-          <div className="mb-3 flex items-center gap-2 lg:mb-4">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary lg:h-8 lg:w-8">
+          <div className={cn("mb-3 flex items-center gap-2 lg:mb-4 transition-colors duration-300", newOrderFlash && "bg-primary/15 rounded-lg px-2 py-1")}>
+            <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg bg-primary lg:h-8 lg:w-8", newOrderFlash && "animate-bounce")}>
               <Clock className="h-3.5 w-3.5 text-primary-foreground lg:h-4 lg:w-4" />
             </div>
             <h2 className="text-base font-semibold text-foreground lg:text-lg">New Orders</h2>
+            {newOrderFlash && (
+              <Badge className="animate-pulse bg-primary text-primary-foreground text-[11px] gap-1">
+                <BellRing className="h-3 w-3" />
+                NEW!
+              </Badge>
+            )}
             <Badge variant="secondary" className="ml-auto text-xs">
               {newOrders.length}
             </Badge>
