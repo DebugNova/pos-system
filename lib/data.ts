@@ -129,6 +129,7 @@ export interface Order {
   customerName?: string;
   customerPhone?: string;
   orderNotes?: string;
+  platform?: string;
   payment?: PaymentRecord;
   subtotal?: number;
   discount?: {

@@ -321,6 +321,11 @@ function handleSettingsChange(payload: any) {
         autoPrintKot: db.auto_print_kot ?? state.settings.autoPrintKot,
         printCustomerCopy: db.print_customer_copy ?? state.settings.printCustomerCopy,
         sessionTimeoutMinutes: db.session_timeout_minutes ?? state.settings.sessionTimeoutMinutes,
+        cashEnabled: db.cash_enabled ?? state.settings.cashEnabled,
+        upiEnabled: db.upi_enabled ?? state.settings.upiEnabled,
+        cardEnabled: db.card_enabled ?? state.settings.cardEnabled,
+        upiQrCodeUrl: db.upi_qr_code_url ?? state.settings.upiQrCodeUrl,
+        printers: db.printers ?? state.settings.printers,
       },
     }));
     console.log("[realtime] Settings updated");

@@ -6,7 +6,7 @@ import { getDefaultView } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 11;
+const STORE_VERSION = 12;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -27,6 +27,24 @@ interface StaffMember {
   initials: string;
 }
 
+export interface PrinterConfig {
+  id: string;
+  name: string;           // e.g. "Receipt Printer", "Kitchen KOT Printer"
+  type: "receipt" | "kot"; // purpose
+  connectionType: "browser" | "network" | "bluetooth" | "usb";
+  // Network printer settings
+  ipAddress?: string;
+  port?: number;
+  // Bluetooth device name (for re-pairing hint)
+  bluetoothDeviceName?: string;
+  // USB vendor/product IDs (stored after first pairing)
+  usbVendorId?: number;
+  usbProductId?: number;
+  // Paper width
+  paperWidth: 58 | 80;    // mm
+  enabled: boolean;
+}
+
 interface CafeSettings {
   cafeName: string;
   gstNumber: string;
@@ -44,6 +62,7 @@ interface CafeSettings {
   cardEnabled: boolean;
   upiQrCodeUrl?: string;
   installPromptDismissed?: boolean;
+  printers: PrinterConfig[];
 }
 
 interface POSState {
@@ -65,6 +84,9 @@ interface POSState {
   // Settings
   settings: CafeSettings;
   updateSettings: (settings: Partial<CafeSettings>) => void;
+  addPrinter: (printer: PrinterConfig) => void;
+  updatePrinter: (id: string, data: Partial<PrinterConfig>) => void;
+  deletePrinter: (id: string) => void;
 
   // Cart
   cart: CartItem[];
@@ -103,7 +125,7 @@ interface POSState {
   setPendingBillingOrderId: (id: string | null) => void;
   orders: Order[];
   addOrder: (order: Omit<Order, "id" | "createdAt">, opts?: { initialStatus?: OrderStatus; skipTableLock?: boolean }) => string;
-  updateOrder: (orderId: string, data: Partial<Order>) => void;
+  updateOrder: (orderId: string, data: Partial<Order>, opts?: { skipDirectWrite?: boolean }) => void;
   updateOrderStatus: (orderId: string, status: Order["status"]) => void;
   deleteOrder: (orderId: string) => void;
   confirmPaymentAndSendToKitchen: (orderId: string, payment: import("./data").PaymentRecord) => void;
@@ -176,6 +198,7 @@ const defaultSettings: CafeSettings = {
   cardEnabled: true,
   upiQrCodeUrl: "",
   installPromptDismissed: false,
+  printers: [],
 };
 
 export const usePOSStore = create<POSState>()(
@@ -330,6 +353,41 @@ export const usePOSStore = create<POSState>()(
         setTimeout(() => get().enqueueMutation("settings.update", { changes: finalSettings }), 0);
 
         get().addAuditEntry({ action: "settings_changed", userId: get().currentUser?.name || "System", details: "Settings updated" });
+      },
+
+      addPrinter: (printer) => {
+        set((state) => ({
+          settings: { ...state.settings, printers: [...state.settings.printers, printer] }
+        }));
+        const finalSettings = get().settings;
+        setTimeout(() => get().enqueueMutation("settings.update", { changes: finalSettings }), 0);
+        get().addAuditEntry({ action: "settings_changed", userId: get().currentUser?.name || "System", details: `Printer "${printer.name}" added (${printer.connectionType})` });
+      },
+
+      updatePrinter: (id, data) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            printers: state.settings.printers.map((p) => p.id === id ? { ...p, ...data } : p)
+          }
+        }));
+        const finalSettings = get().settings;
+        setTimeout(() => get().enqueueMutation("settings.update", { changes: finalSettings }), 0);
+      },
+
+      deletePrinter: (id) => {
+        const printer = get().settings.printers.find((p) => p.id === id);
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            printers: state.settings.printers.filter((p) => p.id !== id)
+          }
+        }));
+        const finalSettings = get().settings;
+        setTimeout(() => get().enqueueMutation("settings.update", { changes: finalSettings }), 0);
+        if (printer) {
+          get().addAuditEntry({ action: "settings_changed", userId: get().currentUser?.name || "System", details: `Printer "${printer.name}" removed` });
+        }
       },
 
       // Cart
@@ -543,7 +601,7 @@ export const usePOSStore = create<POSState>()(
             }
             import("./supabase-queries").then(({ insertSupplementaryBill }) => {
               insertSupplementaryBill(editingOrderId, newBill).catch(err => {
-                console.error("[store] Direct write failed for supplementary bill, will sync later:", err);
+                console.warn("[store] Direct write failed for supplementary bill, will sync later:", err?.message || err?.code || JSON.stringify(err));
               });
             });
           }
@@ -671,7 +729,7 @@ export const usePOSStore = create<POSState>()(
           }
           import("./supabase-queries").then(({ upsertOrder }) => {
             upsertOrder(newOrder).catch(err => {
-              console.error("[store] Direct write failed for addOrder, queued mutation will retry:", err);
+              console.warn("[store] Direct write failed for addOrder, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -688,7 +746,7 @@ export const usePOSStore = create<POSState>()(
         return id;
       },
 
-      updateOrder: (orderId, data) => {
+      updateOrder: (orderId, data, opts?: { skipDirectWrite?: boolean }) => {
         set((state) => ({
           orders: state.orders.map((order) =>
             order.id === orderId ? { ...order, ...data } : order
@@ -697,13 +755,15 @@ export const usePOSStore = create<POSState>()(
         get().enqueueMutation("order.update", { id: orderId, changes: data });
 
         // Direct write-through for instant cross-device sync
-        if (get().supabaseEnabled) {
+        // skipDirectWrite: when a follow-up action (e.g. confirmPayment) will immediately
+        // do its own direct write with a merged payload, skip here to avoid race conditions.
+        if (get().supabaseEnabled && !opts?.skipDirectWrite) {
           if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
             (window as any).__posMarkOwnWrite(orderId);
           }
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, data).catch(err => {
-              console.error("[store] Direct write failed for updateOrder, queued mutation will retry:", err);
+              console.warn("[store] Direct write failed for updateOrder, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -736,7 +796,7 @@ export const usePOSStore = create<POSState>()(
           }
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, { status }).catch(err => {
-              console.error("[store] Direct write failed for updateOrderStatus, queued mutation will retry:", err);
+              console.warn("[store] Direct write failed for updateOrderStatus, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -764,7 +824,7 @@ export const usePOSStore = create<POSState>()(
         if (get().supabaseEnabled) {
           import("./supabase-queries").then(({ deleteOrderFromDb }) => {
             deleteOrderFromDb(orderId).catch(err => {
-              console.error("[store] Direct write failed for deleteOrder, queued mutation will retry:", err);
+              console.warn("[store] Direct write failed for deleteOrder, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -801,20 +861,31 @@ export const usePOSStore = create<POSState>()(
           changes: { status: "new", payment, paidAt: paidAtISO, paidBy: userName } 
         });
 
-        // Task 14: CRITICAL direct write — this triggers Realtime so KDS sees the order immediately
+        // CRITICAL direct write — single merged payload with billing fields + payment
+        // This replaces the separate updateOrder direct-write to avoid race conditions
         if (get().supabaseEnabled) {
           if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
             (window as any).__posMarkOwnWrite(orderId);
           }
+          // Read the latest order state which includes billing fields set by the
+          // preceding updateOrder() call (subtotal, discount, taxRate, etc.)
+          const latestOrder = get().orders.find((o) => o.id === orderId);
+          const mergedPayload: Record<string, any> = {
+            status: "new", 
+            payment, 
+            paidAt: paidAtISO, 
+            paidBy: userName,
+            subtotal: latestOrder?.subtotal ?? order.total,
+          };
+          // Include billing fields if they were set
+          if (latestOrder?.discount) mergedPayload.discount = latestOrder.discount;
+          if (latestOrder?.taxRate !== undefined) mergedPayload.taxRate = latestOrder.taxRate;
+          if (latestOrder?.taxAmount !== undefined) mergedPayload.taxAmount = latestOrder.taxAmount;
+          if (latestOrder?.grandTotal !== undefined) mergedPayload.grandTotal = latestOrder.grandTotal;
+
           import("./supabase-queries").then(({ updateOrderInDb }) => {
-            updateOrderInDb(orderId, { 
-              status: "new", 
-              payment, 
-              paidAt: paidAtISO, 
-              paidBy: userName,
-              subtotal: order.total,
-            }).catch(err => {
-              console.error("[store] Direct write failed for confirmPayment, queued mutation will retry:", err);
+            updateOrderInDb(orderId, mergedPayload).catch(err => {
+              console.warn("[store] Direct write failed for confirmPayment, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -872,7 +943,7 @@ export const usePOSStore = create<POSState>()(
               payLater: true,
               subtotal: order.total,
             }).catch(err => {
-              console.error("[store] Direct write failed for sendToKitchenPayLater:", err);
+              console.warn("[store] Direct write failed for sendToKitchenPayLater:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -914,20 +985,28 @@ export const usePOSStore = create<POSState>()(
           changes: { status: "completed", payment, paidAt: paidAtISO, paidBy: userName, payLater: false }
         });
 
-        // Direct write-through
+        // Merged direct write — includes billing fields set by preceding updateOrder()
         if (get().supabaseEnabled) {
           if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
             (window as any).__posMarkOwnWrite(orderId);
           }
+          const latestOrder = get().orders.find((o) => o.id === orderId);
+          const mergedPayload: Record<string, any> = {
+            status: "completed",
+            payment,
+            paidAt: paidAtISO,
+            paidBy: userName,
+            payLater: false,
+          };
+          if (latestOrder?.subtotal !== undefined) mergedPayload.subtotal = latestOrder.subtotal;
+          if (latestOrder?.discount) mergedPayload.discount = latestOrder.discount;
+          if (latestOrder?.taxRate !== undefined) mergedPayload.taxRate = latestOrder.taxRate;
+          if (latestOrder?.taxAmount !== undefined) mergedPayload.taxAmount = latestOrder.taxAmount;
+          if (latestOrder?.grandTotal !== undefined) mergedPayload.grandTotal = latestOrder.grandTotal;
+
           import("./supabase-queries").then(({ updateOrderInDb }) => {
-            updateOrderInDb(orderId, {
-              status: "completed",
-              payment,
-              paidAt: paidAtISO,
-              paidBy: userName,
-              payLater: false,
-            }).catch(err => {
-              console.error("[store] Direct write failed for confirmPaymentForServedOrder:", err);
+            updateOrderInDb(orderId, mergedPayload).catch(err => {
+              console.warn("[store] Direct write failed for confirmPaymentForServedOrder:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -965,7 +1044,7 @@ export const usePOSStore = create<POSState>()(
           }
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, { status: "cancelled" }).catch(err => {
-              console.error("[store] Direct write failed for cancelAwaitingPaymentOrder, queued mutation will retry:", err);
+              console.warn("[store] Direct write failed for cancelAwaitingPaymentOrder, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -1004,7 +1083,7 @@ export const usePOSStore = create<POSState>()(
             }
             import("./supabase-queries").then(({ updateOrderInDb }) => {
               updateOrderInDb(orderId, { status: "served-unpaid" }).catch(err => {
-                console.error("[store] Direct write failed for markOrderServed (pay-later):", err);
+                console.warn("[store] Direct write failed for markOrderServed (pay-later):", err?.message || err?.code || JSON.stringify(err));
               });
             });
           }
@@ -1038,7 +1117,7 @@ export const usePOSStore = create<POSState>()(
           }
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, { status: "completed" }).catch(err => {
-              console.error("[store] Direct write failed for markOrderServed, queued mutation will retry:", err);
+              console.warn("[store] Direct write failed for markOrderServed, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -1079,7 +1158,7 @@ export const usePOSStore = create<POSState>()(
         if (get().supabaseEnabled) {
           import("./supabase-queries").then(({ updateTableInDb }) => {
             updateTableInDb(tableId, { status, orderId }).catch(err => {
-              console.error("[store] Direct write failed for updateTableStatus, queued mutation will retry:", err);
+              console.warn("[store] Direct write failed for updateTableStatus, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
         }
@@ -1371,6 +1450,11 @@ export const usePOSStore = create<POSState>()(
                role: roleMap[staff.role] || staff.role
             }));
           }
+        }
+
+        // Ensure printers array exists on settings for older stores
+        if (state.settings && !Array.isArray(state.settings.printers)) {
+          state.settings = { ...state.settings, printers: [] };
         }
 
         // Reset tables and menuItems to default when version changes

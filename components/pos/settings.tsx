@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { usePOSStore } from "@/lib/store";
+import type { PrinterConfig } from "@/lib/store";
+import { sendTestPrint } from "@/lib/print-service";
 import { getPermissions } from "@/lib/roles";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,17 +35,145 @@ import {
   Upload,
   Image as ImageIcon,
   X,
+  Bluetooth,
+  Usb,
+  Globe,
+  Monitor,
+  Loader2,
+  Power,
+  TestTube,
 } from "lucide-react";
 import { format } from "date-fns";
 import { syncPendingMutations } from "@/lib/sync";
 import { toast } from "sonner";
 
 export function Settings() {
-  const { currentUser, settings, updateSettings, auditLog, staffMembers, addStaffMember, updateStaffMember, deleteStaffMember } = usePOSStore();
+  const { currentUser, settings, updateSettings, auditLog, staffMembers, addStaffMember, updateStaffMember, deleteStaffMember, addPrinter, updatePrinter, deletePrinter } = usePOSStore();
   
   const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [staffForm, setStaffForm] = useState({ name: "", role: "Manager", pin: "" });
+
+  // Printer dialog state
+  const [isPrinterDialogOpen, setIsPrinterDialogOpen] = useState(false);
+  const [editingPrinterId, setEditingPrinterId] = useState<string | null>(null);
+  const [printerForm, setPrinterForm] = useState<{
+    name: string;
+    type: "receipt" | "kot";
+    connectionType: "browser" | "network" | "bluetooth" | "usb";
+    ipAddress: string;
+    port: string;
+    paperWidth: 58 | 80;
+  }>({
+    name: "",
+    type: "receipt",
+    connectionType: "browser",
+    ipAddress: "",
+    port: "9100",
+    paperWidth: 80,
+  });
+  const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null);
+
+  const openAddPrinterDialog = () => {
+    setPrinterForm({ name: "", type: "receipt", connectionType: "browser", ipAddress: "", port: "9100", paperWidth: 80 });
+    setEditingPrinterId(null);
+    setIsPrinterDialogOpen(true);
+  };
+
+  const openEditPrinterDialog = (printer: PrinterConfig) => {
+    setPrinterForm({
+      name: printer.name,
+      type: printer.type,
+      connectionType: printer.connectionType,
+      ipAddress: printer.ipAddress || "",
+      port: String(printer.port || 9100),
+      paperWidth: printer.paperWidth,
+    });
+    setEditingPrinterId(printer.id);
+    setIsPrinterDialogOpen(true);
+  };
+
+  const handleSavePrinter = () => {
+    if (!printerForm.name.trim()) {
+      toast.error("Please enter a printer name");
+      return;
+    }
+    if (printerForm.connectionType === "network" && !printerForm.ipAddress.trim()) {
+      toast.error("Please enter an IP address for the network printer");
+      return;
+    }
+
+    if (editingPrinterId) {
+      updatePrinter(editingPrinterId, {
+        name: printerForm.name.trim(),
+        type: printerForm.type,
+        connectionType: printerForm.connectionType,
+        ipAddress: printerForm.connectionType === "network" ? printerForm.ipAddress.trim() : undefined,
+        port: printerForm.connectionType === "network" ? parseInt(printerForm.port) || 9100 : undefined,
+        paperWidth: printerForm.paperWidth,
+      });
+      toast.success("Printer updated");
+    } else {
+      const newId = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `printer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      addPrinter({
+        id: newId,
+        name: printerForm.name.trim(),
+        type: printerForm.type,
+        connectionType: printerForm.connectionType,
+        ipAddress: printerForm.connectionType === "network" ? printerForm.ipAddress.trim() : undefined,
+        port: printerForm.connectionType === "network" ? parseInt(printerForm.port) || 9100 : undefined,
+        paperWidth: printerForm.paperWidth,
+        enabled: true,
+      });
+      toast.success("Printer added");
+    }
+    setIsPrinterDialogOpen(false);
+  };
+
+  const handleTestPrint = async (printer: PrinterConfig) => {
+    setTestingPrinterId(printer.id);
+    try {
+      const result = await sendTestPrint(printer);
+      if (result.success) {
+        // If USB device returned new IDs, save them
+        if (printer.connectionType === "usb" && (result as any).vendorId) {
+          updatePrinter(printer.id, {
+            usbVendorId: (result as any).vendorId,
+            usbProductId: (result as any).productId,
+          });
+        }
+        toast.success("Test print sent!", { description: `"${printer.name}" is working correctly.` });
+      } else {
+        toast.error("Test print failed", { description: result.error });
+      }
+    } catch {
+      toast.error("Test print failed", { description: "An unexpected error occurred." });
+    } finally {
+      setTestingPrinterId(null);
+    }
+  };
+
+  const getConnectionIcon = (type: string) => {
+    switch (type) {
+      case "browser": return <Monitor className="h-4 w-4" />;
+      case "network": return <Globe className="h-4 w-4" />;
+      case "bluetooth": return <Bluetooth className="h-4 w-4" />;
+      case "usb": return <Usb className="h-4 w-4" />;
+      default: return <Printer className="h-4 w-4" />;
+    }
+  };
+
+  const getConnectionLabel = (type: string) => {
+    switch (type) {
+      case "browser": return "Browser";
+      case "network": return "Network";
+      case "bluetooth": return "Bluetooth";
+      case "usb": return "USB";
+      default: return type;
+    }
+  };
 
   const permissions = getPermissions(currentUser?.role || "Chef");
 
@@ -268,57 +398,296 @@ export function Settings() {
         </TabsContent>
 
         {/* Printer Settings */}
-        <TabsContent value="printers" className="space-y-4">
+        <TabsContent value="printers" className="space-y-4 outline-none focus-visible:ring-0 mt-0 pb-10">
           <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base">Connected Printers</CardTitle>
-              <CardDescription>
-                Manage receipt and kitchen printers
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Connected Printers</CardTitle>
+                <CardDescription>
+                  Manage receipt and kitchen printers
+                </CardDescription>
+              </div>
+              {currentUser?.role === "Owner" && (
+                <Button size="sm" className="gap-1.5" onClick={openAddPrinterDialog}>
+                  <Plus className="h-4 w-4" />
+                  Add Printer
+                </Button>
+              )}
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20">
-                    <Printer className="h-5 w-5 text-success" />
+            <CardContent className="space-y-3">
+              {settings.printers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/80 mb-3">
+                    <Printer className="h-7 w-7 text-muted-foreground/60" />
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground">Receipt Printer</p>
-                    <p className="text-sm text-muted-foreground">
-                      Epson TM-T82II &bull; USB
-                    </p>
-                  </div>
+                  <p className="text-sm font-medium text-foreground">No printers configured</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">Add a printer to enable receipt printing and automatic KOT printing for the kitchen.</p>
+                  {currentUser?.role === "Owner" && (
+                    <Button variant="outline" className="gap-2 mt-4" onClick={openAddPrinterDialog}>
+                      <Plus className="h-4 w-4" />
+                      Add Your First Printer
+                    </Button>
+                  )}
                 </div>
-                <Badge variant="outline" className="gap-1.5 border-success/50 text-success">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Connected
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20">
-                    <Printer className="h-5 w-5 text-success" />
+              ) : (
+                settings.printers.map((printer) => (
+                  <div
+                    key={printer.id}
+                    className="flex items-center justify-between rounded-lg bg-secondary/50 p-4 transition-all hover:bg-secondary/70"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg shrink-0 ${
+                        printer.enabled ? "bg-success/20" : "bg-muted-foreground/10"
+                      }`}>
+                        <Printer className={`h-5 w-5 ${printer.enabled ? "text-success" : "text-muted-foreground"}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate">{printer.name}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            {getConnectionIcon(printer.connectionType)}
+                            {getConnectionLabel(printer.connectionType)}
+                          </span>
+                          <span>&bull;</span>
+                          <span className="capitalize">{printer.type === "kot" ? "KOT" : "Receipt"}</span>
+                          <span>&bull;</span>
+                          <span>{printer.paperWidth}mm</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      {/* Enable/Disable toggle */}
+                      <Switch
+                        checked={printer.enabled}
+                        onCheckedChange={(checked) => updatePrinter(printer.id, { enabled: checked })}
+                        className="scale-90"
+                      />
+                      {/* Test Print */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        onClick={() => handleTestPrint(printer)}
+                        disabled={testingPrinterId === printer.id}
+                      >
+                        {testingPrinterId === printer.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <TestTube className="h-4 w-4" />
+                        )}
+                      </Button>
+                      {/* Edit */}
+                      {currentUser?.role === "Owner" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                          onClick={() => openEditPrinterDialog(printer)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {/* Delete */}
+                      {currentUser?.role === "Owner" && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Printer</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove &quot;{printer.name}&quot;? You can add it again later.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => { deletePrinter(printer.id); toast.success(`"${printer.name}" removed`); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Remove
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground">Kitchen Printer</p>
-                    <p className="text-sm text-muted-foreground">
-                      Epson TM-U220 &bull; Network
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="gap-1.5 border-success/50 text-success">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Connected
-                </Badge>
-              </div>
-
-              <Button variant="outline" className="w-full gap-2">
-                <Plus className="h-4 w-4" />
-                Add Printer
-              </Button>
+                ))
+              )}
             </CardContent>
           </Card>
+
+          {/* Printer Add/Edit Dialog */}
+          <Dialog open={isPrinterDialogOpen} onOpenChange={setIsPrinterDialogOpen}>
+            <DialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingPrinterId ? "Edit Printer" : "Add Printer"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-5 py-4">
+                {/* Name */}
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label htmlFor="printerName" className="text-left w-full text-sm font-medium">Printer Name</Label>
+                  <Input
+                    id="printerName"
+                    value={printerForm.name}
+                    onChange={(e) => setPrinterForm({ ...printerForm, name: e.target.value })}
+                    placeholder="e.g. Kitchen Printer, Receipt Printer"
+                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
+                  />
+                </div>
+
+                {/* Printer Purpose */}
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label className="text-left w-full text-sm font-medium">Printer Purpose</Label>
+                  <div className="grid grid-cols-2 gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setPrinterForm({ ...printerForm, type: "receipt" })}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
+                        printerForm.type === "receipt"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border hover:bg-secondary/50 text-foreground"
+                      }`}
+                    >
+                      <Printer className="h-5 w-5" />
+                      <span className="text-sm font-medium">Receipt</span>
+                      <span className="text-[11px] text-muted-foreground">Customer bills</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrinterForm({ ...printerForm, type: "kot" })}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
+                        printerForm.type === "kot"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border hover:bg-secondary/50 text-foreground"
+                      }`}
+                    >
+                      <Printer className="h-5 w-5" />
+                      <span className="text-sm font-medium">KOT</span>
+                      <span className="text-[11px] text-muted-foreground">Kitchen tickets</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Connection Type */}
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label className="text-left w-full text-sm font-medium">Connection Method</Label>
+                  <div className="grid grid-cols-2 gap-2 w-full">
+                    {[
+                      { value: "browser" as const, icon: <Monitor className="h-5 w-5" />, label: "Browser Print", desc: "Uses print dialog" },
+                      { value: "network" as const, icon: <Globe className="h-5 w-5" />, label: "Network / IP", desc: "ESC/POS over LAN" },
+                      { value: "bluetooth" as const, icon: <Bluetooth className="h-5 w-5" />, label: "Bluetooth", desc: "BLE thermal printer" },
+                      { value: "usb" as const, icon: <Usb className="h-5 w-5" />, label: "USB Direct", desc: "WebUSB connection" },
+                    ].map((conn) => (
+                      <button
+                        key={conn.value}
+                        type="button"
+                        onClick={() => setPrinterForm({ ...printerForm, connectionType: conn.value })}
+                        className={`flex flex-col items-center gap-1 rounded-xl border-2 p-3 transition-all text-center ${
+                          printerForm.connectionType === conn.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:bg-secondary/50 text-foreground"
+                        }`}
+                      >
+                        {conn.icon}
+                        <span className="text-xs font-medium mt-0.5">{conn.label}</span>
+                        <span className="text-[10px] text-muted-foreground leading-tight">{conn.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Network-specific fields */}
+                {printerForm.connectionType === "network" && (
+                  <div className="space-y-3 rounded-lg bg-secondary/30 p-3">
+                    <div className="space-y-2 flex flex-col items-start w-full">
+                      <Label htmlFor="printerIp" className="text-sm font-medium">IP Address</Label>
+                      <Input
+                        id="printerIp"
+                        value={printerForm.ipAddress}
+                        onChange={(e) => setPrinterForm({ ...printerForm, ipAddress: e.target.value })}
+                        placeholder="e.g. 192.168.1.100"
+                        className="bg-background border-border/60 h-11 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2 flex flex-col items-start w-full">
+                      <Label htmlFor="printerPort" className="text-sm font-medium">Port</Label>
+                      <Input
+                        id="printerPort"
+                        value={printerForm.port}
+                        onChange={(e) => setPrinterForm({ ...printerForm, port: e.target.value.replace(/\D/g, "") })}
+                        placeholder="9100"
+                        className="bg-background border-border/60 h-11 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Bluetooth help text */}
+                {printerForm.connectionType === "bluetooth" && (
+                  <div className="rounded-lg bg-chart-1/10 border border-chart-1/20 p-3">
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      <strong className="text-foreground">How it works:</strong> When you test print or the system prints, your browser will prompt you to pair with a nearby Bluetooth thermal printer. Make sure the printer is turned on and in pairing mode. Works on Chrome/Edge only.
+                    </p>
+                  </div>
+                )}
+
+                {/* USB help text */}
+                {printerForm.connectionType === "usb" && (
+                  <div className="rounded-lg bg-chart-3/10 border border-chart-3/20 p-3">
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      <strong className="text-foreground">How it works:</strong> When you test print or the system prints, your browser will prompt you to select a connected USB printer. The printer must be plugged in via USB. Works on Chrome/Edge only.
+                    </p>
+                  </div>
+                )}
+
+                {/* Browser help text */}
+                {printerForm.connectionType === "browser" && (
+                  <div className="rounded-lg bg-primary/10 border border-primary/20 p-3">
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      <strong className="text-foreground">How it works:</strong> Uses your browser&apos;s built-in print dialog. Set your thermal printer as the default printer in your OS settings for a seamless experience. Works on all browsers.
+                    </p>
+                  </div>
+                )}
+
+                {/* Paper Width */}
+                <div className="space-y-2.5 flex flex-col items-start w-full">
+                  <Label className="text-left w-full text-sm font-medium">Paper Width</Label>
+                  <div className="grid grid-cols-2 gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setPrinterForm({ ...printerForm, paperWidth: 80 })}
+                      className={`rounded-xl border-2 p-2.5 text-center transition-all ${
+                        printerForm.paperWidth === 80
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border hover:bg-secondary/50 text-foreground"
+                      }`}
+                    >
+                      <span className="text-sm font-medium">80mm</span>
+                      <span className="text-[11px] text-muted-foreground block">Standard thermal</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrinterForm({ ...printerForm, paperWidth: 58 })}
+                      className={`rounded-xl border-2 p-2.5 text-center transition-all ${
+                        printerForm.paperWidth === 58
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border hover:bg-secondary/50 text-foreground"
+                      }`}
+                    >
+                      <span className="text-sm font-medium">58mm</span>
+                      <span className="text-[11px] text-muted-foreground block">Compact thermal</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsPrinterDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSavePrinter}>Save</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <Card className="bg-card border-border">
             <CardHeader>
@@ -329,7 +698,7 @@ export function Settings() {
                 <div className="space-y-0.5">
                   <Label>Auto-print KOT</Label>
                   <p className="text-sm text-muted-foreground">
-                    Automatically print kitchen tickets
+                    Automatically print kitchen tickets when an order is sent to kitchen
                   </p>
                 </div>
                 <Switch
@@ -337,11 +706,16 @@ export function Settings() {
                   onCheckedChange={(checked) => updateSettings({ autoPrintKot: checked })}
                 />
               </div>
+              {settings.autoPrintKot && settings.printers.filter(p => p.type === "kot" && p.enabled).length === 0 && (
+                <div className="rounded-lg bg-warning/10 border border-warning/20 p-3">
+                  <p className="text-xs text-warning font-medium">⚠ No KOT printers configured. Add a printer with type &quot;KOT&quot; for auto-printing to work.</p>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Print Customer Copy</Label>
                   <p className="text-sm text-muted-foreground">
-                    Print receipt for customer
+                    Automatically print receipt after payment
                   </p>
                 </div>
                 <Switch
@@ -349,6 +723,11 @@ export function Settings() {
                   onCheckedChange={(checked) => updateSettings({ printCustomerCopy: checked })}
                 />
               </div>
+              {settings.printCustomerCopy && settings.printers.filter(p => p.type === "receipt" && p.enabled).length === 0 && (
+                <div className="rounded-lg bg-warning/10 border border-warning/20 p-3">
+                  <p className="text-xs text-warning font-medium">⚠ No receipt printers configured. Receipts will use the browser&apos;s default print dialog.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

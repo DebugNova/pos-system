@@ -51,6 +51,7 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { ReceiptTemplate } from "./receipt-template";
 import { SplitBillDialog } from "./split-bill-dialog";
+import { printToAllPrinters, printViaBrowser, generateReceiptHTML, generateKOTHTML } from "@/lib/print-service";
 
 import type { PaymentMethod, PaymentRecord } from "@/lib/data";
 
@@ -149,7 +150,7 @@ export function Billing() {
         taxRate: settings.gstEnabled ? settings.taxRate : 0,
         taxAmount: tax,
         grandTotal,
-      });
+      }, { skipDirectWrite: true });
 
       if (discountAmount > 0) {
         addAuditEntry({
@@ -164,9 +165,23 @@ export function Billing() {
       setLastPayment({ amount: grandTotal, change: cashChange });
       setPaymentComplete(true);
 
+      // Auto-print receipt
       setTimeout(() => {
         if (settings.printCustomerCopy) {
-          window.print();
+          const receiptPrinters = settings.printers?.filter(p => p.type === "receipt" && p.enabled) || [];
+          if (receiptPrinters.length > 0) {
+            const freshOrder = orders.find(o => o.id === selectedOrder);
+            if (freshOrder) {
+              printToAllPrinters(receiptPrinters, freshOrder, settings, "receipt").then(({ results }) => {
+                const failures = results.filter(r => !r.success);
+                if (failures.length > 0) {
+                  toast.error(`Receipt failed on: ${failures.map(f => f.printer).join(", ")}`);
+                }
+              });
+            }
+          } else {
+            window.print();
+          }
         }
       }, 100);
       return;
@@ -183,7 +198,7 @@ export function Billing() {
         taxRate: settings.gstEnabled ? settings.taxRate : 0,
         taxAmount: tax,
         grandTotal,
-      });
+      }, { skipDirectWrite: true });
 
       if (discountAmount > 0) {
         addAuditEntry({
@@ -212,9 +227,37 @@ export function Billing() {
     setLastPayment({ amount: grandTotal, change: cashChange });
     setPaymentComplete(true);
 
+    // Auto-print KOT for orders going to kitchen
+    if (!isSupplementary && settings.autoPrintKot) {
+      const kotPrinters = settings.printers?.filter(p => p.type === "kot" && p.enabled) || [];
+      const freshOrder = orders.find(o => o.id === selectedOrder);
+      if (kotPrinters.length > 0 && freshOrder) {
+        printToAllPrinters(kotPrinters, freshOrder, settings, "kot").then(({ results }) => {
+          const failures = results.filter(r => !r.success);
+          if (failures.length > 0) {
+            toast.error(`KOT print failed on: ${failures.map(f => f.printer).join(", ")}`);
+          }
+        });
+      }
+    }
+
+    // Auto-print receipt
     setTimeout(() => {
       if (settings.printCustomerCopy) {
-        window.print();
+        const receiptPrinters = settings.printers?.filter(p => p.type === "receipt" && p.enabled) || [];
+        if (receiptPrinters.length > 0) {
+          const freshOrder = orders.find(o => o.id === selectedOrder);
+          if (freshOrder) {
+            printToAllPrinters(receiptPrinters, freshOrder, settings, "receipt").then(({ results }) => {
+              const failures = results.filter(r => !r.success);
+              if (failures.length > 0) {
+                toast.error(`Receipt failed on: ${failures.map(f => f.printer).join(", ")}`);
+              }
+            });
+          }
+        } else {
+          window.print();
+        }
       }
     }, 100);
   };
@@ -222,6 +265,21 @@ export function Billing() {
   const handlePayLater = () => {
     if (!selectedOrder) return;
     sendToKitchenPayLater(selectedOrder);
+
+    // Auto-print KOT for pay-later orders going to kitchen
+    if (settings.autoPrintKot) {
+      const kotPrinters = settings.printers?.filter(p => p.type === "kot" && p.enabled) || [];
+      const freshOrder = orders.find(o => o.id === selectedOrder);
+      if (kotPrinters.length > 0 && freshOrder) {
+        printToAllPrinters(kotPrinters, freshOrder, settings, "kot").then(({ results }) => {
+          const failures = results.filter(r => !r.success);
+          if (failures.length > 0) {
+            toast.error(`KOT print failed on: ${failures.map(f => f.printer).join(", ")}`);
+          }
+        });
+      }
+    }
+
     toast.success("Order sent to kitchen", {
       description: `Order ${selectedOrder.toUpperCase()} will be prepared. Payment will be collected after serving.`,
     });

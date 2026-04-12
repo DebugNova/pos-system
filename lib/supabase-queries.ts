@@ -286,7 +286,7 @@ export async function upsertShift(shift: any): Promise<void> {
 export async function fetchDailySales(days = 30) {
   const supabase = getSupabase();
   const { data, error } = await supabase
-    .from("v_daily_sales")
+    .from("v_daily_sales" as any)
     .select("*")
     .limit(days);
   if (error) throw error;
@@ -301,7 +301,7 @@ export async function fetchDailySales(days = 30) {
 
 export async function fetchHourlyRevenue(saleDate?: string) {
   const supabase = getSupabase();
-  let query = supabase.from("v_hourly_revenue").select("*");
+  let query = supabase.from("v_hourly_revenue" as any).select("*");
   if (saleDate) {
     query = query.eq("sale_date", saleDate);
   }
@@ -317,7 +317,7 @@ export async function fetchHourlyRevenue(saleDate?: string) {
 
 export async function fetchPaymentBreakdown(saleDate?: string) {
   const supabase = getSupabase();
-  let query = supabase.from("v_payment_breakdown").select("*");
+  let query = supabase.from("v_payment_breakdown" as any).select("*");
   if (saleDate) {
     query = query.eq("sale_date", saleDate);
   }
@@ -333,7 +333,7 @@ export async function fetchPaymentBreakdown(saleDate?: string) {
 
 export async function fetchTopItems(saleDate?: string, limit = 20) {
   const supabase = getSupabase();
-  let query = supabase.from("v_top_items").select("*");
+  let query = supabase.from("v_top_items" as any).select("*");
   if (saleDate) {
     query = query.eq("sale_date", saleDate);
   }
@@ -350,7 +350,7 @@ export async function fetchTopItems(saleDate?: string, limit = 20) {
 
 export async function fetchStaffPerformance(saleDate?: string) {
   const supabase = getSupabase();
-  let query = supabase.from("v_staff_performance").select("*");
+  let query = supabase.from("v_staff_performance" as any).select("*");
   if (saleDate) {
     query = query.eq("sale_date", saleDate);
   }
@@ -591,6 +591,7 @@ function mapDbSettingsToLocal(db: any) {
     upiEnabled: db.upi_enabled !== undefined ? db.upi_enabled : true,
     cardEnabled: db.card_enabled !== undefined ? db.card_enabled : true,
     upiQrCodeUrl: db.upi_qr_code_url,
+    printers: db.printers || [],
   };
 }
 
@@ -611,5 +612,6 @@ function mapLocalSettingsToDb(settings: any) {
   if (settings.upiEnabled !== undefined) mapped.upi_enabled = settings.upiEnabled;
   if (settings.cardEnabled !== undefined) mapped.card_enabled = settings.cardEnabled;
   if (settings.upiQrCodeUrl !== undefined) mapped.upi_qr_code_url = settings.upiQrCodeUrl;
+  if (settings.printers !== undefined) mapped.printers = settings.printers;
   return mapped;
 }
