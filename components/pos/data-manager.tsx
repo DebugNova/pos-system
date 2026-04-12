@@ -136,12 +136,48 @@ export function DataManager({ onBack }: DataManagerProps) {
 
   // Handlers
   const handleExport = () => {
-    const data = exportData();
-    const blob = new Blob([data], { type: "application/json" });
+    let csvContent = "";
+    
+    // --- ORDERS ---
+    csvContent += "ORDERS\n";
+    csvContent += "Order ID,Type,Status,Customer Name,Customer Phone,Items Count,Total,Date\n";
+    orders.forEach(o => {
+      const escape = (v: any) => `"${String(v || '').replace(/"/g, '""')}"`;
+      csvContent += `${escape(o.id.toUpperCase())},${escape(o.type)},${escape(o.status)},${escape(o.customerName)},${escape(o.customerPhone)},${escape(o.items?.length || 0)},${escape(o.total)},${escape(format(new Date(o.createdAt), "yyyy-MM-dd HH:mm:ss"))}\n`;
+    });
+    csvContent += "\n";
+
+    // --- MENU ITEMS ---
+    csvContent += "MENU ITEMS\n";
+    csvContent += "Name,Category,Price,Status\n";
+    menuItems.forEach(m => {
+      const escape = (v: any) => `"${String(v || '').replace(/"/g, '""')}"`;
+      csvContent += `${escape(m.name)},${escape(m.category)},${escape(m.price)},${escape(m.available ? 'Available' : 'Unavailable')}\n`;
+    });
+    csvContent += "\n";
+
+    // --- TABLES ---
+    csvContent += "TABLES\n";
+    csvContent += "Table No.,Capacity,Status,Current Order\n";
+    tables.forEach(t => {
+      const escape = (v: any) => `"${String(v || '').replace(/"/g, '""')}"`;
+      csvContent += `${escape(t.number)},${escape(t.capacity)},${escape(t.status)},${escape(t.orderId)}\n`;
+    });
+    csvContent += "\n";
+
+    // --- STAFF MEMBERS ---
+    csvContent += "STAFF MEMBERS\n";
+    csvContent += "Name,Role,Initials\n";
+    staffMembers.forEach(s => {
+      const escape = (v: any) => `"${String(v || '').replace(/"/g, '""')}"`;
+      csvContent += `${escape(s.name)},${escape(s.role)},${escape(s.initials)}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `suhashi-pos-backup-${format(new Date(), "yyyy-MM-dd-HHmm")}.json`;
+    a.download = `suhashi-pos-data-${format(new Date(), "yyyy-MM-dd-HHmm")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

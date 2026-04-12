@@ -231,49 +231,49 @@ export function OrderHistory() {
               >
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
-                        <TypeIcon className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                      <div className="flex shrink-0 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-secondary mt-1 sm:mt-0">
+                        <TypeIcon className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-foreground">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-semibold text-foreground truncate block max-w-full">
                             {o.id.toUpperCase()}
                           </span>
                           {o.tableId && (
-                            <Badge variant="secondary">
+                            <Badge variant="secondary" className="shrink-0 px-1.5 py-0 h-5 text-[10px] sm:text-[11px]">
                               Table {o.tableId.replace("t", "")}
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span>{o.items.length} items</span>
-                          <span>&bull;</span>
-                          <span suppressHydrationWarning>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground w-full">
+                          <span className="shrink-0 whitespace-nowrap">{o.items.length} items</span>
+                          <span className="shrink-0 text-muted-foreground/50">&bull;</span>
+                          <span suppressHydrationWarning className="shrink-0 whitespace-nowrap">
                             {formatDistanceToNow(o.createdAt, { addSuffix: true })}
                           </span>
                           {o.customerName && (
                             <>
-                              <span>&bull;</span>
-                              <span>{o.customerName}</span>
+                              <span className="shrink-0 text-muted-foreground/50">&bull;</span>
+                              <span className="truncate max-w-[100px] sm:max-w-[120px] shrink block">{o.customerName}</span>
                             </>
                           )}
                           {o.customerPhone && (
                             <>
-                              <span>&bull;</span>
-                              <span>📞 {o.customerPhone}</span>
+                              <span className="shrink-0 text-muted-foreground/50">&bull;</span>
+                              <span className="shrink-0 whitespace-nowrap">📞 {o.customerPhone}</span>
                             </>
                           )}
                           {o.createdBy && (
                             <>
-                              <span>&bull;</span>
-                              <span>by {o.createdBy}</span>
+                              <span className="shrink-0 text-muted-foreground/50">&bull;</span>
+                              <span className="truncate max-w-[80px] sm:max-w-[100px] shrink block">by {o.createdBy}</span>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t border-border/40 sm:border-0">
+                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t border-border/40 sm:border-0 shrink-0">
                       <Badge variant="outline" className={getStatusColor(o.status)}>
                         {o.status}
                       </Badge>

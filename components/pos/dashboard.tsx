@@ -120,7 +120,6 @@ export function Dashboard() {
                 minimumFractionDigits: 0,
               })}
             </div>
-            <p className="text-xs text-muted-foreground">+12% from yesterday</p>
           </CardContent>
         </Card>
 
@@ -207,15 +206,14 @@ export function Dashboard() {
                 High order backlog
               </Badge>
             )}
-            <Badge variant="outline" className="gap-1.5 py-1.5 text-success border-success/30">
-              <Wifi className="h-3 w-3" />
-              All printers connected
-            </Badge>
             {kitchenQueue > 2 && (
               <Badge variant="secondary" className="gap-1.5 py-1.5">
                 <Clock className="h-3 w-3" />
                 Kitchen busy
               </Badge>
+            )}
+            {pendingOrders <= 3 && kitchenQueue <= 2 && (
+              <span className="text-sm text-muted-foreground">No active alerts</span>
             )}
           </CardContent>
         </Card>

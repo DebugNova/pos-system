@@ -299,23 +299,23 @@ export function KitchenDisplay() {
       {/* Kanban Board */}
       <div className="flex flex-1 flex-col gap-3 sm:gap-4 lg:gap-6 overflow-hidden p-3 sm:p-4 lg:p-6 md:flex-row">
         {/* New Orders Column */}
-        <div className={cn("min-h-[200px] flex-1 flex-col rounded-lg bg-secondary/30 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "new" ? "flex" : "hidden md:flex")}>
+        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-lg bg-secondary/30 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "new" ? "flex" : "hidden md:flex")}>
           <div className={cn("mb-3 flex items-center gap-2 lg:mb-4 transition-colors duration-300", newOrderFlash && "bg-primary/15 rounded-lg px-2 py-1")}>
-            <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg bg-primary lg:h-8 lg:w-8", newOrderFlash && "animate-bounce")}>
+            <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary lg:h-8 lg:w-8", newOrderFlash && "animate-bounce")}>
               <Clock className="h-3.5 w-3.5 text-primary-foreground lg:h-4 lg:w-4" />
             </div>
-            <h2 className="text-base font-semibold text-foreground lg:text-lg">New Orders</h2>
+            <h2 className="text-base font-semibold truncate text-foreground lg:text-lg">New Orders</h2>
             {newOrderFlash && (
               <Badge className="animate-pulse bg-primary text-primary-foreground text-[11px] gap-1">
-                <BellRing className="h-3 w-3" />
+                <BellRing className="h-3 w-3 shrink-0" />
                 NEW!
               </Badge>
             )}
-            <Badge variant="secondary" className="ml-auto text-xs">
+            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
               {newOrders.length}
             </Badge>
           </div>
-          <div className="flex-1 space-y-2 overflow-y-auto lg:space-y-3">
+          <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1 lg:space-y-4">
             {newOrders.map((order) => (
               <KitchenOrderCard
                 key={order.id}
@@ -335,17 +335,17 @@ export function KitchenDisplay() {
         </div>
 
         {/* Preparing Column */}
-        <div className={cn("min-h-[200px] flex-1 flex-col rounded-lg bg-warning/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "preparing" ? "flex" : "hidden md:flex")}>
+        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-lg bg-warning/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "preparing" ? "flex" : "hidden md:flex")}>
           <div className="mb-3 flex items-center gap-2 lg:mb-4">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning lg:h-8 lg:w-8">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-warning lg:h-8 lg:w-8">
               <ChefHat className="h-3.5 w-3.5 text-warning-foreground lg:h-4 lg:w-4" />
             </div>
-            <h2 className="text-base font-semibold text-foreground lg:text-lg">Preparing</h2>
-            <Badge variant="secondary" className="ml-auto text-xs">
+            <h2 className="text-base font-semibold truncate text-foreground lg:text-lg">Preparing</h2>
+            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
               {preparingOrders.length}
             </Badge>
           </div>
-          <div className="flex-1 space-y-2 overflow-y-auto lg:space-y-3">
+          <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1 lg:space-y-4">
             {preparingOrders.map((order) => (
               <KitchenOrderCard
                 key={order.id}
@@ -365,17 +365,17 @@ export function KitchenDisplay() {
         </div>
 
         {/* Ready Column */}
-        <div className={cn("min-h-[200px] flex-1 flex-col rounded-lg bg-success/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "ready" ? "flex" : "hidden md:flex")}>
+        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-lg bg-success/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "ready" ? "flex" : "hidden md:flex")}>
           <div className="mb-3 flex items-center gap-2 lg:mb-4">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success lg:h-8 lg:w-8">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-success lg:h-8 lg:w-8">
               <CheckCircle2 className="h-3.5 w-3.5 text-success-foreground lg:h-4 lg:w-4" />
             </div>
-            <h2 className="text-base font-semibold text-foreground lg:text-lg">Ready</h2>
-            <Badge variant="secondary" className="ml-auto text-xs">
+            <h2 className="text-base font-semibold truncate text-foreground lg:text-lg">Ready</h2>
+            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
               {readyOrders.length}
             </Badge>
           </div>
-          <div className="flex-1 space-y-2 overflow-y-auto lg:space-y-3">
+          <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1 lg:space-y-4">
             {readyOrders.map((order) => (
               <KitchenOrderCard
                 key={order.id}
@@ -459,94 +459,97 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
         styles.pulse && "animate-pulse-subtle"
       )}
     >
-      <CardHeader className="pb-2">
-        {/* Order ID + Type + Source */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <TypeIcon className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-base text-foreground">
-              {order.id.toUpperCase()}
-            </CardTitle>
+      <CardHeader className="pb-3 border-b border-border/40 px-3 sm:px-4 pt-3 sm:pt-4">
+        <div className="flex flex-col gap-2.5 sm:gap-3">
+          {/* Row 1: Order ID + Type + Payment */}
+          <div className="flex flex-wrap items-start justify-between gap-1.5 w-full">
+            <div className="flex items-center gap-1.5 min-w-0 max-w-full flex-1">
+              <TypeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <CardTitle className="text-sm font-bold text-foreground truncate" title={order.id.toUpperCase()}>
+                {order.id.toUpperCase()}
+              </CardTitle>
+            </div>
+            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-1.5 shrink-0 min-w-0">
+              <Badge variant="secondary" className="text-[10px] sm:text-[11px] font-medium bg-secondary/60 shrink-0">
+                {orderTypeLabels[order.type] || order.type}
+              </Badge>
+              {order.payLater && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] sm:text-[11px] font-bold bg-chart-3/10 text-chart-3 border-chart-3/30 shrink-0"
+                >
+                  Pay Later
+                </Badge>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            {/* Order type label */}
-            <Badge variant="secondary" className="text-[11px] sm:text-xs lg:text-xs">
-              {orderTypeLabels[order.type] || order.type}
+
+          {/* Row 2: Time + Table + Customer */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground w-full" suppressHydrationWarning>
+            <Badge variant="outline" className={cn("gap-1 border text-[10px] sm:text-[11px] font-medium whitespace-nowrap", styles.badge)}>
+              <Timer className="h-3 w-3 shrink-0" />
+              {elapsed < 1 ? "Just now" : `${elapsed}m` }
             </Badge>
-            {/* Pay Later indicator */}
-            {order.payLater && (
-              <Badge
-                variant="outline"
-                className="text-[11px] sm:text-xs font-bold lg:text-xs bg-chart-3/10 text-chart-3 border-chart-3/30"
-              >
-                Pay Later
+
+            {order.tableId && (
+              <Badge variant="secondary" className="text-[10px] sm:text-[11px] font-medium whitespace-nowrap bg-muted">
+                T-{order.tableId.replace("t", "")}
+              </Badge>
+            )}
+            {order.customerName && (
+              <Badge variant="outline" className="text-[10px] sm:text-[11px] border-border/50 max-w-[100px] justify-start overflow-hidden px-2">
+                <span className="truncate">{order.customerName}</span>
+              </Badge>
+            )}
+            {order.customerPhone && (
+              <Badge variant="outline" className="text-[10px] sm:text-[11px] border-dashed border-border/50">
+                📞 {order.customerPhone}
+              </Badge>
+            )}
+            {order.createdBy && (
+              <Badge variant="outline" className="text-[10px] sm:text-[11px] border-dashed opacity-70 whitespace-nowrap max-w-[90px] overflow-hidden px-2">
+                <span className="truncate">by {order.createdBy}</span>
               </Badge>
             )}
           </div>
         </div>
 
-        {/* Time + Table + Customer */}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground" suppressHydrationWarning>
-          {/* Elapsed time badge with urgency color */}
-          <Badge variant="outline" className={cn("gap-1 border text-[11px] sm:text-xs", styles.badge)}>
-            <Timer className="h-3 w-3" />
-            {elapsed < 1 ? "Just now" : `${elapsed}m ago`}
-          </Badge>
-
-          {order.tableId && (
-            <Badge variant="secondary" className="text-[11px] sm:text-xs lg:text-xs">
-              Table {order.tableId.replace("t", "")}
-            </Badge>
-          )}
-          {order.customerName && (
-            <Badge variant="outline" className="text-[11px] sm:text-xs lg:text-xs">
-              {order.customerName}
-            </Badge>
-          )}
-          {order.customerPhone && (
-            <Badge variant="outline" className="text-[11px] sm:text-xs lg:text-xs border-dashed">
-              📞 {order.customerPhone}
-            </Badge>
-          )}
-          {order.createdBy && (
-            <Badge variant="outline" className="text-[11px] sm:text-xs lg:text-xs border-dashed opacity-70">
-              by {order.createdBy}
-            </Badge>
-          )}
-        </div>
-
-        {/* Urgency warning for stale orders */}
-        {urgency === "urgent" && column !== "ready" && (
-          <div className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-400">
-            <AlertTriangle className="h-3 w-3" />
-            Waiting over {elapsed} minutes!
+        {/* Urgency and Notes stacked below Row 2 */}
+        {(urgency === "urgent" && column !== "ready") || order.orderNotes ? (
+          <div className="pt-2 flex flex-col gap-1.5 mt-1 border-t border-dashed border-border/40">
+            {urgency === "urgent" && column !== "ready" && (
+              <div className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-red-500">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                Waiting over {elapsed} minutes!
+              </div>
+            )}
+            {order.orderNotes && (
+              <p className="text-[11px] sm:text-xs italic text-primary/90 flex items-start line-clamp-2" title={order.orderNotes}>
+                <span className="font-semibold mr-1 not-italic opacity-70">Note:</span> {order.orderNotes}
+              </p>
+            )}
           </div>
-        )}
-
-        {/* Order notes */}
-        {order.orderNotes && (
-          <p className="mt-1 text-xs italic text-primary">
-            Note: {order.orderNotes}
-          </p>
-        )}
+        ) : null}
       </CardHeader>
 
-      <CardContent>
-        {/* Item list */}
-        <ul className="mb-3 space-y-1">
+      <CardContent className="p-3 sm:p-4 pt-3 flex flex-col gap-3 sm:gap-4 flex-1">
+        {/* Row 3: Item list */}
+        <ul className="space-y-1.5 sm:space-y-2">
           {order.items.slice(0, expanded ? undefined : 3).map((item) => (
-            <li key={item.id} className="flex flex-col text-sm">
-              <span className="text-foreground">
-                <span className="font-semibold text-primary">{item.quantity}x</span>{" "}
-                {item.name}
-                {item.variant && (
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    ({item.variant})
-                  </span>
-                )}
+            <li key={item.id} className="flex flex-col text-sm border-b border-border/30 pb-2 last:border-0 last:pb-0">
+              <span className="text-foreground flex items-start leading-snug">
+                <span className="font-bold text-primary min-w-[24px] inline-block shrink-0">{item.quantity}x</span>
+                <span className="flex-1 min-w-0 break-words font-medium text-[13px] sm:text-sm">
+                  {item.name}
+                  {item.variant && (
+                    <span className="ml-1 text-[11px] sm:text-xs text-muted-foreground break-words">
+                      ({item.variant})
+                    </span>
+                  )}
+                </span>
               </span>
               {item.notes && (
-                <span className="text-xs text-muted-foreground italic pl-5">
+                <span className="text-[11px] sm:text-xs text-muted-foreground italic pl-[24px] mt-0.5 leading-tight">
                   ↳ {item.notes}
                 </span>
               )}
@@ -555,19 +558,21 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
           {/* Supplementary Items */}
           {(!showShowMore || expanded) && order.supplementaryBills?.map(bill =>
             bill.items.map(item => (
-              <li key={item.id} className="flex flex-col text-sm border-l-2 border-warning/50 pl-2 ml-1 mt-1 font-medium bg-warning/5 rounded-r py-1">
-                <div className="text-foreground">
-                  <span className="text-[11px] sm:text-xs font-bold text-warning mr-1 tracking-wider uppercase">+ADD</span>
-                  <span className="font-semibold text-primary">{item.quantity}x</span>{" "}
-                  {item.name}
-                  {item.variant && (
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({item.variant})
-                    </span>
-                  )}
+              <li key={item.id} className="flex flex-col text-sm border-l-[3px] border-warning pl-2.5 ml-0.5 mt-2 py-1.5 bg-warning/5 rounded-r pb-2 last:mb-0">
+                <div className="text-foreground flex items-start leading-snug">
+                  <span className="text-[9px] sm:text-[10px] font-black text-warning mr-1.5 tracking-wider uppercase mt-[3px] shrink-0">ADD</span>
+                  <span className="font-bold text-primary min-w-[20px] inline-block shrink-0">{item.quantity}x</span>
+                  <span className="flex-1 min-w-0 break-words font-medium text-[13px] sm:text-sm">
+                    {item.name}
+                    {item.variant && (
+                      <span className="ml-1 text-[11px] sm:text-xs text-muted-foreground break-words">
+                        ({item.variant})
+                      </span>
+                    )}
+                  </span>
                 </div>
                 {item.notes && (
-                  <span className="text-xs text-muted-foreground italic pl-10">
+                  <span className="text-[11px] sm:text-xs text-muted-foreground italic pl-[40px] mt-0.5 leading-tight break-words">
                     ↳ {item.notes}
                   </span>
                 )}
@@ -577,36 +582,36 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
           {showShowMore && (
             <li>
               <Button 
-                variant="ghost" 
+                variant="secondary" 
                 size="sm" 
-                className="w-full text-xs h-7 mt-1 text-muted-foreground" 
+                className="w-full text-[11px] sm:text-xs h-7 mt-1.5 text-muted-foreground hover:text-foreground font-medium" 
                 onClick={() => setExpanded(!expanded)}
               >
-                {expanded ? "Show Less" : `+ ${totalItems - 3} more items`}
+                {expanded ? "Show Less" : `View ${totalItems - 3} more items`}
               </Button>
             </li>
           )}
         </ul>
 
-        {/* Action buttons */}
-        <div className="flex gap-2">
+        {/* Row 4: Action buttons */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-1 mt-auto w-full">
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5"
+            className="gap-1.5 flex-1 sm:flex-none h-9 px-3 min-w-0"
             onClick={onEdit}
           >
-            <Pencil className="h-3.5 w-3.5" />
-            Edit
+            <Pencil className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Edit</span>
           </Button>
           <Button
             size="sm"
             variant={action.variant}
-            className={cn("flex-1", action.className)}
+            className={cn("flex-1 h-9 gap-1.5 font-semibold min-w-0", action.className)}
             onClick={onAction}
           >
-            <ActionIcon className="h-4 w-4" />
-            {action.label}
+            <ActionIcon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{action.label}</span>
           </Button>
         </div>
       </CardContent>
