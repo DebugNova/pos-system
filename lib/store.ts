@@ -6,7 +6,7 @@ import { getDefaultView } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 10;
+const STORE_VERSION = 11;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -149,10 +149,10 @@ interface POSState {
 }
 
 const defaultStaffMembers: StaffMember[] = [
-  { id: "1", name: "Admin", role: "Admin", pin: "1111", initials: "AD" },
-  { id: "2", name: "Rahul S.", role: "Cashier", pin: "1111", initials: "RS" },
-  { id: "3", name: "Priya P.", role: "Server", pin: "1111", initials: "PP" },
-  { id: "4", name: "Amit K.", role: "Kitchen", pin: "1111", initials: "AK" },
+  { id: "1", name: "Owner",   role: "Owner",   pin: "1111", initials: "OW" },
+  { id: "2", name: "Rahul S.", role: "Manager", pin: "1111", initials: "RS" },
+  { id: "3", name: "Priya P.", role: "Manager", pin: "1111", initials: "PP" },
+  { id: "4", name: "Amit K.",  role: "Chef",    pin: "1111", initials: "AK" },
 ];
 
 const defaultSettings: CafeSettings = {
@@ -331,7 +331,7 @@ export const usePOSStore = create<POSState>()(
 
       adminRemoveLockedItem: (orderId, itemId) => {
         const order = get().orders.find((o) => o.id === orderId);
-        if (!order || get().currentUser?.role !== "Admin") return;
+        if (!order || get().currentUser?.role !== "Owner") return;
 
         const itemToRemove = order.items.find((i) => i.id === itemId);
         if (!itemToRemove) return;
@@ -353,7 +353,7 @@ export const usePOSStore = create<POSState>()(
                         total: newTotal,
                         refund: {
                            amount: existingRefundAmount + refundAmount,
-                           reason: `Admin force removed ${itemToRemove.name}`,
+                           reason: `Owner force removed ${itemToRemove.name}`,
                            refundedAt: new Date(),
                            refundedBy: get().currentUser?.name || "System"
                         }
@@ -366,7 +366,7 @@ export const usePOSStore = create<POSState>()(
         get().addAuditEntry({
             action: "refund",
             userId: get().currentUser?.name || "System",
-            details: `Admin forced removed ${itemToRemove.name}`,
+            details: `Owner forced removed ${itemToRemove.name}`,
             orderId,
             metadata: { reason: "admin_force_remove", itemId, amount: refundAmount }
         });
@@ -1332,16 +1332,35 @@ export const usePOSStore = create<POSState>()(
         supabaseEnabled: state.supabaseEnabled,
       }),
       migrate: (persistedState: any, version) => {
+        let state = persistedState as any;
+        
+        if (version < 11) {
+          const roleMap: Record<string, string> = {
+            "Admin": "Owner",
+            "Cashier": "Manager",
+            "Server": "Manager",
+            "Kitchen": "Chef"
+          };
+          if (state.currentUser?.role && roleMap[state.currentUser.role]) {
+            state.currentUser.role = roleMap[state.currentUser.role];
+          }
+          if (Array.isArray(state.staffMembers)) {
+            state.staffMembers = state.staffMembers.map((staff: any) => ({
+               ...staff,
+               role: roleMap[staff.role] || staff.role
+            }));
+          }
+        }
+
         // Reset tables and menuItems to default when version changes
         if (version < STORE_VERSION) {
-          const state = persistedState as any;
           return {
             ...state,
             tables: initialTables,
             menuItems: defaultMenuItems,
           } as any;
         }
-        return persistedState as any;
+        return state;
       },
       onRehydrateStorage: () => (state) => {
         // Convert date strings back to Date objects after rehydration

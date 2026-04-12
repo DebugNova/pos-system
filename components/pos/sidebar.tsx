@@ -169,7 +169,7 @@ export function POSSidebar() {
     prevKitchenIdsRef.current = kitchenIds;
   }, [kitchenIds, mounted]);
 
-  const userRole = currentUser?.role || "Kitchen"; // Most restrictive fallback
+  const userRole = currentUser?.role || "Chef"; // Most restrictive fallback
 
   // Filter nav items based on user role
   const visibleNavItems = navItems.filter((item) =>

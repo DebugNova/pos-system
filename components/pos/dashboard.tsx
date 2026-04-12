@@ -28,7 +28,7 @@ export function Dashboard() {
   const [showDataManager, setShowDataManager] = useState(false);
   const { orders, tables, shifts, currentUser, setActiveView } = usePOSStore();
 
-  const isAdmin = currentUser?.role === "Admin";
+  const isOwner = currentUser?.role === "Owner";
 
   const todaySales = orders
     .filter((o) => o.status === "completed" && isToday(new Date(o.createdAt)))
@@ -76,7 +76,7 @@ export function Dashboard() {
         <div>
           <h1 className="text-xl font-bold text-foreground lg:text-2xl">Dashboard</h1>
           <p className="text-xs text-muted-foreground lg:text-sm">
-            Welcome back, Admin. Here&apos;s your cafe overview.
+            Welcome back, Owner. Here&apos;s your cafe overview.
           </p>
         </div>
         <div className="flex items-center gap-2 lg:gap-3">
@@ -221,9 +221,9 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Admin Only: Shift History & Recent Orders */}
-      <div className={`grid grid-cols-1 ${isAdmin ? "lg:grid-cols-2 gap-4 lg:gap-6" : ""}`}>
-        {isAdmin && (
+      {/* Owner Only: Shift History & Recent Orders */}
+      <div className={`grid grid-cols-1 ${isOwner ? "lg:grid-cols-2 gap-4 lg:gap-6" : ""}`}>
+        {isOwner && (
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">

@@ -38,9 +38,9 @@ export function Settings() {
   
   const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
-  const [staffForm, setStaffForm] = useState({ name: "", role: "Server", pin: "" });
+  const [staffForm, setStaffForm] = useState({ name: "", role: "Manager", pin: "" });
 
-  const permissions = getPermissions(currentUser?.role || "Kitchen");
+  const permissions = getPermissions(currentUser?.role || "Chef");
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-5xl mx-auto scroll-smooth">
@@ -355,7 +355,7 @@ export function Settings() {
                 </CardDescription>
               </div>
               <Button size="sm" className="gap-1.5" onClick={() => {
-                setStaffForm({ name: "", role: "Server", pin: "" });
+                setStaffForm({ name: "", role: "Manager", pin: "" });
                 setEditingStaffId(null);
                 setIsStaffDialogOpen(true);
               }}>
@@ -455,10 +455,9 @@ export function Settings() {
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Cashier">Cashier</SelectItem>
-                      <SelectItem value="Server">Server</SelectItem>
-                      <SelectItem value="Kitchen">Kitchen</SelectItem>
+                      <SelectItem value="Owner">Owner</SelectItem>
+                      <SelectItem value="Manager">Manager</SelectItem>
+                      <SelectItem value="Chef">Chef</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

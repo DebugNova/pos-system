@@ -741,7 +741,7 @@ export function NewOrder() {
                 <AnimatePresence initial={false}>
                   {cart.map((item) => {
                     const isLocked = Boolean(isEditing && editMode === "supplementary" && item.originalItemId && lockedItemIds.includes(item.originalItemId));
-                    const isAdmin = currentUser?.role === "Admin";
+                    const isOwner = currentUser?.role === "Owner";
                     const isNewlyAdded = !isLocked && editMode === "supplementary";
 
                     return (
@@ -831,7 +831,7 @@ export function NewOrder() {
                             })}
                           </span>
                         </div>
-                        {isLocked && isAdmin && editingOrderId && item.originalItemId && (
+                        {isLocked && isOwner && editingOrderId && item.originalItemId && (
                           <div className="mt-2 text-right">
                             <Button
                               variant="destructive"
@@ -839,7 +839,7 @@ export function NewOrder() {
                               className="h-6 text-[11px] sm:text-xs"
                               onClick={() => setItemToRemove({ orderId: editingOrderId, itemId: item.originalItemId!, tempId: item.tempId, name: item.name })}
                             >
-                              Remove Item (Admin)
+                              Remove Item (Owner)
                             </Button>
                           </div>
                         )}
@@ -1119,11 +1119,11 @@ export function NewOrder() {
         </DialogContent>
       </Dialog>
 
-      {/* Admin Remove Item Dialog */}
+      {/* Owner Remove Item Dialog */}
       <AlertDialog open={!!itemToRemove} onOpenChange={(open) => !open && setItemToRemove(null)}>
         <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Item (Admin)</AlertDialogTitle>
+            <AlertDialogTitle>Remove Item (Owner)</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove <strong>{itemToRemove?.name}</strong>?
               This will issue a partial refund to the order total.

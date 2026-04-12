@@ -584,7 +584,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                 <Button
                   size="sm"
                   className="h-8 gap-1"
-                  onClick={() => setEditingStaff({ id: "new-" + Date.now(), name: "", role: "Cashier", pin: "1111", initials: "" })}
+                  onClick={() => setEditingStaff({ id: "new-" + Date.now(), name: "", role: "Manager", pin: "1111", initials: "" })}
                 >
                   <Plus className="h-3 w-3" />
                   Add Staff
@@ -920,10 +920,9 @@ export function DataManager({ onBack }: DataManagerProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Cashier">Cashier</SelectItem>
-                    <SelectItem value="Server">Server</SelectItem>
-                    <SelectItem value="Kitchen">Kitchen</SelectItem>
+                    <SelectItem value="Owner">Owner</SelectItem>
+                    <SelectItem value="Manager">Manager</SelectItem>
+                    <SelectItem value="Chef">Chef</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

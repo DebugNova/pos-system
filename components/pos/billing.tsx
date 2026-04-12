@@ -72,7 +72,7 @@ export function Billing() {
     pendingBillingOrderId,
     setPendingBillingOrderId
   } = usePOSStore();
-  const permissions = getPermissions(currentUser?.role || "Kitchen");
+  const permissions = getPermissions(currentUser?.role || "Chef");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [cashReceived, setCashReceived] = useState("");
