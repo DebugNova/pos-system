@@ -2,11 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Order, OrderItem, OrderType, OrderStatus, Table, MenuItem, Modifier, AuditEntry, Shift, QueuedMutation, MutationKind } from "./data";
 import { tables as initialTables, menuItems as defaultMenuItems, defaultModifiers } from "./data";
-import { getDefaultView } from "./roles";
+import { getDefaultView, canAccessView, type ViewId } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 12;
+const STORE_VERSION = 13;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -299,9 +299,17 @@ export const usePOSStore = create<POSState>()(
       },
       restoreSession: (user) => {
         // Reload-path login: no audit entry, no shift side effects.
+        // Validate the rehydrated activeView against the user's role; if the
+        // persisted view isn't accessible (or is missing), fall back to the
+        // role's default landing view.
+        const persistedView = get().activeView;
+        const safeView = canAccessView(user.role, persistedView as ViewId)
+          ? persistedView
+          : (getDefaultView(user.role) as POSState["activeView"]);
         set({
           isLoggedIn: true,
           currentUser: user,
+          activeView: safeView,
         });
       },
       logout: () => {
@@ -1458,6 +1466,7 @@ export const usePOSStore = create<POSState>()(
       name: "suhashi-pos-storage",
       version: STORE_VERSION,
       partialize: (state) => ({
+        activeView: state.activeView,
         pendingBillingOrderId: state.pendingBillingOrderId,
         orders: state.orders,
         tables: state.tables,

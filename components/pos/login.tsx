@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { User, Lock, Clock, Wifi, ChevronRight, Fingerprint, Loader2 } from "lucide-react";
 import { CatLogo } from "@/components/ui/cat-logo";
 import { useOnlineStatus } from "@/hooks/use-online-status";
-import { loginWithPin } from "@/lib/auth";
+import { loginWithPin, logoutFromSupabase, clearCachedCurrentUser, type StaffUser } from "@/lib/auth";
 
 interface LoginProps {
   onLogin: (user: { name: string; role: string; pin: string }, origin?: {x: number, y: number}) => void;
@@ -32,6 +32,7 @@ export function Login({ onLogin }: LoginProps) {
   const [shiftStarted, setShiftStarted] = useState(false);
   const [openingCash, setOpeningCash] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authenticatedUser, setAuthenticatedUser] = useState<StaffUser | null>(null);
   const isOnline = useOnlineStatus();
 
   const handlePinSubmit = async () => {
@@ -41,8 +42,21 @@ export function Login({ onLogin }: LoginProps) {
 
     try {
       if (isOnline) {
-        // Online: authenticate via Supabase Edge Function
-        await loginWithPin(pin);
+        // Online: authenticate via Supabase Edge Function. The server-returned
+        // user is the canonical source of truth — it must match the staff
+        // member the user clicked, otherwise the UI role and the cached
+        // session role would drift and a refresh would silently switch roles.
+        const { user: authUser } = await loginWithPin(pin);
+        if (authUser.id !== selectedStaff.id) {
+          // PIN belongs to a different staff member — reject and tear down
+          // the session that loginWithPin just established.
+          await logoutFromSupabase().catch(() => {});
+          clearCachedCurrentUser();
+          setError("PIN does not match the selected user.");
+          setPin("");
+          return;
+        }
+        setAuthenticatedUser(authUser);
         setShiftStarted(true);
       } else {
         // Offline fallback: validate against local staff list
@@ -65,11 +79,21 @@ export function Login({ onLogin }: LoginProps) {
 
   const handleStartShift = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (selectedStaff) {
-      startShift(selectedStaff.id, selectedStaff.name, parseFloat(openingCash || "0"));
+      // Prefer the server-authenticated user when available so the in-store
+      // currentUser, the Supabase JWT claims, and the sessionStorage cache
+      // all reference the same staff record. Falls back to selectedStaff
+      // when offline (no Edge Function round-trip happened).
+      const canonical = authenticatedUser ?? {
+        id: selectedStaff.id,
+        name: selectedStaff.name,
+        role: selectedStaff.role,
+        initials: selectedStaff.initials,
+      };
+      startShift(canonical.id, canonical.name, parseFloat(openingCash || "0"));
       const rect = e.currentTarget.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
       const y = rect.top + rect.height / 2;
-      onLogin({ name: selectedStaff.name, role: selectedStaff.role, pin: selectedStaff.pin }, { x, y });
+      onLogin({ name: canonical.name, role: canonical.role, pin: selectedStaff.pin }, { x, y });
     }
   };
 
