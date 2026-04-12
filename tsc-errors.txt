@@ -1,0 +1,34 @@
+﻿components/pos/dashboard.tsx(309,32): error TS2339: Property 'platform' does not exist on type 'Order'.
+components/pos/dashboard.tsx(315,39): error TS2339: Property 'platform' does not exist on type 'Order'.
+components/pos/dashboard.tsx(316,44): error TS2339: Property 'platform' does not exist on type 'Order'.
+components/pos/dashboard.tsx(319,36): error TS2339: Property 'platform' does not exist on type 'Order'.
+lib/supabase-queries.ts(289,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"v_daily_sales"' is not assignable to parameter of type '"audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.5"; }, { Tables: { audit_log: { Row: { action: string; created_at: string | null; details: string; id: string; metadata: Json; order_id: string | null; user_id: string; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 9 more ...; tables: { ...; }; }; Views: {}; Functions: {}; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"v_daily_sales"' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(304,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"v_hourly_revenue"' is not assignable to parameter of type '"audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.5"; }, { Tables: { audit_log: { Row: { action: string; created_at: string | null; details: string; id: string; metadata: Json; order_id: string | null; user_id: string; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 9 more ...; tables: { ...; }; }; Views: {}; Functions: {}; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"v_hourly_revenue"' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(306,22): error TS2345: Argument of type '"sale_date"' is not assignable to parameter of type '"created_at" | "id"'.
+lib/supabase-queries.ts(320,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"v_payment_breakdown"' is not assignable to parameter of type '"audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.5"; }, { Tables: { audit_log: { Row: { action: string; created_at: string | null; details: string; id: string; metadata: Json; order_id: string | null; user_id: string; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 9 more ...; tables: { ...; }; }; Views: {}; Functions: {}; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"v_payment_breakdown"' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(322,22): error TS2345: Argument of type '"sale_date"' is not assignable to parameter of type '"created_at" | "id"'.
+lib/supabase-queries.ts(336,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"v_top_items"' is not assignable to parameter of type '"audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.5"; }, { Tables: { audit_log: { Row: { action: string; created_at: string | null; details: string; id: string; metadata: Json; order_id: string | null; user_id: string; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 9 more ...; tables: { ...; }; }; Views: {}; Functions: {}; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"v_top_items"' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(338,22): error TS2345: Argument of type '"sale_date"' is not assignable to parameter of type '"created_at" | "id"'.
+lib/supabase-queries.ts(353,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"v_staff_performance"' is not assignable to parameter of type '"audit_log" | "menu_items" | "modifiers" | "order_items" | "orders" | "tables" | "settings" | "shifts" | "staff" | "supplementary_bill_items" | "supplementary_bills"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.5"; }, { Tables: { audit_log: { Row: { action: string; created_at: string | null; details: string; id: string; metadata: Json; order_id: string | null; user_id: string; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 9 more ...; tables: { ...; }; }; Views: {}; Functions: {}; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"v_staff_performance"' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(355,22): error TS2345: Argument of type '"sale_date"' is not assignable to parameter of type '"created_at" | "id"'.
+lib/supabase-queries.ts(479,5): error TS2353: Object literal may only specify known properties, and 'platform' does not exist in type 'Order'.

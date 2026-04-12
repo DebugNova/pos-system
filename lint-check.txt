@@ -1,0 +1,7 @@
+﻿node.exe : Invalid project directory provided, no such directory: C:\Users\kaust\OneDrive\Desktop\POS system\lint
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Invalid project...POS system\lint:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

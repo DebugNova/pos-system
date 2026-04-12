@@ -365,6 +365,25 @@ export async function fetchStaffPerformance(saleDate?: string) {
   }));
 }
 
+export async function fetchItemDetails(saleDateFrom?: string, saleDateTo?: string) {
+  const supabase = getSupabase();
+  let query = supabase.from("v_item_details" as any).select("*");
+  if (saleDateFrom) query = query.gte("sale_date", saleDateFrom);
+  if (saleDateTo) query = query.lte("sale_date", saleDateTo);
+  
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map((row: any) => ({
+    saleDate: row.sale_date,
+    menuItemId: row.menu_item_id as string,
+    name: row.name as string,
+    category: row.category as string,
+    totalQuantity: Number(row.total_quantity),
+    grossRevenue: Number(row.gross_revenue),
+    timesInOrder: Number(row.times_in_order),
+  }));
+}
+
 // ============================================================
 // MENU ITEM IMAGE UPLOAD (Supabase Storage)
 // ============================================================

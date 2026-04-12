@@ -1,0 +1,36 @@
+﻿lib/hydrate.ts(34,17): error TS2339: Property 'id' does not exist on type 'never'.
+lib/hydrate.ts(35,19): error TS2339: Property 'name' does not exist on type 'never'.
+lib/hydrate.ts(36,19): error TS2339: Property 'role' does not exist on type 'never'.
+lib/hydrate.ts(37,18): error TS2339: Property 'pin' does not exist on type 'never'.
+lib/hydrate.ts(38,23): error TS2339: Property 'initials' does not exist on type 'never'.
+lib/supabase-queries.ts(87,6): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type '{ id: string; order_id: string; total: number; payment: any; paid_at: string | null; created_at: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type 'never[]'.
+lib/supabase-queries.ts(112,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type '{ id: any; bill_id: string; menu_item_id: any; name: any; price: any; quantity: any; variant: any; notes: any; modifiers: any; }[]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ id: any; bill_id: string; menu_item_id: any; name: any; price: any; quantity: any; variant: any; notes: any; modifiers: any; }[]' is not assignable to parameter of type 'never[]'.
+      Type '{ id: any; bill_id: string; menu_item_id: any; name: any; price: any; quantity: any; variant: any; notes: any; modifiers: any; }' is not assignable to type 'never'.
+lib/supabase-queries.ts(122,13): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(154,13): error TS2345: Argument of type '{ status: any; order_id: any; }' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(195,6): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type '{ id: any; name: any; role: any; pin: any; initials: any; is_active: any; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type 'never[]'.
+lib/supabase-queries.ts(211,13): error TS2345: Argument of type '{ is_active: boolean; }' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(234,13): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+lib/supabase-queries.ts(247,6): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "14.5"; }, never, never, null, "audit_log", never, "POST">', gave the following error.
+    Argument of type '{ id: any; action: any; user_id: any; details: any; order_id: any; metadata: any; created_at: any; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "14.5"; }, never, never, null, "audit_log", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type 'never[]'.
+lib/supabase-queries.ts(267,6): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type '{ id: any; staff_id: any; staff_name: any; started_at: any; ended_at: any; opening_cash: any; closing_cash: any; total_sales: any; total_orders: any; notes: any; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type 'never[]'.
+lib/supabase-queries.ts(448,13): error TS2345: Argument of type '{ status: string; order_id: null; }' is not assignable to parameter of type 'never'.
