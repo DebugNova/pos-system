@@ -253,17 +253,6 @@ export function POSSidebar() {
 
         {/* Theme Toggle & User */}
         <div className="flex flex-col items-center border-t border-sidebar-border py-4 gap-2 lg:py-5 lg:gap-3">
-          {mounted && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary/70 mb-1 lg:h-12 lg:w-12 rounded-full"
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              title="Toggle theme"
-            >
-              {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
-          )}
           <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground lg:h-12 lg:w-12 lg:text-base">
             {currentUser?.name.split(" ").map((n) => n[0]).join("").slice(0, 2) || "??"}
             <div 
@@ -280,14 +269,27 @@ export function POSSidebar() {
             <SyncStatus />
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 text-muted-foreground hover:text-destructive active:bg-destructive/10 lg:h-10 lg:w-10"
-            onClick={handleLogoutClick}
-          >
-            <LogOut className="h-5 w-5 lg:h-5 lg:w-5" />
-          </Button>
+          <div className="flex flex-col lg:flex-row items-center gap-2 lg:gap-1">
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary/70 lg:h-10 lg:w-10 rounded-full"
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                title="Toggle theme"
+              >
+                {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-muted-foreground hover:text-destructive active:bg-destructive/10 lg:h-10 lg:w-10"
+              onClick={handleLogoutClick}
+            >
+              <LogOut className="h-5 w-5 lg:h-5 lg:w-5" />
+            </Button>
+          </div>
         </div>
       </aside>
 
