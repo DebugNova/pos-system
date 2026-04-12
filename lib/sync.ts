@@ -95,6 +95,20 @@ export async function syncPendingMutations(): Promise<void> {
       usePOSStore.getState().markMutationSynced(m.id);
     } catch (error) {
       const info = formatError(error);
+
+      // Postgres 23505 = unique_violation. The row already exists, so the
+      // mutation's desired end state is achieved — treat as synced and move
+      // on instead of blocking the queue forever. This happens when a write
+      // succeeded server-side but we never got to mark it synced locally
+      // (network blip after the insert, page reload mid-flight, etc.).
+      if (info.code === "23505") {
+        console.warn(
+          `[sync] Mutation ${m.id} (${m.kind}) already applied server-side, marking synced.`
+        );
+        usePOSStore.getState().markMutationSynced(m.id);
+        continue;
+      }
+
       console.error(
         `[sync] Failed to sync mutation ${m.id} (${m.kind}):`,
         info.message,
