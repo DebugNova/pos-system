@@ -79,42 +79,6 @@ function sortOrders(orders: Order[], sort: SortType): Order[] {
   });
 }
 
-/**
- * Play a notification sound for new KDS orders.
- * Uses the Web Audio API to generate a clean bell-like tone.
- */
-function playNewOrderSound() {
-  try {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-
-    oscillator.start(audioCtx.currentTime);
-    oscillator.stop(audioCtx.currentTime + 0.5);
-
-    // Second tone (higher pitch) for a two-tone bell effect
-    const osc2 = audioCtx.createOscillator();
-    const gain2 = audioCtx.createGain();
-    osc2.connect(gain2);
-    gain2.connect(audioCtx.destination);
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(1175, audioCtx.currentTime + 0.15); // D6
-    gain2.gain.setValueAtTime(0.25, audioCtx.currentTime + 0.15);
-    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.65);
-    osc2.start(audioCtx.currentTime + 0.15);
-    osc2.stop(audioCtx.currentTime + 0.65);
-  } catch (e) {
-    console.warn("[KDS] Could not play notification sound:", e);
-  }
-}
 
 export function KitchenDisplay() {
   const { orders, updateOrderStatus, startEditOrder, markOrderServed } = usePOSStore();

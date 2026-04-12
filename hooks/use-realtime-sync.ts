@@ -22,6 +22,9 @@ export function useRealtimeSync() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   // Track order IDs we recently wrote to avoid feedback loops
   const recentOwnWritesRef = useRef<Set<string>>(new Set());
+  // Track reconnect timer so we can clean it up
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptRef = useRef(0);
 
   /**
    * Mark an order ID as "recently written by this terminal".
@@ -48,91 +51,142 @@ export function useRealtimeSync() {
       (window as any).__posMarkOwnWrite = markOwnWrite;
     }
 
-    const channel = supabase
-      .channel("pos-realtime")
-      // ── Orders ──
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        (payload) => {
-          handleOrderChange(payload, recentOwnWritesRef.current);
-        }
-      )
-      // ── Order Items (needed for KDS to see full item details) ──
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "order_items" },
-        (payload) => {
-          handleOrderItemChange(payload);
-        }
-      )
-      // ── Supplementary Bills ──
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "supplementary_bills" },
-        (payload) => {
-          handleSupplementaryBillChange(payload);
-        }
-      )
-      // ── Supplementary Bill Items ──
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "supplementary_bill_items" },
-        (payload) => {
-          handleSupplementaryBillItemChange(payload);
-        }
-      )
-      // ── Tables ──
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tables" },
-        (payload) => {
-          handleTableChange(payload);
-        }
-      )
-      // ── Settings ──
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "settings" },
-        (payload) => {
-          handleSettingsChange(payload);
-        }
-      )
-      // ── Staff ──
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "staff" },
-        (payload) => {
-          handleStaffChange(payload);
-        }
-      )
-      .subscribe((status, err) => {
-        console.log("[realtime] Subscription status:", status);
-        if (status === "SUBSCRIBED") {
-          console.log("[realtime] ✓ Connected — live updates active");
-        } else if (status === "CHANNEL_ERROR") {
-          console.error("[realtime] Channel error — will attempt reconnect:", err);
-          // Re-hydrate from Supabase to catch any missed events during disconnect
-          if (navigator.onLine) {
-            setTimeout(() => {
-              hydrateStoreFromSupabase().catch(console.error);
-            }, 2000);
-          }
-        } else if (status === "TIMED_OUT") {
-          console.warn("[realtime] Subscription timed out — rehydrating");
-          if (navigator.onLine) {
-            hydrateStoreFromSupabase().catch(console.error);
-          }
-        }
-      });
+    // Track whether this effect has been cleaned up
+    let disposed = false;
 
-    channelRef.current = channel;
+    /**
+     * Build and subscribe to the Realtime channel.
+     * Uses a unique suffix to prevent collisions with stale channels
+     * that haven't finished teardown yet (e.g. React Strict Mode).
+     */
+    function createChannel() {
+      // Clean up any existing channel first
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      const channelName = `pos-realtime-${Date.now()}`;
+      const channel = supabase
+        .channel(channelName)
+        // ── Orders ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "orders" },
+          (payload) => {
+            handleOrderChange(payload, recentOwnWritesRef.current);
+          }
+        )
+        // ── Order Items (needed for KDS to see full item details) ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "order_items" },
+          (payload) => {
+            handleOrderItemChange(payload, recentOwnWritesRef.current);
+          }
+        )
+        // ── Supplementary Bills ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "supplementary_bills" },
+          (payload) => {
+            handleSupplementaryBillChange(payload);
+          }
+        )
+        // ── Supplementary Bill Items ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "supplementary_bill_items" },
+          (payload) => {
+            handleSupplementaryBillItemChange(payload);
+          }
+        )
+        // ── Tables ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "tables" },
+          (payload) => {
+            handleTableChange(payload);
+          }
+        )
+        // ── Settings ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "settings" },
+          (payload) => {
+            handleSettingsChange(payload);
+          }
+        )
+        // ── Staff ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "staff" },
+          (payload) => {
+            handleStaffChange(payload);
+          }
+        )
+        .subscribe((status, err) => {
+          console.log("[realtime] Subscription status:", status);
+          if (status === "SUBSCRIBED") {
+            console.log("[realtime] ✓ Connected — live updates active");
+            // Reset reconnect counter on successful connection
+            reconnectAttemptRef.current = 0;
+          } else if (status === "CHANNEL_ERROR") {
+            console.error("[realtime] Channel error — will attempt reconnect:", err);
+            // Re-hydrate from Supabase to catch any missed events during disconnect
+            if (navigator.onLine) {
+              hydrateStoreFromSupabase().catch(console.error);
+            }
+            // Reconnect with exponential backoff (max 30s)
+            if (!disposed && navigator.onLine) {
+              const attempt = reconnectAttemptRef.current++;
+              const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+              console.log(`[realtime] Reconnecting in ${delay}ms (attempt ${attempt + 1})`);
+              reconnectTimerRef.current = setTimeout(() => {
+                if (!disposed) {
+                  createChannel();
+                }
+              }, delay);
+            }
+          } else if (status === "TIMED_OUT") {
+            console.warn("[realtime] Subscription timed out — rehydrating & reconnecting");
+            if (navigator.onLine) {
+              hydrateStoreFromSupabase().catch(console.error);
+            }
+            // Also attempt reconnect on timeout
+            if (!disposed && navigator.onLine) {
+              const attempt = reconnectAttemptRef.current++;
+              const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+              reconnectTimerRef.current = setTimeout(() => {
+                if (!disposed) {
+                  createChannel();
+                }
+              }, delay);
+            }
+          }
+        });
+
+      channelRef.current = channel;
+    }
+
+    // Initial channel creation
+    createChannel();
 
     // On window refocus, re-hydrate to catch any events missed while in background
+    let hiddenAt: number | null = null;
     const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
       if (document.visibilityState === "visible" && navigator.onLine) {
-        console.log("[realtime] Tab refocused — rehydrating to catch missed events");
-        hydrateStoreFromSupabase().catch(console.error);
+        const wasHiddenFor = hiddenAt ? Date.now() - hiddenAt : 0;
+        hiddenAt = null;
+        // Only rehydrate if we were actually gone for >10s — ignore quick tab swaps
+        if (wasHiddenFor > 10_000) {
+          console.log("[realtime] Tab refocused after >10s — rehydrating to catch missed events");
+          hydrateStoreFromSupabase().catch(console.error);
+        }
       }
     };
 
@@ -146,9 +200,19 @@ export function useRealtimeSync() {
     window.addEventListener("online", handleOnline);
 
     return () => {
-      console.log("[realtime] Unsubscribing from pos-realtime channel");
-      channel.unsubscribe();
+      disposed = true;
+      console.log("[realtime] Removing pos-realtime channel");
+      // Clear any pending reconnect timer
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      // Use removeChannel for full teardown (not just unsubscribe)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
       channelRef.current = null;
+      reconnectAttemptRef.current = 0;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("online", handleOnline);
       if (typeof window !== "undefined") {
@@ -188,13 +252,13 @@ function handleOrderChange(payload: any, ownWrites: Set<string>) {
   }
 }
 
-function handleOrderItemChange(payload: any) {
+function handleOrderItemChange(payload: any, ownWrites: Set<string>) {
   const { eventType, new: newRecord } = payload;
   // When order items change, re-fetch the parent order to get the full picture
   const orderId = newRecord?.order_id || payload.old?.order_id;
-  if (orderId) {
-    refetchAndMergeOrder(orderId);
-  }
+  if (!orderId) return;
+  if (ownWrites.has(orderId)) return;
+  refetchAndMergeOrder(orderId);
 }
 
 function handleSupplementaryBillChange(payload: any) {
@@ -321,13 +385,25 @@ function handleStaffChange(payload: any) {
 // Debounce map to avoid spamming refetches for the same order
 const pendingRefetches = new Map<string, ReturnType<typeof setTimeout>>();
 
+const REFETCH_DEBOUNCE_MS = 400;
+
+function ordersShallowEqual(a: any, b: any): boolean {
+  return (
+    a.status === b.status &&
+    a.payLater === b.payLater &&
+    a.total === b.total &&
+    a.items.length === b.items.length &&
+    (a.supplementaryBills?.length ?? 0) === (b.supplementaryBills?.length ?? 0)
+  );
+}
+
 async function refetchAndMergeOrder(orderId: string) {
   // Debounce: if we already have a pending refetch for this order, skip
   if (pendingRefetches.has(orderId)) {
     clearTimeout(pendingRefetches.get(orderId)!);
   }
 
-  // Wait 150ms to batch rapid-fire events (e.g. order + items arriving together)
+  // Wait 400ms to batch rapid-fire events (e.g. order + items arriving together)
   const timer = setTimeout(async () => {
     pendingRefetches.delete(orderId);
     try {
@@ -335,7 +411,10 @@ async function refetchAndMergeOrder(orderId: string) {
       if (!updatedOrder) return;
 
       usePOSStore.setState((state) => {
-        const exists = state.orders.some((o) => o.id === orderId);
+        const existing = state.orders.find((o) => o.id === orderId);
+        // Skip merge if shallow-equal — avoids unnecessary re-renders and false sidebar ticks
+        if (existing && ordersShallowEqual(existing, updatedOrder)) return {};
+        const exists = !!existing;
         return {
           orders: exists
             ? state.orders.map((o) => (o.id === orderId ? updatedOrder : o))
@@ -346,7 +425,7 @@ async function refetchAndMergeOrder(orderId: string) {
     } catch (err) {
       console.error("[realtime] Failed to refetch order:", orderId, err);
     }
-  }, 150);
+  }, REFETCH_DEBOUNCE_MS);
 
   pendingRefetches.set(orderId, timer);
 }

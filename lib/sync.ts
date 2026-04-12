@@ -18,9 +18,29 @@ export async function syncPendingMutations(): Promise<void> {
   const store = usePOSStore.getState();
   if (!navigator.onLine || store.isSyncing) return;
 
-  const pendingMutations = store.syncQueue
+  let pendingMutations = store.syncQueue
     .filter(m => m.status === "pending" || m.status === "failed")
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  // Dedup order.update mutations
+  const latestUpdates = new Map<string, string>(); // orderId -> mutationId
+  for (const m of pendingMutations) {
+    if (m.kind === "order.update" && m.payload?.id) {
+      latestUpdates.set(m.payload.id as string, m.id);
+    }
+  }
+
+  pendingMutations = pendingMutations.filter((m) => {
+    if (m.kind === "order.update" && m.payload?.id) {
+      const isLatest = latestUpdates.get(m.payload.id as string) === m.id;
+      if (!isLatest) {
+        // Mark the superseded one as synced so it gets cleaned up
+        usePOSStore.getState().markMutationSynced(m.id);
+      }
+      return isLatest;
+    }
+    return true;
+  });
 
   if (pendingMutations.length === 0) return;
 

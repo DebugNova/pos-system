@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { usePOSStore } from "@/lib/store";
 import { canAccessView, type ViewId } from "@/lib/roles";
@@ -38,6 +38,63 @@ const navItems = [
   { id: "settings" as ViewId, label: "Settings", icon: Settings },
 ] as const;
 
+let sharedAudioCtx: AudioContext | null = null;
+function getAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  if (sharedAudioCtx) {
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+    return sharedAudioCtx;
+  }
+  try {
+    const Cls = window.AudioContext || (window as any).webkitAudioContext;
+    sharedAudioCtx = new Cls();
+    return sharedAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+function playBillingBeep() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(800, ctx.currentTime);
+  gain.gain.setValueAtTime(0.05, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.16);
+}
+
+function playKitchenBeep() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+
+  const osc1 = ctx.createOscillator();
+  const g1 = ctx.createGain();
+  osc1.connect(g1); g1.connect(ctx.destination);
+  osc1.type = "sine";
+  osc1.frequency.setValueAtTime(880, t);
+  g1.gain.setValueAtTime(0.05, t);
+  g1.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+  osc1.start(t); osc1.stop(t + 0.5);
+
+  const osc2 = ctx.createOscillator();
+  const g2 = ctx.createGain();
+  osc2.connect(g2); g2.connect(ctx.destination);
+  osc2.type = "sine";
+  osc2.frequency.setValueAtTime(1175, t + 0.15);
+  g2.gain.setValueAtTime(0.05, t + 0.15);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+  osc2.start(t + 0.15); osc2.stop(t + 0.65);
+}
+
 export function POSSidebar() {
   const { activeView, setActiveView, orders, currentUser, logout, currentShift } = usePOSStore();
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -45,8 +102,8 @@ export function POSSidebar() {
   const [showEndShift, setShowEndShift] = useState(false);
   const isOnline = useOnlineStatus();
 
-  const prevPendingCountRef = useRef<number | null>(null);
-  const prevKitchenCountRef = useRef<number | null>(null);
+  const prevBillingIdsRef = useRef<Set<string> | null>(null);
+  const prevKitchenIdsRef = useRef<Set<string> | null>(null);
 
   const pendingBillsCount = orders.filter(
     (o) => o.status === "awaiting-payment" || o.status === "served-unpaid" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
@@ -56,72 +113,61 @@ export function POSSidebar() {
     (o) => o.status === "new"
   ).length;
 
+  const billingIds = useMemo(
+    () =>
+      new Set(
+        orders
+          .filter(
+            (o) =>
+              o.status === "awaiting-payment" ||
+              o.status === "served-unpaid" ||
+              (o.supplementaryBills && o.supplementaryBills.some((b) => !b.payment))
+          )
+          .map((o) => o.id)
+      ),
+    [orders]
+  );
+
+  const kitchenIds = useMemo(
+    () => new Set(orders.filter((o) => o.status === "new").map((o) => o.id)),
+    [orders]
+  );
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
     if (!mounted) return;
-    if (prevPendingCountRef.current !== null && pendingBillsCount > prevPendingCountRef.current) {
-      try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-          const ctx = new AudioContextClass();
-          const osc = ctx.createOscillator();
-          const gainNode = ctx.createGain();
-          osc.connect(gainNode);
-          gainNode.connect(ctx.destination);
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(800, ctx.currentTime);
-          gainNode.gain.setValueAtTime(0.05, ctx.currentTime);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.15);
-        }
-      } catch (e) {
-        console.error("Audio playback failed", e);
-      }
+    if (prevBillingIdsRef.current === null) {
+      prevBillingIdsRef.current = billingIds;
+      return;
     }
-    prevPendingCountRef.current = pendingBillsCount;
-  }, [pendingBillsCount, mounted]);
+    const prev = prevBillingIdsRef.current;
+    
+    // Check if there are newly added IDs to billingIds
+    const hasTrulyNew = [...billingIds].some((id) => !prev.has(id));
+    if (hasTrulyNew) {
+      playBillingBeep();
+    }
+    prevBillingIdsRef.current = billingIds;
+  }, [billingIds, mounted]);
 
   useEffect(() => {
     if (!mounted) return;
-    if (prevKitchenCountRef.current !== null && pendingKitchenCount > prevKitchenCountRef.current) {
-      try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-          const ctx = new AudioContextClass();
-          
-          const osc1 = ctx.createOscillator();
-          const gain1 = ctx.createGain();
-          osc1.connect(gain1);
-          gain1.connect(ctx.destination);
-          
-          osc1.type = "sine";
-          osc1.frequency.setValueAtTime(880, ctx.currentTime);
-          gain1.gain.setValueAtTime(0.05, ctx.currentTime);
-          gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-          osc1.start(ctx.currentTime);
-          osc1.stop(ctx.currentTime + 0.5);
-
-          const osc2 = ctx.createOscillator();
-          const gain2 = ctx.createGain();
-          osc2.connect(gain2);
-          gain2.connect(ctx.destination);
-
-          osc2.type = "sine";
-          osc2.frequency.setValueAtTime(1175, ctx.currentTime + 0.15);
-          gain2.gain.setValueAtTime(0.05, ctx.currentTime + 0.15);
-          gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.65);
-          osc2.start(ctx.currentTime + 0.15);
-          osc2.stop(ctx.currentTime + 0.65);
-        }
-      } catch (e) {
-        console.error("Audio playback failed", e);
-      }
+    if (prevKitchenIdsRef.current === null) {
+      prevKitchenIdsRef.current = kitchenIds;
+      return;
     }
-    prevKitchenCountRef.current = pendingKitchenCount;
-  }, [pendingKitchenCount, mounted]);
+    const prev = prevKitchenIdsRef.current;
+    
+    // Check if there are newly added IDs to kitchenIds
+    const hasTrulyNew = [...kitchenIds].some((id) => !prev.has(id));
+    if (hasTrulyNew) {
+      playKitchenBeep();
+    }
+    prevKitchenIdsRef.current = kitchenIds;
+  }, [kitchenIds, mounted]);
 
   const userRole = currentUser?.role || "Kitchen"; // Most restrictive fallback
 

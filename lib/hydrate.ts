@@ -10,46 +10,53 @@ import { syncPendingMutations } from "./sync";
  * On failure (offline or network issue), the app silently falls back
  * to whatever is in localStorage from the last session.
  */
+let hydratePromise: Promise<void> | null = null;
 export async function hydrateStoreFromSupabase(): Promise<void> {
-  try {
-    const [orders, tables, menuItems, staffMembers, settings] = await Promise.all([
-      fetchOrders(500),
-      fetchTables(),
-      fetchMenuItems(),
-      fetchStaff(),
-      fetchSettings(),
-    ]);
+  if (hydratePromise) return hydratePromise;
+  hydratePromise = (async () => {
+    try {
+      const [orders, tables, menuItems, staffMembers, settings] = await Promise.all([
+        fetchOrders(500),
+        fetchTables(),
+        fetchMenuItems(),
+        fetchStaff(),
+        fetchSettings(),
+      ]);
 
-    const state = usePOSStore.getState();
+      const state = usePOSStore.getState();
 
-    // Only overwrite if we got data — preserve local data if DB is empty
-    usePOSStore.setState({
-      orders: orders.length > 0 ? orders : state.orders,
-      tables: tables.length > 0 ? tables : state.tables,
-      menuItems: menuItems.length > 0 ? menuItems : state.menuItems,
-      staffMembers: staffMembers.length > 0 ? staffMembers.map(s => ({
-        id: s.id,
-        name: s.name,
-        role: s.role,
-        pin: s.pin,
-        initials: s.initials,
-      })) : state.staffMembers,
-      settings: settings ? { ...state.settings, ...settings } : state.settings,
-    });
+      // Only overwrite if we got data — preserve local data if DB is empty
+      usePOSStore.setState({
+        orders: orders.length > 0 ? orders : state.orders,
+        tables: tables.length > 0 ? tables : state.tables,
+        menuItems: menuItems.length > 0 ? menuItems : state.menuItems,
+        staffMembers: staffMembers.length > 0 ? staffMembers.map(s => ({
+          id: s.id,
+          name: s.name,
+          role: s.role,
+          pin: s.pin,
+          initials: s.initials,
+        })) : state.staffMembers,
+        settings: settings ? { ...state.settings, ...settings } : state.settings,
+      });
 
-    console.log("[hydrate] Store hydrated from Supabase", {
-      orders: orders.length,
-      tables: tables.length,
-      menuItems: menuItems.length,
-      staffMembers: staffMembers.length,
-    });
+      console.log("[hydrate] Store hydrated from Supabase", {
+        orders: orders.length,
+        tables: tables.length,
+        menuItems: menuItems.length,
+        staffMembers: staffMembers.length,
+      });
 
-    // Task 14: Enable direct Supabase write-through now that hydration succeeded
-    usePOSStore.setState({ supabaseEnabled: true });
-  } catch (error) {
-    console.error("[hydrate] Failed to hydrate from Supabase:", error);
-    // Keep existing localStorage data — offline-first behavior
-  }
+      // Task 14: Enable direct Supabase write-through now that hydration succeeded
+      usePOSStore.setState({ supabaseEnabled: true });
+    } catch (error) {
+      console.error("[hydrate] Failed to hydrate from Supabase:", error);
+      // Keep existing localStorage data — offline-first behavior
+    } finally {
+      hydratePromise = null;
+    }
+  })();
+  return hydratePromise;
 }
 
 /**
