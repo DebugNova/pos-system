@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePOSStore } from "@/lib/store";
-import { categories, type MenuItem, defaultModifiers, type Modifier } from "@/lib/data";
+import { categories, type MenuItem, type Modifier } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +91,7 @@ export function NewOrder() {
     tables,
     orders,
     menuItems,
+    modifiers: availableModifiers,
     addToCart,
     removeFromCart,
     updateQuantity,
@@ -499,15 +500,6 @@ export function NewOrder() {
                           minimumFractionDigits: 0,
                         })}
                       </span>
-                      {item.variants && item.variants.length > 0 ? (
-                        <Badge variant="secondary" className="text-xs font-medium bg-secondary text-secondary-foreground">
-                          Options
-                        </Badge>
-                      ) : (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary transition-all">
-                          <Plus className="h-4 w-4" />
-                        </div>
-                      )}
                       <Button
                         variant="secondary"
                         size="sm"
@@ -547,9 +539,6 @@ export function NewOrder() {
                             Customize
                           </button>
                       
-                          {item.variants && item.variants.length > 0 && (
-                            <span className="text-[9px] px-1 py-0.5 rounded-sm bg-warning/10 font-bold text-warning uppercase shrink-0">Customisable</span>
-                          )}
                         </div>
                       </div>
                       
@@ -1029,7 +1018,7 @@ export function NewOrder() {
             <div className="space-y-3">
               <Label className="text-[14px] sm:text-[15px] font-bold text-foreground">Add-ons</Label>
               <div className="flex flex-col gap-2">
-                {defaultModifiers.map((mod) => {
+                {availableModifiers.map((mod) => {
                   const isSelected = selectedModifiers.some(m => m.id === mod.id);
                   return (
                     <div 

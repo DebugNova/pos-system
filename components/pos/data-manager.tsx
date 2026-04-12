@@ -61,7 +61,7 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
-import type { Order, MenuItem, Table as TableType } from "@/lib/data";
+import type { Order, MenuItem, Modifier, Table as TableType } from "@/lib/data";
 import { uploadMenuImage } from "@/lib/supabase-queries";
 
 interface DataManagerProps {
@@ -72,6 +72,10 @@ export function DataManager({ onBack }: DataManagerProps) {
   const {
     orders,
     menuItems,
+    modifiers,
+    addModifier,
+    updateModifier,
+    deleteModifier,
     tables,
     staffMembers,
     settings,
@@ -98,6 +102,7 @@ export function DataManager({ onBack }: DataManagerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
+  const [editingModifier, setEditingModifier] = useState<Modifier | null>(null);
   const [editingTable, setEditingTable] = useState<TableType | null>(null);
   const [editingStaff, setEditingStaff] = useState<{ id: string; name: string; role: string; pin: string; initials: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ type: string; id: string; name?: string } | null>(null);
@@ -594,8 +599,31 @@ export function DataManager({ onBack }: DataManagerProps) {
       case "staff":
         deleteStaffMember(id);
         break;
+      case "modifier":
+        deleteModifier(id);
+        break;
     }
     setShowDeleteConfirm(null);
+  };
+
+  const handleSaveModifier = () => {
+    if (!editingModifier) return;
+    const name = editingModifier.name.trim();
+    if (!name) {
+      toast.error("Modifier name is required");
+      return;
+    }
+    const price = Number(editingModifier.price) || 0;
+    if (editingModifier.id.startsWith("new-mod-")) {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `mod-${Date.now()}`;
+      const newId = `${slug}-${Date.now().toString(36)}`;
+      addModifier({ id: newId, name, price });
+      toast.success(`Added "${name}"`);
+    } else {
+      updateModifier(editingModifier.id, { name, price });
+      toast.success(`Updated "${name}"`);
+    }
+    setEditingModifier(null);
   };
 
   const handleSaveOrder = () => {
@@ -877,10 +905,64 @@ export function DataManager({ onBack }: DataManagerProps) {
           </TabsContent>
 
           {/* Menu Tab */}
-          <TabsContent value="menu" className="mt-3 flex-1 overflow-hidden">
-            <Card className="h-full bg-card border-border">
+          <TabsContent value="menu" className="mt-3 flex-1 overflow-auto space-y-4">
+            <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between py-3">
-                <CardTitle className="text-sm">Menu Items ({filteredMenuItems.length})</CardTitle>
+                <CardTitle className="text-sm">Add-ons / Modifiers ({modifiers.length})</CardTitle>
+                <Button
+                  size="sm"
+                  className="h-8 gap-1"
+                  onClick={() => setEditingModifier({ id: "new-mod-" + Date.now(), name: "", price: 0 })}
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Modifier
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Name</TableHead>
+                      <TableHead className="text-xs">Extra Price</TableHead>
+                      <TableHead className="text-xs text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {modifiers.map((mod) => (
+                      <TableRow key={mod.id}>
+                        <TableCell className="text-xs font-medium">{mod.name}</TableCell>
+                        <TableCell className="text-xs">
+                          {mod.price > 0
+                            ? mod.price.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })
+                            : "Free"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingModifier(mod)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "modifier", id: mod.id, name: mod.name })}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {modifiers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-sm text-muted-foreground py-6">
+                          No add-ons yet. Click "Add Modifier" to create one.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border">
+              <CardHeader className="flex flex-row items-center justify-between py-3">
+                <CardTitle className="text-sm">Menu Items ({filteredMenuItems.length})</CardTitle>{/* modifier-section-break */}
                 <Button
                   size="sm"
                   className="h-8 gap-1"
@@ -890,7 +972,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                   Add Item
                 </Button>
               </CardHeader>
-              <CardContent className="h-[calc(100%-60px)] overflow-auto p-0">
+              <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1250,6 +1332,68 @@ export function DataManager({ onBack }: DataManagerProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <Label>Customizations / Variants</Label>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-xs gap-1"
+                    onClick={() => {
+                      const newVariants = [...(editingMenuItem.variants || []), { name: "", price: 0 }];
+                      setEditingMenuItem({ ...editingMenuItem, variants: newVariants });
+                    }}
+                  >
+                    <Plus className="h-3 w-3" /> Add Option
+                  </Button>
+                </div>
+                {(!editingMenuItem.variants || editingMenuItem.variants.length === 0) ? (
+                  <div className="text-[11px] text-muted-foreground p-3 bg-secondary/30 rounded-md border border-border/50 text-center">
+                    No customizations added. Click "Add Option" to add variants like sizes or extras.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {editingMenuItem.variants.map((v, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <Input 
+                          placeholder="Option name (e.g. Large)" 
+                          className="h-8 text-xs flex-1"
+                          value={v.name}
+                          onChange={(e) => {
+                            const newVariants = [...editingMenuItem.variants!];
+                            newVariants[i] = { ...newVariants[i], name: e.target.value };
+                            setEditingMenuItem({ ...editingMenuItem, variants: newVariants });
+                          }}
+                        />
+                        <Input 
+                          type="number" 
+                          placeholder="Price (₹)"
+                          className="h-8 text-xs w-24"
+                          value={v.price || ""}
+                          onChange={(e) => {
+                            const newVariants = [...editingMenuItem.variants!];
+                            newVariants[i] = { ...newVariants[i], price: Number(e.target.value) };
+                            setEditingMenuItem({ ...editingMenuItem, variants: newVariants });
+                          }}
+                        />
+                        <Button 
+                          type="button"
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive shrink-0"
+                          onClick={() => {
+                            const newVariants = editingMenuItem.variants!.filter((_, index) => index !== i);
+                            setEditingMenuItem({ ...editingMenuItem, variants: newVariants });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -1260,6 +1404,44 @@ export function DataManager({ onBack }: DataManagerProps) {
               ) : (
                 editingMenuItem?.id.startsWith("new-") ? "Add Item" : "Save Changes"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modifier Dialog */}
+      <Dialog open={!!editingModifier} onOpenChange={() => setEditingModifier(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingModifier?.id.startsWith("new-mod-") ? "Add Modifier" : "Edit Modifier"}</DialogTitle>
+          </DialogHeader>
+          {editingModifier && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input
+                  value={editingModifier.name}
+                  placeholder="e.g. Extra Shot"
+                  onChange={(e) => setEditingModifier({ ...editingModifier, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Extra Price (₹)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={editingModifier.price}
+                  onChange={(e) => setEditingModifier({ ...editingModifier, price: Number(e.target.value) })}
+                />
+                <p className="text-[11px] text-muted-foreground">Set to 0 for free add-ons like "Sugar Free" or "Less Ice".</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingModifier(null)}>Cancel</Button>
+            <Button onClick={handleSaveModifier}>
+              {editingModifier?.id.startsWith("new-mod-") ? "Add Modifier" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

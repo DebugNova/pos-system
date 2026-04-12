@@ -11,7 +11,37 @@ import {
   updateSettingsInDb,
   upsertStaff,
   deleteStaff,
+  upsertMenuItem,
+  deleteMenuItemFromDb,
+  upsertModifier,
+  deleteModifierFromDb,
 } from "./supabase-queries";
+
+function formatError(error: unknown): {
+  message: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+} {
+  if (!error) return { message: "Unknown error" };
+  if (error instanceof Error) return { message: error.message };
+  if (typeof error === "object") {
+    const e = error as Record<string, unknown>;
+    const message =
+      (e.message as string) ||
+      (e.error_description as string) ||
+      (e.error as string) ||
+      JSON.stringify(e) ||
+      "Unknown error";
+    return {
+      message,
+      code: e.code as string | undefined,
+      details: e.details as string | undefined,
+      hint: e.hint as string | undefined,
+    };
+  }
+  return { message: String(error) };
+}
 
 /**
  * Drain the in-memory sync queue, sending each pending mutation to Supabase.
@@ -64,8 +94,13 @@ export async function syncPendingMutations(): Promise<void> {
       // Successfully synced
       usePOSStore.getState().markMutationSynced(m.id);
     } catch (error) {
-      console.error(`[sync] Failed to sync mutation ${m.id}:`, error);
-      usePOSStore.getState().markMutationFailed(m.id, String(error));
+      const info = formatError(error);
+      console.error(
+        `[sync] Failed to sync mutation ${m.id} (${m.kind}):`,
+        info.message,
+        { code: info.code, details: info.details, hint: info.hint, payload: m.payload }
+      );
+      usePOSStore.getState().markMutationFailed(m.id, info.message);
 
       // Retry backoff: wait attempts * 2 seconds before stopping
       // (the next sync cycle will retry)
@@ -146,6 +181,22 @@ export async function sendMutation(m: QueuedMutation): Promise<void> {
 
     case "staff.delete":
       await deleteStaff(m.payload.id as string);
+      break;
+
+    case "menu.upsert":
+      await upsertMenuItem(m.payload.item as any);
+      break;
+
+    case "menu.delete":
+      await deleteMenuItemFromDb(m.payload.id as string);
+      break;
+
+    case "modifier.upsert":
+      await upsertModifier(m.payload.modifier as any);
+      break;
+
+    case "modifier.delete":
+      await deleteModifierFromDb(m.payload.id as string);
       break;
 
     default:

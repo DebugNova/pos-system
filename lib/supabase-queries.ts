@@ -1,5 +1,5 @@
 import { getSupabase } from "./supabase";
-import type { Order, OrderItem, Table, MenuItem } from "./data";
+import type { Order, OrderItem, Table, MenuItem, Modifier } from "./data";
 
 // ============================================================
 // ORDERS
@@ -172,6 +172,71 @@ export async function fetchMenuItems(): Promise<MenuItem[]> {
     .order("name");
   if (error) throw error;
   return (data || []).map(mapDbMenuItemToLocal);
+}
+
+export async function upsertMenuItem(item: MenuItem): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("menu_items")
+    .upsert({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      category: item.category,
+      variants: item.variants || [],
+      available: item.available,
+      image_url: item.image_url || null,
+      bestseller: item.bestseller || false
+    }, { onConflict: "id" });
+  if (error) throw error;
+}
+
+export async function deleteMenuItemFromDb(id: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("menu_items")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+// ============================================================
+// MODIFIERS
+// ============================================================
+
+export async function fetchModifiers(): Promise<Modifier[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("modifiers")
+    .select("id, name, price")
+    .order("name");
+  if (error) throw error;
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    price: Number(r.price) || 0,
+  }));
+}
+
+export async function upsertModifier(mod: Modifier): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("modifiers")
+    .upsert(
+      {
+        id: mod.id,
+        name: mod.name,
+        price: mod.price,
+      },
+      { onConflict: "id" }
+    );
+  if (error) throw error;
+}
+
+export async function deleteModifierFromDb(id: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("modifiers").delete().eq("id", id);
+  if (error) throw error;
 }
 
 // ============================================================
@@ -467,6 +532,11 @@ export async function nukeAllData(): Promise<void> {
     .update({ status: "available", order_id: null })
     .not("id", "is", null);
   if (e7) console.warn("[nuke] tables reset:", e7.message);
+
+  // 8. menu_items — wipe so user-added/edited items don't re-hydrate.
+  // Local defaults in the store will serve until the next menu save.
+  const { error: e8 } = await supabase.from("menu_items").delete().not("id", "is", null);
+  if (e8) console.warn("[nuke] menu_items:", e8.message);
 
   console.log("[nuke] All Supabase data wiped.");
 }

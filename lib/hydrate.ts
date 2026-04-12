@@ -1,5 +1,5 @@
 import { usePOSStore } from "./store";
-import { fetchOrders, fetchTables, fetchMenuItems, fetchStaff, fetchSettings } from "./supabase-queries";
+import { fetchOrders, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers } from "./supabase-queries";
 import { syncPendingMutations } from "./sync";
 
 /**
@@ -15,12 +15,13 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
   if (hydratePromise) return hydratePromise;
   hydratePromise = (async () => {
     try {
-      const [orders, tables, menuItems, staffMembers, settings] = await Promise.all([
+      const [orders, tables, menuItems, staffMembers, settings, modifiers] = await Promise.all([
         fetchOrders(500),
         fetchTables(),
         fetchMenuItems(),
         fetchStaff(),
         fetchSettings(),
+        fetchModifiers(),
       ]);
 
       const state = usePOSStore.getState();
@@ -38,6 +39,7 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
           initials: s.initials,
         })) : state.staffMembers,
         settings: settings ? { ...state.settings, ...settings } : state.settings,
+        modifiers: modifiers.length > 0 ? modifiers : state.modifiers,
       });
 
       console.log("[hydrate] Store hydrated from Supabase", {

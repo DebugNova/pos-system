@@ -189,7 +189,11 @@ export type MutationKind =
   | "audit.append"
   | "settings.update"
   | "staff.upsert"
-  | "staff.delete";
+  | "staff.delete"
+  | "menu.upsert"
+  | "menu.delete"
+  | "modifier.upsert"
+  | "modifier.delete";
 
 export interface QueuedMutation {
   id: string;

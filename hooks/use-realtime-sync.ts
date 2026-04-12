@@ -126,6 +126,14 @@ export function useRealtimeSync() {
             handleStaffChange(payload);
           }
         )
+        // ── Modifiers ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "modifiers" },
+          (payload) => {
+            handleModifierChange(payload);
+          }
+        )
         .subscribe((status, err) => {
           console.log("[realtime] Subscription status:", status);
           if (status === "SUBSCRIBED") {
@@ -380,6 +388,35 @@ function handleStaffChange(payload: any) {
       staffMembers: state.staffMembers.filter((s) => s.id !== deletedId),
     }));
     console.log("[realtime] Staff deleted:", deletedId);
+  }
+}
+
+function handleModifierChange(payload: any) {
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+
+  if (eventType === "INSERT" || eventType === "UPDATE") {
+    if (!newRecord) return;
+    const mod = {
+      id: newRecord.id as string,
+      name: newRecord.name as string,
+      price: Number(newRecord.price) || 0,
+    };
+    usePOSStore.setState((state) => {
+      const exists = state.modifiers.some((m) => m.id === mod.id);
+      return {
+        modifiers: exists
+          ? state.modifiers.map((m) => (m.id === mod.id ? mod : m))
+          : [...state.modifiers, mod],
+      };
+    });
+    console.log("[realtime] Modifier upserted:", mod.name);
+  } else if (eventType === "DELETE") {
+    const deletedId = oldRecord?.id;
+    if (!deletedId) return;
+    usePOSStore.setState((state) => ({
+      modifiers: state.modifiers.filter((m) => m.id !== deletedId),
+    }));
+    console.log("[realtime] Modifier deleted:", deletedId);
   }
 }
 

@@ -673,25 +673,17 @@ export function Billing() {
 
               {/* UPI QR */}
               {paymentMethod === "upi" && settings.upiEnabled && (
-                <div className="mb-5 flex flex-col items-center gap-4">
-                  {settings.upiQrCodeUrl ? (
-                    <div className="rounded-xl bg-white p-2">
-                       <img 
-                          src={settings.upiQrCodeUrl} 
-                          alt="Store UPI QR Code" 
-                          className="w-48 h-48 sm:w-56 sm:h-56 object-contain mix-blend-multiply"
-                       />
-                    </div>
-                  ) : (
-                    <div className="rounded-xl bg-white p-4">
-                      <QRCodeSVG
-                        value={`upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.cafeName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${order.id}`)}`}
-                        size={192}
-                      />
-                    </div>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    Scan QR code or enter UPI ID: <span className="font-semibold text-foreground">{settings.upiId}</span>
+                <div className="mb-5 flex flex-col items-center gap-4 w-full">
+                  <div className="rounded-xl bg-white p-3 sm:p-4 w-full max-w-[240px] aspect-square flex justify-center items-center overflow-hidden border border-border/50 shadow-sm">
+                    <img 
+                        src="/qrrrr.png" 
+                        alt="Store UPI QR Code" 
+                        className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground text-center break-all max-w-[280px]">
+                    Scan QR code or enter UPI ID: <br/>
+                    <span className="font-semibold text-foreground mt-1 inline-block">Q391636080@ybl</span>
                   </p>
                 </div>
               )}

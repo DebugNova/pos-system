@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Order, OrderItem, OrderType, OrderStatus, Table, MenuItem, AuditEntry, Shift, QueuedMutation, MutationKind } from "./data";
-import { tables as initialTables, menuItems as defaultMenuItems } from "./data";
+import type { Order, OrderItem, OrderType, OrderStatus, Table, MenuItem, Modifier, AuditEntry, Shift, QueuedMutation, MutationKind } from "./data";
+import { tables as initialTables, menuItems as defaultMenuItems, defaultModifiers } from "./data";
 import { getDefaultView } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
@@ -119,6 +119,12 @@ interface POSState {
   addMenuItem: (item: MenuItem) => void;
   updateMenuItem: (id: string, item: Partial<MenuItem>) => void;
   deleteMenuItem: (id: string) => void;
+
+  // Modifiers (add-ons)
+  modifiers: Modifier[];
+  addModifier: (mod: Modifier) => void;
+  updateModifier: (id: string, data: Partial<Modifier>) => void;
+  deleteModifier: (id: string) => void;
 
   // Orders
   pendingBillingOrderId: string | null;
@@ -693,13 +699,47 @@ export const usePOSStore = create<POSState>()(
 
       // Menu Items
       menuItems: defaultMenuItems,
-      addMenuItem: (item) => set((state) => ({ menuItems: [...state.menuItems, item] })),
-      updateMenuItem: (id, data) => set((state) => ({
-        menuItems: state.menuItems.map((item) => item.id === id ? { ...item, ...data } : item)
-      })),
-      deleteMenuItem: (id) => set((state) => ({
-        menuItems: state.menuItems.filter((item) => item.id !== id)
-      })),
+      addMenuItem: (item) => {
+        set((state) => ({ menuItems: [...state.menuItems, item] }));
+        setTimeout(() => get().enqueueMutation("menu.upsert", { item }), 0);
+      },
+      updateMenuItem: (id, data) => {
+        set((state) => ({
+          menuItems: state.menuItems.map((item) => item.id === id ? { ...item, ...data } : item)
+        }));
+        const updatedItem = get().menuItems.find(i => i.id === id);
+        if (updatedItem) {
+          setTimeout(() => get().enqueueMutation("menu.upsert", { item: updatedItem }), 0);
+        }
+      },
+      deleteMenuItem: (id) => {
+        set((state) => ({
+          menuItems: state.menuItems.filter((item) => item.id !== id)
+        }));
+        setTimeout(() => get().enqueueMutation("menu.delete", { id }), 0);
+      },
+
+      // Modifiers (add-ons)
+      modifiers: defaultModifiers,
+      addModifier: (mod) => {
+        set((state) => ({ modifiers: [...state.modifiers, mod] }));
+        setTimeout(() => get().enqueueMutation("modifier.upsert", { modifier: mod }), 0);
+      },
+      updateModifier: (id, data) => {
+        set((state) => ({
+          modifiers: state.modifiers.map((m) => m.id === id ? { ...m, ...data } : m),
+        }));
+        const updated = get().modifiers.find((m) => m.id === id);
+        if (updated) {
+          setTimeout(() => get().enqueueMutation("modifier.upsert", { modifier: updated }), 0);
+        }
+      },
+      deleteModifier: (id) => {
+        set((state) => ({
+          modifiers: state.modifiers.filter((m) => m.id !== id),
+        }));
+        setTimeout(() => get().enqueueMutation("modifier.delete", { id }), 0);
+      },
 
       // Orders
       pendingBillingOrderId: null,
@@ -1422,6 +1462,7 @@ export const usePOSStore = create<POSState>()(
         orders: state.orders,
         tables: state.tables,
         menuItems: state.menuItems,
+        modifiers: state.modifiers,
         staffMembers: state.staffMembers,
         settings: state.settings,
         auditLog: state.auditLog,
