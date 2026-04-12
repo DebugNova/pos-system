@@ -48,6 +48,7 @@ interface POSState {
   currentUser: User | null;
   staffMembers: StaffMember[];
   login: (user: User) => void;
+  restoreSession: (user: User) => void;
   logout: () => void;
   addStaffMember: (staff: StaffMember) => void;
   updateStaffMember: (id: string, staff: Partial<StaffMember>) => void;
@@ -259,17 +260,26 @@ export const usePOSStore = create<POSState>()(
         });
         get().addAuditEntry({ action: "login", userId: user.name, details: `${user.name} logged in` });
       },
+      restoreSession: (user) => {
+        // Reload-path login: no audit entry, no shift side effects.
+        set({
+          isLoggedIn: true,
+          currentUser: user,
+        });
+      },
       logout: () => {
         const userName = get().currentUser?.name || "Unknown";
         set({ isLoggedIn: false, currentUser: null, activeView: "dashboard" });
         get().addAuditEntry({ action: "logout", userId: userName, details: `${userName} logged out` });
 
-        // Sign out of Supabase (fire-and-forget — offline logout still works)
-        import("./auth").then(({ logoutFromSupabase }) => {
-          logoutFromSupabase().catch((err) => {
-            console.warn("[store] Supabase signout failed (offline?):", err);
+        // Clear session-scoped caches and revoke the Supabase session.
+        // Dynamic import avoids a circular dep between store.ts and auth.ts.
+        if (typeof window !== "undefined") {
+          import("./auth").then(({ logoutFromSupabase, clearCachedCurrentUser }) => {
+            clearCachedCurrentUser();
+            logoutFromSupabase().catch(() => {});
           });
-        });
+        }
       },
       addStaffMember: (staff) => {
         set((state) => ({ staffMembers: [...state.staffMembers, staff] }));
@@ -1294,6 +1304,14 @@ export const usePOSStore = create<POSState>()(
         get().enqueueMutation("shift.end", { shift: completedShift });
         
         get().addAuditEntry({ action: "logout", userId: currentShift.staffName, details: `Shift ended. Total sales: ₹${totalSales}` });
+
+        set({ isLoggedIn: false, currentUser: null, activeView: "dashboard" });
+        if (typeof window !== "undefined") {
+          import("./auth").then(({ logoutFromSupabase, clearCachedCurrentUser }) => {
+            clearCachedCurrentUser();
+            logoutFromSupabase().catch(() => {});
+          });
+        }
       },
     }),
     {

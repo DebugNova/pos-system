@@ -18,11 +18,38 @@ import { SWRegister } from "@/components/sw-register";
 import { OfflineBanner } from "@/components/pos/offline-banner";
 import { hydrateStoreFromSupabase, startBackgroundSync } from "@/lib/hydrate";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
+import { bootstrapSession } from "@/lib/auth";
 
 export default function POSApp() {
   const { activeView, isLoggedIn, login, currentUser, setActiveView } = usePOSStore();
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [animationState, setAnimationState] = useState<{ isAnimating: boolean, origin: {x: number, y: number} | null }>({ isAnimating: false, origin: null });
   const bgSyncCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await bootstrapSession();
+        if (cancelled) return;
+        if (user && !usePOSStore.getState().isLoggedIn) {
+          usePOSStore.getState().restoreSession({
+            id: user.id,
+            name: user.name,
+            role: user.role as any,
+            initials: user.initials,
+          } as any);
+        }
+      } catch (err) {
+        console.error("Session bootstrap failed", err);
+      } finally {
+        if (!cancelled) setBootstrapping(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Activate Supabase Realtime subscriptions when logged in (Task 11)
   useRealtimeSync();
@@ -80,6 +107,14 @@ export default function POSApp() {
     window.addEventListener("trigger-logo-animation", handleTrigger);
     return () => window.removeEventListener("trigger-logo-animation", handleTrigger);
   }, []);
+
+  if (bootstrapping) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="text-sm text-muted-foreground">Loading…</div>
+      </div>
+    );
+  }
 
   if (!isLoggedIn && !animationState.isAnimating) {
     return <Login onLogin={handleLogin} />;
