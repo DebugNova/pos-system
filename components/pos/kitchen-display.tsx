@@ -93,6 +93,10 @@ export function KitchenDisplay() {
   const [newOrderFlash, setNewOrderFlash] = useState(false);
   const prevNewOrderIdsRef = useRef<Set<string>>(new Set());
   const isInitialRenderRef = useRef(true);
+  // Track orders that have already advanced past `new` on this terminal.
+  // Prevents the "NEW!" flash badge from firing if a stale realtime echo
+  // briefly regresses a preparing/ready order back to `new`.
+  const advancedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 30000);
@@ -120,8 +124,23 @@ export function KitchenDisplay() {
 
   // ── Task 12: Detect newly arrived orders and play notification ──
   useEffect(() => {
+    // Record any order we've ever seen past the `new` state so a stale
+    // realtime regression can't retrigger the flash badge.
+    for (const o of orders) {
+      if (
+        o.status === "preparing" ||
+        o.status === "ready" ||
+        o.status === "served-unpaid" ||
+        o.status === "completed" ||
+        o.status === "cancelled"
+      ) {
+        advancedIdsRef.current.add(o.id);
+      }
+    }
+
     const currentNewIds = new Set(newOrders.map((o) => o.id));
     const prevIds = prevNewOrderIdsRef.current;
+    const advanced = advancedIdsRef.current;
 
     // Skip on initial render (don't beep for orders already in the store)
     if (isInitialRenderRef.current) {
@@ -130,10 +149,10 @@ export function KitchenDisplay() {
       return;
     }
 
-    // Check if there's any genuinely new order ID we haven't seen before
+    // Genuine arrival = never seen before AND never advanced past `new`
     let hasNewArrival = false;
     currentNewIds.forEach((id) => {
-      if (!prevIds.has(id)) {
+      if (!prevIds.has(id) && !advanced.has(id)) {
         hasNewArrival = true;
       }
     });
@@ -147,7 +166,7 @@ export function KitchenDisplay() {
     }
 
     prevNewOrderIdsRef.current = currentNewIds;
-  }, [newOrders]);
+  }, [newOrders, orders]);
 
   const handleAccept = (orderId: string) => {
     updateOrderStatus(orderId, "preparing");

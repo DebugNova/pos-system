@@ -28,13 +28,14 @@ export function useRealtimeSync() {
 
   /**
    * Mark an order ID as "recently written by this terminal".
-   * Clears after 3 seconds — enough time for the Realtime event to arrive.
+   * Clears after 10 seconds — long enough to cover direct-write echoes
+   * AND a subsequent sync-queue replay of the same mutation.
    */
   const markOwnWrite = useCallback((orderId: string) => {
     recentOwnWritesRef.current.add(orderId);
     setTimeout(() => {
       recentOwnWritesRef.current.delete(orderId);
-    }, 3000);
+    }, 10000);
   }, []);
 
   // Gate on login state — only subscribe when authenticated
@@ -253,9 +254,8 @@ function handleOrderChange(payload: any, ownWrites: Set<string>) {
 }
 
 function handleOrderItemChange(payload: any, ownWrites: Set<string>) {
-  const { eventType, new: newRecord } = payload;
   // When order items change, re-fetch the parent order to get the full picture
-  const orderId = newRecord?.order_id || payload.old?.order_id;
+  const orderId = payload.new?.order_id || payload.old?.order_id;
   if (!orderId) return;
   if (ownWrites.has(orderId)) return;
   refetchAndMergeOrder(orderId);
@@ -387,6 +387,25 @@ const pendingRefetches = new Map<string, ReturnType<typeof setTimeout>>();
 
 const REFETCH_DEBOUNCE_MS = 400;
 
+/**
+ * Lifecycle rank for the order status progression. Used to reject stale
+ * realtime merges that would take an order backward in the lifecycle
+ * (e.g. a stale sync-queue replay echoing back as `new` after the local
+ * terminal already advanced the order to `preparing`).
+ *
+ * `cancelled` shares the terminal rank with `completed` so remote
+ * cancellations of non-terminal orders are still applied.
+ */
+const STATUS_RANK: Record<string, number> = {
+  "awaiting-payment": 0,
+  "new": 1,
+  "preparing": 2,
+  "ready": 3,
+  "served-unpaid": 4,
+  "completed": 5,
+  "cancelled": 5,
+};
+
 function ordersShallowEqual(a: any, b: any): boolean {
   return (
     a.status === b.status &&
@@ -414,6 +433,25 @@ async function refetchAndMergeOrder(orderId: string) {
         const existing = state.orders.find((o) => o.id === orderId);
         // Skip merge if shallow-equal — avoids unnecessary re-renders and false sidebar ticks
         if (existing && ordersShallowEqual(existing, updatedOrder)) return {};
+
+        // Lifecycle guard: reject stale merges that would regress the order's
+        // status. If the local terminal has already advanced the order (e.g.
+        // new → preparing), a delayed realtime echo must not flip it back.
+        if (existing) {
+          const localRank = STATUS_RANK[existing.status] ?? -1;
+          const incomingRank = STATUS_RANK[updatedOrder.status] ?? -1;
+          if (incomingRank < localRank) {
+            console.log(
+              "[realtime] Rejected stale merge — local is ahead:",
+              orderId,
+              existing.status,
+              "→",
+              updatedOrder.status
+            );
+            return {};
+          }
+        }
+
         const exists = !!existing;
         return {
           orders: exists

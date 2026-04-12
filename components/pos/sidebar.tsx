@@ -104,6 +104,10 @@ export function POSSidebar() {
 
   const prevBillingIdsRef = useRef<Set<string> | null>(null);
   const prevKitchenIdsRef = useRef<Set<string> | null>(null);
+  // Track IDs that have ever advanced past the `new` kitchen state.
+  // Guards against ghost-regression beeps if a stale realtime echo ever
+  // flips a paid/accepted order back to `new`.
+  const kitchenAdvancedIdsRef = useRef<Set<string>>(new Set());
 
   const pendingBillsCount = orders.filter(
     (o) => o.status === "awaiting-payment" || o.status === "served-unpaid" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
@@ -153,6 +157,24 @@ export function POSSidebar() {
     prevBillingIdsRef.current = billingIds;
   }, [billingIds, mounted]);
 
+  // Seed the "has advanced past new" tracker on every render so we never
+  // beep for an order that this terminal has already moved beyond `new`.
+  // Orders that have ever been seen in preparing/ready/completed/cancelled
+  // get recorded permanently (for this session).
+  useEffect(() => {
+    for (const o of orders) {
+      if (
+        o.status === "preparing" ||
+        o.status === "ready" ||
+        o.status === "served-unpaid" ||
+        o.status === "completed" ||
+        o.status === "cancelled"
+      ) {
+        kitchenAdvancedIdsRef.current.add(o.id);
+      }
+    }
+  }, [orders]);
+
   useEffect(() => {
     if (!mounted) return;
     if (prevKitchenIdsRef.current === null) {
@@ -160,9 +182,15 @@ export function POSSidebar() {
       return;
     }
     const prev = prevKitchenIdsRef.current;
-    
-    // Check if there are newly added IDs to kitchenIds
-    const hasTrulyNew = [...kitchenIds].some((id) => !prev.has(id));
+    const advanced = kitchenAdvancedIdsRef.current;
+
+    // Beep only for IDs that are genuinely new this tick AND have never
+    // been past the `new` state on this terminal. This suppresses the
+    // duplicate beep that would otherwise fire if a ghost/stale realtime
+    // echo briefly regressed a preparing order back to `new`.
+    const hasTrulyNew = [...kitchenIds].some(
+      (id) => !prev.has(id) && !advanced.has(id)
+    );
     if (hasTrulyNew) {
       playKitchenBeep();
     }
