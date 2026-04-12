@@ -504,14 +504,14 @@ export function NewOrder() {
                           Options
                         </Badge>
                       ) : (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary transition-all">
                           <Plus className="h-4 w-4" />
                         </div>
                       )}
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-7 text-xs transition-opacity"
                         onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
                       >
                         Customize
