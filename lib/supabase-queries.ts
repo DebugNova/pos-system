@@ -188,6 +188,31 @@ export async function fetchStaff() {
   return data || [];
 }
 
+export async function upsertStaff(staff: any): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("staff")
+    .upsert({
+      id: staff.id,
+      name: staff.name,
+      role: staff.role,
+      pin: staff.pin,
+      initials: staff.initials || staff.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase(),
+      is_active: staff.is_active !== undefined ? staff.is_active : true,
+    }, { onConflict: "id" });
+  if (error) throw error;
+}
+
+export async function deleteStaff(id: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("staff")
+    // Soft delete to avoid breaking historical records if foreign keys exist
+    .update({ is_active: false })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 // ============================================================
 // SETTINGS
 // ============================================================

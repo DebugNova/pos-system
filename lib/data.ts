@@ -185,7 +185,10 @@ export type MutationKind =
   | "table.update"
   | "shift.start"
   | "shift.end"
-  | "audit.append";
+  | "audit.append"
+  | "settings.update"
+  | "staff.upsert"
+  | "staff.delete";
 
 export interface QueuedMutation {
   id: string;

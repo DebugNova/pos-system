@@ -8,6 +8,9 @@ import {
   updateTableInDb,
   insertAuditEntry,
   upsertShift,
+  updateSettingsInDb,
+  upsertStaff,
+  deleteStaff,
 } from "./supabase-queries";
 
 /**
@@ -131,6 +134,18 @@ export async function sendMutation(m: QueuedMutation): Promise<void> {
 
     case "audit.append":
       await insertAuditEntry(m.payload.entry);
+      break;
+
+    case "settings.update":
+      await updateSettingsInDb(m.payload.changes as Record<string, unknown>);
+      break;
+
+    case "staff.upsert":
+      await upsertStaff(m.payload.staff);
+      break;
+
+    case "staff.delete":
+      await deleteStaff(m.payload.id as string);
       break;
 
     default:

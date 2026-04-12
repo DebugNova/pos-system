@@ -149,10 +149,10 @@ interface POSState {
 }
 
 const defaultStaffMembers: StaffMember[] = [
-  { id: "1", name: "Owner",   role: "Owner",   pin: "1111", initials: "OW" },
-  { id: "2", name: "Rahul S.", role: "Manager", pin: "1111", initials: "RS" },
-  { id: "3", name: "Priya P.", role: "Manager", pin: "1111", initials: "PP" },
-  { id: "4", name: "Amit K.",  role: "Chef",    pin: "1111", initials: "AK" },
+  { id: "065006fd-d23b-46ed-8600-9584e31bf251", name: "Admin",   role: "Owner",   pin: "1234", initials: "AD" },
+  { id: "8a93ab58-a358-46c5-9c79-396370e4fd17", name: "Rahul S.", role: "Manager", pin: "2345", initials: "RS" },
+  { id: "a4574ed7-bbb0-44f6-a4d0-c39048f1e111", name: "Priya P.", role: "Manager", pin: "3456", initials: "PP" },
+  { id: "3670c7e0-26bd-48fe-8941-397707be9ed8", name: "Amit K.",  role: "Chef",    pin: "6789", initials: "AK" },
 ];
 
 const defaultSettings: CafeSettings = {
@@ -283,16 +283,24 @@ export const usePOSStore = create<POSState>()(
       },
       addStaffMember: (staff) => {
         set((state) => ({ staffMembers: [...state.staffMembers, staff] }));
+        setTimeout(() => get().enqueueMutation("staff.upsert", { staff }), 0);
         get().addAuditEntry({ action: "staff_added", userId: get().currentUser?.name || "System", details: `Staff member ${staff.name} added` });
       },
-      updateStaffMember: (id, data) => set((state) => ({
-        staffMembers: state.staffMembers.map((s) => s.id === id ? { ...s, ...data } : s)
-      })),
+      updateStaffMember: (id, data) => {
+        set((state) => ({
+          staffMembers: state.staffMembers.map((s) => s.id === id ? { ...s, ...data } : s)
+        }));
+        const updatedStaff = get().staffMembers.find((s) => s.id === id);
+        if (updatedStaff) {
+          setTimeout(() => get().enqueueMutation("staff.upsert", { staff: updatedStaff }), 0);
+        }
+      },
       deleteStaffMember: (id) => {
         const staff = get().staffMembers.find((s) => s.id === id);
         set((state) => ({
           staffMembers: state.staffMembers.filter((s) => s.id !== id)
         }));
+        setTimeout(() => get().enqueueMutation("staff.delete", { id }), 0);
         if (staff) {
           get().addAuditEntry({ action: "staff_deleted", userId: get().currentUser?.name || "System", details: `Staff member ${staff.name} deleted` });
         }
@@ -308,6 +316,11 @@ export const usePOSStore = create<POSState>()(
         set((state) => ({
           settings: { ...state.settings, ...newSettings }
         }));
+        
+        // Push settings update to Supabase
+        const finalSettings = get().settings;
+        setTimeout(() => get().enqueueMutation("settings.update", { changes: finalSettings }), 0);
+
         get().addAuditEntry({ action: "settings_changed", userId: get().currentUser?.name || "System", details: "Settings updated" });
       },
 

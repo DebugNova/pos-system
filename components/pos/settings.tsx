@@ -29,9 +29,11 @@ import {
   Trash2,
   RefreshCw,
   Download,
+  Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
 import { syncPendingMutations } from "@/lib/sync";
+import { toast } from "sonner";
 
 export function Settings() {
   const { currentUser, settings, updateSettings, auditLog, staffMembers, addStaffMember, updateStaffMember, deleteStaffMember } = usePOSStore();
@@ -60,9 +62,11 @@ export function Settings() {
           <TabsTrigger value="printers" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
             <Printer className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="staff" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
-            <Users className="h-5 w-5" />
-          </TabsTrigger>
+          {currentUser?.role === "Owner" && (
+            <TabsTrigger value="staff" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+              <Users className="h-5 w-5" />
+            </TabsTrigger>
+          )}
           <TabsTrigger value="payments" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
             <CreditCard className="h-5 w-5" />
           </TabsTrigger>
@@ -345,8 +349,9 @@ export function Settings() {
         </TabsContent>
 
         {/* Staff Settings */}
-        <TabsContent value="staff" className="space-y-4">
-          <Card className="bg-card border-border">
+        {currentUser?.role === "Owner" && (
+          <TabsContent value="staff" className="space-y-4">
+            <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">Staff Members</CardTitle>
@@ -387,7 +392,7 @@ export function Settings() {
                           setIsStaffDialogOpen(true);
                       }}>
                         <p className="font-medium text-foreground">{staff.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">PIN: {staff.pin.replace(/./g, '*')}</p>
+                        <p className="text-xs text-muted-foreground font-mono">PIN: {staff.pin}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -402,6 +407,19 @@ export function Settings() {
                       >
                         {isActive ? "Active" : "Inactive"}
                       </Badge>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setStaffForm({ name: staff.name, role: staff.role, pin: staff.pin });
+                          setEditingStaffId(staff.id);
+                          setIsStaffDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       {!isActive && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -476,19 +494,46 @@ export function Settings() {
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsStaffDialogOpen(false)}>Cancel</Button>
                 <Button onClick={() => {
-                  if (!staffForm.name || !staffForm.pin || staffForm.pin.length < 4) return;
+                  if (!staffForm.name || !staffForm.pin || staffForm.pin.length < 4) {
+                    toast.error("Please fill in all fields correctly", { description: "PIN must be 4 digits." });
+                    return;
+                  }
+                  
+                  // Check for unique PIN
+                  const isDuplicatePin = staffMembers.some(
+                    (s) => s.pin === staffForm.pin && s.id !== editingStaffId
+                  );
+                  if (isDuplicatePin) {
+                    toast.error("PIN already in use", { description: "Please choose a different 4-digit PIN." });
+                    return;
+                  }
                   
                   if (editingStaffId) {
                     updateStaffMember(editingStaffId, staffForm);
+                    toast.success("Staff member updated");
                   } else {
                     const initials = staffForm.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+                    // Generate proper UUID for Postgres compatibility
+                    let newId;
+                    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+                      newId = crypto.randomUUID();
+                    } else {
+                      // Fallback UUID v4 generator using Math.random for environments missing crypto API
+                      newId = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+                        const r = Math.random() * 16 | 0;
+                        const v = c === "x" ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                      });
+                    }
+                      
                     addStaffMember({
-                      id: `staff-${Date.now()}`,
+                      id: newId,
                       name: staffForm.name,
-                      role: staffForm.role,
+                      role: staffForm.role as any,
                       pin: staffForm.pin,
                       initials
                     });
+                    toast.success("Staff member added");
                   }
                   setIsStaffDialogOpen(false);
                 }}>
@@ -498,6 +543,7 @@ export function Settings() {
             </DialogContent>
           </Dialog>
         </TabsContent>
+        )}
 
         {/* Payment Settings */}
         <TabsContent value="payments" className="space-y-4">
