@@ -82,6 +82,59 @@ export async function hasValidSession(): Promise<boolean> {
 }
 
 const USER_CACHE_KEY = "suhashi-pos-current-user";
+const SUPABASE_AUTH_STORAGE_KEY = "suhashi-pos-auth";
+
+/**
+ * Returns true only when the current document was loaded via an explicit
+ * reload (F5 / Ctrl+R / location.reload()). Returns false for:
+ *   - first visit / address-bar navigation
+ *   - duplicate tab, middle-click, window.open
+ *   - Chrome "Continue where you left off" tab restore after a browser restart
+ *
+ * This is the single heuristic that separates "stay logged in" (reload) from
+ * "force a fresh login" (every other way a document can be created).
+ */
+function isPageReload(): boolean {
+  if (typeof window === "undefined" || typeof performance === "undefined") {
+    return false;
+  }
+  try {
+    const entries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+    if (entries && entries.length > 0) {
+      return entries[0].type === "reload";
+    }
+  } catch {
+    // fall through to the legacy API
+  }
+  // Legacy fallback for very old engines — performance.navigation.type === 1 is TYPE_RELOAD.
+  const legacy = (performance as unknown as { navigation?: { type: number } }).navigation;
+  if (legacy) return legacy.type === 1;
+  return false;
+}
+
+/**
+ * Forcibly drop the Supabase session from this tab. Used when we detect a
+ * non-reload navigation and want the UI to fall back to the PIN screen.
+ */
+async function hardClearSession(): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY);
+  } catch {
+    // ignore quota / private-mode errors
+  }
+  clearCachedCurrentUser();
+  try {
+    // signOut() with default (local) scope clears the in-memory session on
+    // the Supabase client so any later getSession() call returns null.
+    // Do NOT use { scope: "global" } — that would revoke the JWT server-side
+    // and can race with the Edge Function.
+    await getSupabase().auth.signOut();
+  } catch {
+    // offline or client not yet initialized — the storage clear above is
+    // enough to make hasValidSession() return false on the next check.
+  }
+}
 
 /**
  * Persist the logged-in staff user to sessionStorage so we can rehydrate
@@ -140,6 +193,15 @@ export function clearCachedCurrentUser(): void {
  * This is the single source of truth for "am I still logged in after reload?".
  */
 export async function bootstrapSession(): Promise<StaffUser | null> {
+  // Rule: the only path that may restore a session is an explicit reload
+  // of the same tab. Everything else (fresh tab, pasted URL, Chrome
+  // "continue where you left off" restore, duplicated tab) must land on
+  // the PIN screen even if sessionStorage still has an auth token.
+  if (!isPageReload()) {
+    await hardClearSession();
+    return null;
+  }
+
   const valid = await hasValidSession();
   if (!valid) {
     if (typeof navigator !== "undefined" && navigator.onLine) {
@@ -180,7 +242,6 @@ export async function bootstrapSession(): Promise<StaffUser | null> {
   }
 
   // Session is valid but we can't identify the user — safest to force re-login.
-  await logoutFromSupabase();
-  clearCachedCurrentUser();
+  await hardClearSession();
   return null;
 }
