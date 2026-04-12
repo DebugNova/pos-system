@@ -243,6 +243,134 @@ export function ReportsContent() {
     return Array.from(itemMap.values());
   }, [filteredOrders, useServer, serverItemDetails]);
 
+  const downloadCSV = useCallback(() => {
+    const BOM = "\uFEFF";
+    const h = (v: unknown): string => {
+      if (v === null || v === undefined) return "";
+      return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    };
+    const rupee = (n: number | null | undefined): string => {
+      if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
+      return `₹${Number(n).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    };
+    const titleCase = (s: string) => (s || "").replace(/[-_]/g, " ").replace(/\b\w/g, ch => ch.toUpperCase());
+
+    const BRAND       = "#4E342E"; 
+    const BRAND_DARK  = "#3E2723";
+    const ACCENT      = "#C9A227"; 
+    const CREAM       = "#FFF8E7";
+    const LINE        = "#D7C4A3";
+    const TEXT        = "#212121";
+    const MUTED       = "#795548";
+    const FONT        = "Calibri, 'Segoe UI', Arial, sans-serif";
+    const MONO        = "'Consolas', 'Courier New', monospace";
+
+    const S_TITLE    = `font-family:${FONT};font-size:24pt;font-weight:bold;color:${BRAND_DARK};padding:8px 4px;`;
+    const S_SUBTITLE = `font-family:${FONT};font-size:11pt;color:${MUTED};font-style:italic;padding:0 4px 10px 4px;`;
+    const S_SECTION  = `font-family:${FONT};font-size:14pt;font-weight:bold;color:${CREAM};background:${BRAND};padding:12px 16px;border:2px solid ${BRAND_DARK};letter-spacing:1px;`;
+    const S_TH       = `font-family:${FONT};font-size:10pt;font-weight:bold;color:${CREAM};background:${BRAND};padding:9px 11px;border:1px solid ${BRAND_DARK};text-align:left;`;
+    const S_TH_NUM   = `font-family:${FONT};font-size:10pt;font-weight:bold;color:${CREAM};background:${BRAND};padding:9px 11px;border:1px solid ${BRAND_DARK};text-align:right;`;
+    const S_TD_ODD   = `font-family:${FONT};font-size:10pt;color:${TEXT};background:${CREAM};padding:7px 11px;border:1px solid ${LINE};`;
+    const S_TD_EVEN  = `font-family:${FONT};font-size:10pt;color:${TEXT};background:#FFFFFF;padding:7px 11px;border:1px solid ${LINE};`;
+    const S_TD_ODD_N = `font-family:${MONO};font-size:10pt;color:${TEXT};background:${CREAM};padding:7px 11px;border:1px solid ${LINE};text-align:right;`;
+    const S_TD_EVEN_N= `font-family:${MONO};font-size:10pt;color:${TEXT};background:#FFFFFF;padding:7px 11px;border:1px solid ${LINE};text-align:right;`;
+    const S_FOOTER   = `font-family:${FONT};font-size:9pt;font-style:italic;color:${MUTED};text-align:center;padding:18px;`;
+
+    const th = (label: string, align: "left" | "right" = "left") => `<th style="${align === "right" ? S_TH_NUM : S_TH}">${h(label)}</th>`;
+    const zebra = (i: number, num = false) => num ? (i % 2 === 0 ? S_TD_ODD_N : S_TD_EVEN_N) : (i % 2 === 0 ? S_TD_ODD : S_TD_EVEN);
+    const td = (val: unknown, i: number, num = false, extra = "") => `<td style="${zebra(i, num)}${extra}">${h(val)}</td>`;
+
+    let html = ``;
+    html += `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">`;
+    html += `<head><meta charset="UTF-8"><title>SUHASHI Cafe Report</title></head><body style="background:#FAFAFA;margin:20px;">`;
+    
+    const reportTitle = activeTab === "overview" ? "HOURLY REVENUE REPORT"
+                      : activeTab === "items" ? "MENU PERFORMANCE REPORT"
+                      : activeTab === "sales" ? "ORDERS & SALES REPORT"
+                      : activeTab === "staff" ? "STAFF PERFORMANCE REPORT"
+                      : "TABLES REPORT";
+
+    html += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;">`;
+    html += `<tr><td style="${S_TITLE}">☕  SUHASHI CAFE  —  ${reportTitle}</td></tr>`;
+    html += `<tr><td style="${S_SUBTITLE}">Generated on ${format(new Date(), "dd MMM yyyy, hh:mm a")}</td></tr>`;
+    html += `</table><br/>`;
+
+    html += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;"><tr><td style="${S_SECTION}">◆  DATA DETAILED VIEW</td></tr></table>`;
+    html += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;">`;
+
+    if (activeTab === "overview") {
+      html += `<tr>${[th("Hour"), th("Revenue", "right")].join("")}</tr>`;
+      hourlyRevenue.forEach((hObj, i) => {
+        html += `<tr>${td(hObj.hour, i)}${td(rupee(hObj.revenue), i, true)}</tr>`;
+      });
+    } else if (activeTab === "items") {
+      html += `<tr>${[th("Item"), th("Category"), th("Qty Sold", "right"), th("Total Revenue", "right"), th("Avg Price", "right"), th("Orders Present In", "right")].join("")}</tr>`;
+      itemDetails.forEach((item, i) => {
+        const avgPrice = item.totalQuantity > 0 ? (item.grossRevenue / item.totalQuantity) : 0;
+        html += `<tr>`;
+        html += td(item.name, i, false, "font-weight:bold;");
+        html += td(item.category || "Uncategorized", i);
+        html += td(item.totalQuantity, i, true);
+        html += td(rupee(item.grossRevenue), i, true, "font-weight:bold;");
+        html += td(rupee(avgPrice), i, true);
+        html += td(item.timesInOrder, i, true);
+        html += `</tr>`;
+      });
+    } else if (activeTab === "sales") {
+      html += `<tr>${[th("Order ID"), th("Date"), th("Type"), th("Status"), th("Subtotal", "right"), th("Amount Paid", "right")].join("")}</tr>`;
+      filteredOrders.forEach((o, i) => {
+        html += `<tr>`;
+        html += td(o.id.toUpperCase(), i, false, "font-weight:bold;");
+        html += td(format(new Date(o.createdAt), "dd MMM, hh:mm a"), i);
+        html += td(titleCase(o.platform ? o.platform : o.type), i);
+        html += td(titleCase(o.status), i);
+        html += td(rupee(o.subtotal || o.total || 0), i, true);
+        html += td(rupee(o.grandTotal || o.total || 0), i, true, "font-weight:bold;");
+        html += `</tr>`;
+      });
+    } else if (activeTab === "staff") {
+      html += `<tr>${[th("Staff Name"), th("Orders Completed", "right"), th("Total Revenue", "right")].join("")}</tr>`;
+      staffPerformance.forEach((s, i) => {
+        html += `<tr>`;
+        html += td(s.name, i, false, "font-weight:bold;");
+        html += td(s.orders, i, true);
+        html += td(rupee(s.revenue), i, true, "font-weight:bold;");
+        html += `</tr>`;
+      });
+    } else if (activeTab === "tables") {
+      html += `<tr>${[th("Table Number"), th("Status"), th("Capacity", "right")].join("")}</tr>`;
+      tables.forEach((t, i) => {
+        html += `<tr>`;
+        html += td(t.number, i, false, "font-weight:bold;");
+        html += td(titleCase(t.status), i);
+        html += td(t.capacity, i, true);
+        html += `</tr>`;
+      });
+    }
+
+    html += `</table><br/>`;
+    html += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;">`;
+    html += `<tr><td style="${S_FOOTER}">— End of Report —</td></tr>`;
+    html += `</table></body></html>`;
+
+    let filename = `Cafe_Report_`;
+    filename += activeTab === "overview" ? "HourlyRevenue"
+              : activeTab === "items" ? "MenuPerformance"
+              : activeTab === "sales" ? "Orders"
+              : activeTab === "staff" ? "StaffPerformance"
+              : "Tables";
+    filename += `_${format(new Date(), "MMM_dd_yyyy")}.xls`;
+
+    const blob = new Blob([BOM + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [activeTab, hourlyRevenue, itemDetails, filteredOrders, staffPerformance, tables]);
+
   const overviewProps = { totalRevenue, totalOrders, avgOrderValue, avgPrepTime, hourlyRevenue, paymentBreakdown, topItems, staffPerformance };
   const itemsTabProps = { itemDetails, totalRevenue, totalOrders };
   const salesTabProps = { filteredOrders };
@@ -293,7 +421,7 @@ export function ReportsContent() {
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" size="icon" className="h-9 w-9 bg-card border-border" title="Export CSV">
+          <Button variant="outline" size="icon" className="h-9 w-9 bg-card border-border flex-shrink-0" title="Export CSV" onClick={downloadCSV}>
             <Download className="h-4 w-4" />
           </Button>
         </div>

@@ -46,8 +46,8 @@ export function ItemsTab({ props }: any) {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden pt-2 space-y-4">
-      <Card className="bg-card border-border flex-1 flex flex-col min-h-0">
+    <div className="flex h-full flex-col overflow-y-auto pt-2 space-y-4">
+      <Card className="bg-card border-border flex-1 flex flex-col min-h-[300px]">
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 px-4 sm:px-6 gap-3">
           <CardTitle className="text-base">Menu Performance</CardTitle>
           <div className="relative w-full max-w-sm">
