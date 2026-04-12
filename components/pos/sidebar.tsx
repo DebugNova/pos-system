@@ -184,8 +184,12 @@ export function POSSidebar() {
     }
   };
 
-  const mobileBottomItems = visibleNavItems.slice(0, 4);
-  const mobileMoreItems = visibleNavItems.slice(4);
+  const MOBILE_MAX_PRIMARY = 4; // 4 primary + 1 More = 5 slots total
+  const needsMore = visibleNavItems.length > MOBILE_MAX_PRIMARY;
+  const mobileBottomItems = needsMore
+    ? visibleNavItems.slice(0, MOBILE_MAX_PRIMARY)
+    : visibleNavItems;
+  const mobileMoreItems = needsMore ? visibleNavItems.slice(MOBILE_MAX_PRIMARY) : [];
 
   return (
     <>
@@ -322,21 +326,21 @@ export function POSSidebar() {
           );
         })}
         
-        {mobileMoreItems.length > 0 && (
-          <Sheet>
-            <SheetTrigger asChild>
-              <button className="relative flex h-14 flex-1 flex-col items-center justify-center transition-all active:scale-95 touch-target text-muted-foreground hover:text-primary active:bg-primary/5">
-                <Menu className="h-5 w-5" />
-                <span className="mt-0.5 text-[11px] sm:text-xs font-medium leading-tight">More</span>
-              </button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="min-h-[55vh] max-h-[85vh] flex flex-col rounded-t-xl safe-bottom px-4 pt-2 pb-0">
-              <SheetHeader className="text-left px-2 pb-0 shrink-0">
-                <SheetTitle>More</SheetTitle>
-                <SheetDescription className="sr-only">Access additional views and settings.</SheetDescription>
-              </SheetHeader>
-              
-              <div className="flex-1 overflow-y-auto -mx-2 px-2 py-4">
+        <Sheet>
+          <SheetTrigger asChild>
+            <button className="relative flex h-14 flex-1 flex-col items-center justify-center transition-all active:scale-95 touch-target text-muted-foreground hover:text-primary active:bg-primary/5">
+              <Menu className="h-5 w-5" />
+              <span className="mt-0.5 text-[11px] sm:text-xs font-medium leading-tight">More</span>
+            </button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="min-h-[55vh] max-h-[85vh] flex flex-col rounded-t-xl safe-bottom px-4 pt-2 pb-0">
+            <SheetHeader className="text-left px-2 pb-0 shrink-0">
+              <SheetTitle>More</SheetTitle>
+              <SheetDescription className="sr-only">Access additional views and settings.</SheetDescription>
+            </SheetHeader>
+            
+            <div className="flex-1 overflow-y-auto -mx-2 px-2 py-4">
+              {mobileMoreItems.length > 0 ? (
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-4 py-2">
                   {mobileMoreItems.map((item) => {
                     const Icon = item.icon;
@@ -372,43 +376,47 @@ export function POSSidebar() {
                     );
                   })}
                 </div>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground text-sm py-8">
+                  <p>No additional sections</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-auto shrink-0 border-t pt-6 pb-12 sm:pb-14 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
+                  {currentUser?.name.split(" ").map((n) => n[0]).join("").slice(0, 2) || "??"}
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-sm font-medium truncate">{currentUser?.name}</span>
+                  <span className="text-[11px] sm:text-xs text-muted-foreground truncate">{currentUser?.role || "Guest"}</span>
+                </div>
               </div>
               
-              <div className="mt-auto shrink-0 border-t pt-6 pb-12 sm:pb-14 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
-                    {currentUser?.name.split(" ").map((n) => n[0]).join("").slice(0, 2) || "??"}
-                  </div>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-sm font-medium truncate">{currentUser?.name}</span>
-                    <span className="text-[11px] sm:text-xs text-muted-foreground truncate">{currentUser?.role || "Guest"}</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {mounted && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 text-muted-foreground touch-target"
-                      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                    >
-                      {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                    </Button>
-                  )}
+              <div className="flex items-center gap-2">
+                {mounted && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-10 w-10 text-muted-foreground hover:text-destructive touch-target"
-                    onClick={handleLogoutClick}
+                    className="h-10 w-10 text-muted-foreground touch-target"
+                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
                   >
-                    <LogOut className="h-5 w-5" />
+                    {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                   </Button>
-                </div>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 text-muted-foreground hover:text-destructive touch-target"
+                  onClick={handleLogoutClick}
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
               </div>
-            </SheetContent>
-          </Sheet>
-        )}
+            </div>
+          </SheetContent>
+        </Sheet>
       </nav>
 
       <EndShiftDialog 
