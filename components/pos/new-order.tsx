@@ -192,12 +192,6 @@ export function NewOrder() {
       });
       return;
     }
-    if (!customerPhone.trim()) {
-      toast.error("Phone number required", {
-        description: "Please enter the customer's phone number before proceeding.",
-      });
-      return;
-    }
 
     const newId = addOrder({
       type: orderType,
@@ -373,7 +367,7 @@ export function NewOrder() {
                 <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
                   type="tel"
-                  placeholder="Phone number *"
+                  placeholder="Phone number (optional)"
                   value={customerPhone}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -381,7 +375,7 @@ export function NewOrder() {
                       setCustomerPhone(value);
                     }
                   }}
-                  className={cn("flex-1 h-9 bg-card border text-sm lg:h-10", !customerPhone.trim() && cart.length > 0 ? "border-destructive/50 focus-visible:ring-destructive" : "border-border")}
+                  className="flex-1 h-9 bg-card border text-sm lg:h-10 border-border"
                 />
               </div>
             </div>
