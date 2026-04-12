@@ -29,7 +29,11 @@ import {
   Trash2,
   RefreshCw,
   Download,
+  Download,
   Pencil,
+  Upload,
+  Image as ImageIcon,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { syncPendingMutations } from "@/lib/sync";
@@ -563,7 +567,10 @@ export function Settings() {
                     <p className="text-sm text-muted-foreground">Accept cash payments</p>
                   </div>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.cashEnabled}
+                  onCheckedChange={(checked) => updateSettings({ cashEnabled: checked })}
+                />
               </div>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -576,18 +583,78 @@ export function Settings() {
                       </p>
                     </div>
                   </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="pl-1 sm:pl-8 space-y-2.5 w-full flex flex-col items-start pt-2">
-                  <Label className="text-sm font-medium w-full text-left">UPI ID</Label>
-                  <Input
-                    id="upiId"
-                    value={settings.upiId}
-                    onChange={(e) => updateSettings({ upiId: e.target.value })}
-                    placeholder="e.g. cafe@upi"
-                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
+                  <Switch
+                    checked={settings.upiEnabled}
+                    onCheckedChange={(checked) => updateSettings({ upiEnabled: checked })}
                   />
                 </div>
+                {settings.upiEnabled && (
+                  <div className="pl-1 sm:pl-8 space-y-4 w-full flex flex-col items-start pt-2">
+                    <div className="space-y-2.5 w-full flex flex-col items-start">
+                      <Label className="text-sm font-medium w-full text-left">UPI ID</Label>
+                      <Input
+                        id="upiId"
+                        value={settings.upiId}
+                        onChange={(e) => updateSettings({ upiId: e.target.value })}
+                        placeholder="e.g. cafe@upi"
+                        className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2.5 w-full flex flex-col items-start pt-2">
+                      <Label className="text-sm font-medium w-full text-left">UPI QR Code</Label>
+                      {settings.upiQrCodeUrl ? (
+                        <div className="relative border border-border/60 rounded-xl overflow-hidden group">
+                          <img 
+                            src={settings.upiQrCodeUrl} 
+                            alt="UPI QR Code" 
+                            className="w-32 h-32 object-contain bg-white p-2"
+                          />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                              variant="destructive" 
+                              size="icon" 
+                              className="h-8 w-8 rounded-full"
+                              onClick={() => updateSettings({ upiQrCodeUrl: "" })}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex w-full items-center justify-center rounded-xl border border-dashed border-border/80 bg-secondary/30 px-6 py-6 transition-all hover:bg-secondary/50">
+                          <div className="text-center">
+                            <ImageIcon className="mx-auto h-8 w-8 text-muted-foreground/60" />
+                            <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+                              <label
+                                htmlFor="qr-file-upload"
+                                className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none hover:text-primary/80"
+                              >
+                                <span>Upload an image</span>
+                                <input id="qr-file-upload" name="qr-file-upload" type="file" className="sr-only" accept="image/*" onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    if (file.size > 2 * 1024 * 1024) {
+                                      toast.error("Image must be less than 2MB");
+                                      return;
+                                    }
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      updateSettings({ upiQrCodeUrl: reader.result as string });
+                                      toast.success("UPI QR Code uploaded successfully");
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }} />
+                              </label>
+                              <p className="pl-1">or drag and drop</p>
+                            </div>
+                            <p className="text-xs leading-5 text-muted-foreground/80 mt-1">PNG, JPG, WEBP up to 2MB</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -599,7 +666,10 @@ export function Settings() {
                     </p>
                   </div>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.cardEnabled}
+                  onCheckedChange={(checked) => updateSettings({ cardEnabled: checked })}
+                />
               </div>
             </CardContent>
           </Card>

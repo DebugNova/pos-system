@@ -39,6 +39,10 @@ interface CafeSettings {
   autoPrintKot: boolean;
   printCustomerCopy: boolean;
   sessionTimeoutMinutes: number;  // for Task 14
+  cashEnabled: boolean;
+  upiEnabled: boolean;
+  cardEnabled: boolean;
+  upiQrCodeUrl?: string;
   installPromptDismissed?: boolean;
 }
 
@@ -167,6 +171,10 @@ const defaultSettings: CafeSettings = {
   autoPrintKot: true,
   printCustomerCopy: true,
   sessionTimeoutMinutes: 30,
+  cashEnabled: true,
+  upiEnabled: true,
+  cardEnabled: true,
+  upiQrCodeUrl: "",
   installPromptDismissed: false,
 };
 

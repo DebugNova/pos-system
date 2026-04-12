@@ -587,6 +587,10 @@ function mapDbSettingsToLocal(db: any) {
     autoPrintKot: db.auto_print_kot,
     printCustomerCopy: db.print_customer_copy,
     sessionTimeoutMinutes: db.session_timeout_minutes,
+    cashEnabled: db.cash_enabled !== undefined ? db.cash_enabled : true,
+    upiEnabled: db.upi_enabled !== undefined ? db.upi_enabled : true,
+    cardEnabled: db.card_enabled !== undefined ? db.card_enabled : true,
+    upiQrCodeUrl: db.upi_qr_code_url,
   };
 }
 
@@ -603,5 +607,9 @@ function mapLocalSettingsToDb(settings: any) {
   if (settings.autoPrintKot !== undefined) mapped.auto_print_kot = settings.autoPrintKot;
   if (settings.printCustomerCopy !== undefined) mapped.print_customer_copy = settings.printCustomerCopy;
   if (settings.sessionTimeoutMinutes !== undefined) mapped.session_timeout_minutes = settings.sessionTimeoutMinutes;
+  if (settings.cashEnabled !== undefined) mapped.cash_enabled = settings.cashEnabled;
+  if (settings.upiEnabled !== undefined) mapped.upi_enabled = settings.upiEnabled;
+  if (settings.cardEnabled !== undefined) mapped.card_enabled = settings.cardEnabled;
+  if (settings.upiQrCodeUrl !== undefined) mapped.upi_qr_code_url = settings.upiQrCodeUrl;
   return mapped;
 }
