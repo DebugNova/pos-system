@@ -29,7 +29,6 @@ import {
   Trash2,
   RefreshCw,
   Download,
-  Download,
   Pencil,
   Upload,
   Image as ImageIcon,
@@ -71,9 +70,11 @@ export function Settings() {
               <Users className="h-5 w-5" />
             </TabsTrigger>
           )}
-          <TabsTrigger value="payments" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
-            <CreditCard className="h-5 w-5" />
-          </TabsTrigger>
+          {currentUser?.role === "Owner" && (
+            <TabsTrigger value="payments" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+              <CreditCard className="h-5 w-5" />
+            </TabsTrigger>
+          )}
           {permissions.canManageStaff && (
             <TabsTrigger value="audit" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
               <ShieldAlert className="h-5 w-5" />
@@ -549,7 +550,8 @@ export function Settings() {
         </TabsContent>
         )}
 
-        {/* Payment Settings */}
+        {/* Payment Settings — Owner Only */}
+        {currentUser?.role === "Owner" && (
         <TabsContent value="payments" className="space-y-4">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -559,6 +561,7 @@ export function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Cash */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <CreditCard className="h-5 w-5 text-muted-foreground" />
@@ -572,6 +575,8 @@ export function Settings() {
                   onCheckedChange={(checked) => updateSettings({ cashEnabled: checked })}
                 />
               </div>
+
+              {/* UPI */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -589,47 +594,96 @@ export function Settings() {
                   />
                 </div>
                 {settings.upiEnabled && (
-                  <div className="pl-1 sm:pl-8 space-y-4 w-full flex flex-col items-start pt-2">
+                  <div className="pl-1 sm:pl-8 space-y-5 w-full flex flex-col items-start pt-2">
+                    {/* UPI ID */}
                     <div className="space-y-2.5 w-full flex flex-col items-start">
                       <Label className="text-sm font-medium w-full text-left">UPI ID</Label>
-                      <Input
-                        id="upiId"
-                        value={settings.upiId}
-                        onChange={(e) => updateSettings({ upiId: e.target.value })}
-                        placeholder="e.g. cafe@upi"
-                        className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
-                      />
+                      <div className="flex gap-2 w-full">
+                        <Input
+                          id="upiId"
+                          value={settings.upiId}
+                          onChange={(e) => updateSettings({ upiId: e.target.value })}
+                          placeholder="e.g. cafe@upi"
+                          className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
+                        />
+                        {settings.upiId && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-12 w-12 shrink-0 text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              updateSettings({ upiId: "" });
+                              toast.success("UPI ID cleared");
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-2.5 w-full flex flex-col items-start pt-2">
-                      <Label className="text-sm font-medium w-full text-left">UPI QR Code</Label>
+
+                    {/* UPI QR Code Upload */}
+                    <div className="space-y-2.5 w-full flex flex-col items-start">
+                      <Label className="text-sm font-medium w-full text-left">UPI QR Code Image</Label>
+                      <p className="text-xs text-muted-foreground -mt-1">Upload your own QR code image. This will be shown during billing when UPI is selected.</p>
                       {settings.upiQrCodeUrl ? (
-                        <div className="relative border border-border/60 rounded-xl overflow-hidden group">
-                          <img 
-                            src={settings.upiQrCodeUrl} 
-                            alt="UPI QR Code" 
-                            className="w-32 h-32 object-contain bg-white p-2"
-                          />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button 
-                              variant="destructive" 
-                              size="icon" 
-                              className="h-8 w-8 rounded-full"
-                              onClick={() => updateSettings({ upiQrCodeUrl: "" })}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                        <div className="flex items-start gap-4">
+                          <div className="relative border border-border/60 rounded-xl overflow-hidden group">
+                            <img
+                              src={settings.upiQrCodeUrl}
+                              alt="UPI QR Code"
+                              className="w-36 h-36 object-contain bg-white p-2"
+                            />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                className="h-8 w-8 rounded-full"
+                                onClick={() => {
+                                  updateSettings({ upiQrCodeUrl: "" });
+                                  toast.success("UPI QR Code removed");
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 pt-2">
+                            <Badge variant="outline" className="gap-1 border-success/50 text-success w-fit">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Active
+                            </Badge>
+                            <p className="text-xs text-muted-foreground">Hover over image to remove</p>
+                            <label htmlFor="qr-file-replace" className="cursor-pointer">
+                              <span className="text-xs text-primary font-medium hover:underline">Replace image</span>
+                              <input id="qr-file-replace" type="file" className="sr-only" accept="image/*" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 2 * 1024 * 1024) {
+                                    toast.error("Image must be less than 2MB");
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    updateSettings({ upiQrCodeUrl: reader.result as string });
+                                    toast.success("UPI QR Code replaced successfully");
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }} />
+                            </label>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex w-full items-center justify-center rounded-xl border border-dashed border-border/80 bg-secondary/30 px-6 py-6 transition-all hover:bg-secondary/50">
+                        <div className="flex w-full items-center justify-center rounded-xl border-2 border-dashed border-border/80 bg-secondary/30 px-6 py-8 transition-all hover:bg-secondary/50 hover:border-primary/40">
                           <div className="text-center">
-                            <ImageIcon className="mx-auto h-8 w-8 text-muted-foreground/60" />
-                            <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
+                            <ImageIcon className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                            <div className="mt-3 flex items-center justify-center text-sm leading-6 text-muted-foreground">
                               <label
                                 htmlFor="qr-file-upload"
                                 className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none hover:text-primary/80"
                               >
-                                <span>Upload an image</span>
+                                <span>Upload QR image</span>
                                 <input id="qr-file-upload" name="qr-file-upload" type="file" className="sr-only" accept="image/*" onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
@@ -646,9 +700,8 @@ export function Settings() {
                                   }
                                 }} />
                               </label>
-                              <p className="pl-1">or drag and drop</p>
                             </div>
-                            <p className="text-xs leading-5 text-muted-foreground/80 mt-1">PNG, JPG, WEBP up to 2MB</p>
+                            <p className="text-xs leading-5 text-muted-foreground/70 mt-2">PNG, JPG, WEBP up to 2MB</p>
                           </div>
                         </div>
                       )}
@@ -656,6 +709,8 @@ export function Settings() {
                   </div>
                 )}
               </div>
+
+              {/* Card */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <CreditCard className="h-5 w-5 text-muted-foreground" />
@@ -674,6 +729,7 @@ export function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
         {/* Audit Log (Admin Only) */}
         {permissions.canManageStaff && (

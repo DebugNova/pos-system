@@ -523,36 +523,42 @@ export function Billing() {
               <div className="mb-5">
                 <Label className="mb-2 block text-sm font-medium">Payment Method</Label>
                 <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                  <button
-                    onClick={() => setPaymentMethod("cash")}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
-                      paymentMethod === "cash" && "border-primary bg-primary/10"
-                    )}
-                  >
-                    <Banknote className="h-6 w-6 text-success" />
-                    <span className="text-sm font-medium text-foreground">Cash</span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod("upi")}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
-                      paymentMethod === "upi" && "border-primary bg-primary/10"
-                    )}
-                  >
-                    <Smartphone className="h-6 w-6 text-chart-1" />
-                    <span className="text-sm font-medium text-foreground">UPI</span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod("card")}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
-                      paymentMethod === "card" && "border-primary bg-primary/10"
-                    )}
-                  >
-                    <CreditCard className="h-6 w-6 text-chart-3" />
-                    <span className="text-sm font-medium text-foreground">Card</span>
-                  </button>
+                  {settings.cashEnabled && (
+                    <button
+                      onClick={() => setPaymentMethod("cash")}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                        paymentMethod === "cash" && "border-primary bg-primary/10"
+                      )}
+                    >
+                      <Banknote className="h-6 w-6 text-success" />
+                      <span className="text-sm font-medium text-foreground">Cash</span>
+                    </button>
+                  )}
+                  {settings.upiEnabled && (
+                    <button
+                      onClick={() => setPaymentMethod("upi")}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                        paymentMethod === "upi" && "border-primary bg-primary/10"
+                      )}
+                    >
+                      <Smartphone className="h-6 w-6 text-chart-1" />
+                      <span className="text-sm font-medium text-foreground">UPI</span>
+                    </button>
+                  )}
+                  {settings.cardEnabled && (
+                    <button
+                      onClick={() => setPaymentMethod("card")}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:bg-secondary/50 active:bg-secondary/70",
+                        paymentMethod === "card" && "border-primary bg-primary/10"
+                      )}
+                    >
+                      <CreditCard className="h-6 w-6 text-chart-3" />
+                      <span className="text-sm font-medium text-foreground">Card</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => setPaymentMethod("split")}
                     className={cn(
@@ -608,16 +614,26 @@ export function Billing() {
               )}
 
               {/* UPI QR */}
-              {paymentMethod === "upi" && (
+              {paymentMethod === "upi" && settings.upiEnabled && (
                 <div className="mb-5 flex flex-col items-center gap-4">
-                  <div className="rounded-xl bg-white p-4">
-                    <QRCodeSVG
-                      value={`upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.cafeName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${order.id}`)}`}
-                      size={192}
-                    />
-                  </div>
+                  {settings.upiQrCodeUrl ? (
+                    <div className="rounded-xl bg-white p-2">
+                       <img 
+                          src={settings.upiQrCodeUrl} 
+                          alt="Store UPI QR Code" 
+                          className="w-48 h-48 sm:w-56 sm:h-56 object-contain mix-blend-multiply"
+                       />
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-white p-4">
+                      <QRCodeSVG
+                        value={`upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.cafeName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${order.id}`)}`}
+                        size={192}
+                      />
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
-                    Scan QR code or enter UPI ID: {settings.upiId}
+                    Scan QR code or enter UPI ID: <span className="font-semibold text-foreground">{settings.upiId}</span>
                   </p>
                 </div>
               )}
@@ -626,36 +642,42 @@ export function Billing() {
               {paymentMethod === "split" && (
                 <div className="mb-5 space-y-3">
                   <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-sm">Cash</Label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={splitAmounts.cash}
-                        onChange={(e) => setSplitAmounts({ ...splitAmounts, cash: e.target.value })}
-                        className="mt-1 bg-secondary border-none"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm">UPI</Label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={splitAmounts.upi}
-                        onChange={(e) => setSplitAmounts({ ...splitAmounts, upi: e.target.value })}
-                        className="mt-1 bg-secondary border-none"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Card</Label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={splitAmounts.card}
-                        onChange={(e) => setSplitAmounts({ ...splitAmounts, card: e.target.value })}
-                        className="mt-1 bg-secondary border-none"
-                      />
-                    </div>
+                    {settings.cashEnabled && (
+                      <div>
+                        <Label className="text-sm">Cash</Label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={splitAmounts.cash}
+                          onChange={(e) => setSplitAmounts({ ...splitAmounts, cash: e.target.value })}
+                          className="mt-1 bg-secondary border-none"
+                        />
+                      </div>
+                    )}
+                    {settings.upiEnabled && (
+                      <div>
+                        <Label className="text-sm">UPI</Label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={splitAmounts.upi}
+                          onChange={(e) => setSplitAmounts({ ...splitAmounts, upi: e.target.value })}
+                          className="mt-1 bg-secondary border-none"
+                        />
+                      </div>
+                    )}
+                    {settings.cardEnabled && (
+                      <div>
+                        <Label className="text-sm">Card</Label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={splitAmounts.card}
+                          onChange={(e) => setSplitAmounts({ ...splitAmounts, card: e.target.value })}
+                          className="mt-1 bg-secondary border-none"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="rounded-lg bg-secondary/50 p-3 text-center">
                     <span className="text-sm text-muted-foreground">Split Total: </span>
