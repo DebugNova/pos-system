@@ -362,7 +362,8 @@ export function DataManager({ onBack }: DataManagerProps) {
     html += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;"><tr><td style="${S_SECTION}">◆  ORDER ITEMS  (LINE-BY-LINE DETAIL)</td></tr></table>`;
     html += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;">`;
     html += `<tr>${[
-      th("Order ID"), th("Item"), th("Variant"), th("Qty", "right"),
+      th("Order ID"), th("Date"), th("Time"), th("Status"), th("Customer"), 
+      th("Item"), th("Variant"), th("Qty", "right"),
       th("Unit Price", "right"), th("Modifiers"), th("Notes"), th("Line Total", "right"),
     ].join("")}</tr>`;
     let itemIdx = 0;
@@ -375,6 +376,10 @@ export function DataManager({ onBack }: DataManagerProps) {
           .join("; ") || "—";
         html += `<tr>`;
         html += td(o.id.toUpperCase(), itemIdx, false, "font-weight:bold;");
+        html += td(dateOnly(o.createdAt), itemIdx);
+        html += td(timeOnly(o.createdAt), itemIdx);
+        html += `<td style="${zebra(itemIdx)}"><span style="${statusBadge(o.status)}">${h(titleCase(o.status))}</span></td>`;
+        html += td(o.customerName || "—", itemIdx);
         html += td(it.name, itemIdx);
         html += td(it.variant || "—", itemIdx);
         html += td(it.quantity, itemIdx, true);
@@ -850,7 +855,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                       <TableHead className="text-xs">Type</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
                       <TableHead className="text-xs">Customer</TableHead>
-                      <TableHead className="text-xs">Items</TableHead>
+                      <TableHead className="text-xs max-w-[200px]">Item Details</TableHead>
                       <TableHead className="text-xs">Total</TableHead>
                       <TableHead className="text-xs">Date</TableHead>
                       <TableHead className="text-xs text-right">Actions</TableHead>
@@ -872,7 +877,11 @@ export function DataManager({ onBack }: DataManagerProps) {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">{order.customerName || "-"}{order.customerPhone ? ` (${order.customerPhone})` : ""}</TableCell>
-                        <TableCell className="text-xs">{order.items.length}</TableCell>
+                        <TableCell className="text-xs">
+                          <div className="max-w-[250px] truncate" title={order.items.map(it => `${it.quantity}x ${it.name}${it.variant ? ` (${it.variant})` : ""}`).join(", ")}>
+                            {order.items.map(it => `${it.quantity}x ${it.name}${it.variant ? ` (${it.variant})` : ""}`).join(", ") || "-"}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-xs font-medium">
                           {order.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                         </TableCell>
