@@ -240,18 +240,18 @@ export function useRealtimeSync() {
 // redundant refetch triggered by the corresponding 'order_items' event.
 const recentOrderTableEvents = new Set<string>();
 
-function handleOrderChange(payload: any, ownWrites: Set<string>) {
+function handleOrderChange(payload: any, _ownWrites: Set<string>) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
 
   if (eventType === "INSERT" || eventType === "UPDATE") {
     const orderId = newRecord?.id;
     if (!orderId) return;
 
-    // Skip if this is our own write (feedback loop prevention)
-    if (ownWrites.has(orderId)) {
-      console.log("[realtime] Skipping own write for order", orderId);
-      return;
-    }
+    // NOTE: own-write filtering removed — it was keyed by orderId alone with
+    // a 10s window, which silently dropped legitimate cross-terminal events
+    // (e.g. phone taps Start Prep within 10s of PC sending to kitchen).
+    // The STATUS_RANK guard + ordersShallowEqual short-circuit in
+    // refetchAndMergeOrder already handle echo/regression safely.
 
     // Mark that we're handling this order via the 'orders' table event.
     // The debounced refetch will include items, so any 'order_items' event
@@ -272,11 +272,11 @@ function handleOrderChange(payload: any, ownWrites: Set<string>) {
   }
 }
 
-function handleOrderItemChange(payload: any, ownWrites: Set<string>) {
+function handleOrderItemChange(payload: any, _ownWrites: Set<string>) {
   // When order items change, re-fetch the parent order to get the full picture
   const orderId = payload.new?.order_id || payload.old?.order_id;
   if (!orderId) return;
-  if (ownWrites.has(orderId)) return;
+  // own-write filter removed — see note in handleOrderChange
 
   // Skip if we already have a pending refetch from the 'orders' table event.
   // The debounced refetch from handleOrderChange will include items anyway.
