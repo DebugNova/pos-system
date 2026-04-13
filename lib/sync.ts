@@ -126,6 +126,9 @@ export async function syncPendingMutations(): Promise<void> {
     isSyncing: false,
     lastSyncedAt: new Date().toISOString()
   });
+
+  // Clean up stale synced mutations to prevent localStorage bloat
+  usePOSStore.getState().clearSyncedMutations();
 }
 
 /**

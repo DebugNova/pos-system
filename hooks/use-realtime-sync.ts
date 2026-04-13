@@ -235,6 +235,11 @@ export function useRealtimeSync() {
 // Handlers
 // ─────────────────────────────────────────────────
 
+// Track orders that recently received an 'orders' table event — the debounced
+// refetch from that event will include items anyway, so we can skip the
+// redundant refetch triggered by the corresponding 'order_items' event.
+const recentOrderTableEvents = new Set<string>();
+
 function handleOrderChange(payload: any, ownWrites: Set<string>) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
 
@@ -247,6 +252,12 @@ function handleOrderChange(payload: any, ownWrites: Set<string>) {
       console.log("[realtime] Skipping own write for order", orderId);
       return;
     }
+
+    // Mark that we're handling this order via the 'orders' table event.
+    // The debounced refetch will include items, so any 'order_items' event
+    // arriving within this window can be safely skipped.
+    recentOrderTableEvents.add(orderId);
+    setTimeout(() => recentOrderTableEvents.delete(orderId), 600); // slightly > debounce
 
     // Re-fetch the full order with items to get complete data
     refetchAndMergeOrder(orderId);
@@ -266,6 +277,14 @@ function handleOrderItemChange(payload: any, ownWrites: Set<string>) {
   const orderId = payload.new?.order_id || payload.old?.order_id;
   if (!orderId) return;
   if (ownWrites.has(orderId)) return;
+
+  // Skip if we already have a pending refetch from the 'orders' table event.
+  // The debounced refetch from handleOrderChange will include items anyway.
+  if (recentOrderTableEvents.has(orderId)) {
+    console.log("[realtime] Skipping order_items refetch — orders event already handling:", orderId);
+    return;
+  }
+
   refetchAndMergeOrder(orderId);
 }
 

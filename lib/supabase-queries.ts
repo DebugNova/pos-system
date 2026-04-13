@@ -453,14 +453,61 @@ export async function fetchItemDetails(saleDateFrom?: string, saleDateTo?: strin
 // MENU ITEM IMAGE UPLOAD (Supabase Storage)
 // ============================================================
 
+// Helper to compress image
+async function compressImage(file: File, maxDim = 800, quality = 0.8): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height *= maxDim / width));
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width *= maxDim / height));
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(file);
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return resolve(file);
+            resolve(new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() }));
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+}
+
 export async function uploadMenuImage(file: File, fileName: string): Promise<string> {
   const supabase = getSupabase();
   const path = `menu/${fileName}`;
 
+  // Fix 6: Compress image before uploading to save storage and bandwidth
+  const compressedFile = await compressImage(file);
+
   const { error } = await supabase.storage
     .from("menu-images")
-    .upload(path, file, {
-      cacheControl: "3600",
+    .upload(path, compressedFile, {
+      cacheControl: "31536000",
       upsert: true,
     });
   if (error) throw error;
