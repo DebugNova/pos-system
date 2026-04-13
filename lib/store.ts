@@ -151,7 +151,7 @@ interface POSState {
   moveTable: (orderId: string, newTableId: string) => void;
 
   // Data Management
-  clearAllData: () => void;
+  clearAllData: () => Promise<void>;
   exportData: () => string;
   importData: (data: string) => boolean;
 
@@ -1342,29 +1342,51 @@ export const usePOSStore = create<POSState>()(
       },
 
       // Data Management
-      clearAllData: () => {
+      clearAllData: async () => {
+        // 1. Wipe Supabase FIRST (while session is still valid).
+        //    Must await so re-hydration after reset reads empty tables,
+        //    not stale server data.
+        if (get().supabaseEnabled) {
+          try {
+            const { nukeAllData } = await import("./supabase-queries");
+            await nukeAllData();
+          } catch (err) {
+            console.error("[store] Failed to nuke Supabase data:", err);
+          }
+        }
+
+        // 2. Clear the offline mutation queue in IndexedDB so pending
+        //    writes don't replay and resurrect deleted data.
+        try {
+          const { clearAllMutationsFromIDB } = await import("./sync-idb");
+          await clearAllMutationsFromIDB();
+        } catch (err) {
+          console.error("[store] Failed to clear IDB sync queue:", err);
+        }
+
+        // 3. Reset local state. Keep the current user logged in — the
+        //    Admin just authorized this action, kicking them to login is
+        //    disruptive and also races with re-hydration.
         set({
           orders: [],
           tables: initialTables,
           menuItems: defaultMenuItems,
           staffMembers: defaultStaffMembers,
+          modifiers: [],
           cart: [],
-          isLoggedIn: false,
-          currentUser: null,
+          selectedTable: null,
+          customerName: "",
+          customerPhone: "",
+          orderNotes: "",
+          editingOrderId: null,
+          editMode: "none",
+          lockedItemIds: [],
           auditLog: [],
           syncQueue: [],
           shifts: [],
           currentShift: null,
+          settings: defaultSettings,
         });
-
-        // Wipe all data from Supabase too (global reset across all devices)
-        if (get().supabaseEnabled) {
-          import("./supabase-queries").then(({ nukeAllData }) => {
-            nukeAllData().catch(err => {
-              console.error("[store] Failed to nuke Supabase data:", err);
-            });
-          });
-        }
       },
 
       exportData: () => {

@@ -107,6 +107,7 @@ export function DataManager({ onBack }: DataManagerProps) {
   const [editingStaff, setEditingStaff] = useState<{ id: string; name: string; role: string; pin: string; initials: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ type: string; id: string; name?: string } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [importText, setImportText] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showCancelOrderConfirm, setShowCancelOrderConfirm] = useState(false);
@@ -1636,16 +1637,27 @@ export function DataManager({ onBack }: DataManagerProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                clearAllData();
-                setShowClearConfirm(false);
-                toast.success("All data has been wiped.");
+              disabled={isResetting}
+              onClick={async (e) => {
+                e.preventDefault();
+                setIsResetting(true);
+                const toastId = toast.loading("Resetting all data...");
+                try {
+                  await clearAllData();
+                  toast.success("Factory reset complete. Starting fresh.", { id: toastId });
+                  setShowClearConfirm(false);
+                } catch (err) {
+                  console.error("[data-manager] Reset failed:", err);
+                  toast.error("Reset failed. Check console for details.", { id: toastId });
+                } finally {
+                  setIsResetting(false);
+                }
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Reset Everything
+              {isResetting ? "Resetting..." : "Reset Everything"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
