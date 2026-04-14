@@ -186,7 +186,8 @@ export async function upsertMenuItem(item: MenuItem): Promise<void> {
       variants: item.variants || [],
       available: item.available,
       image_url: item.image_url || null,
-      bestseller: item.bestseller || false
+      bestseller: item.bestseller || false,
+      modifier_ids: item.modifierIds || [],
     }, { onConflict: "id" });
   if (error) throw error;
 }
@@ -707,6 +708,7 @@ function mapDbMenuItemToLocal(db: any): MenuItem {
     available: db.available,
     image_url: db.image_url,
     bestseller: db.bestseller,
+    modifierIds: Array.isArray(db.modifier_ids) && db.modifier_ids.length > 0 ? db.modifier_ids : undefined,
   };
 }
 

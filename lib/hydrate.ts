@@ -1,5 +1,5 @@
 import { usePOSStore } from "./store";
-import { fetchOrdersByStatus, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers } from "./supabase-queries";
+import { fetchOrdersByStatus, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers, upsertMenuItem } from "./supabase-queries";
 import { syncPendingMutations } from "./sync";
 
 /**
@@ -42,11 +42,26 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
         mergedOrders = [...orders, ...keptTerminal];
       }
 
+      // If DB has no menu items, seed local items into Supabase so future
+      // hydrations pick them up (one-time migration for new projects).
+      let finalMenuItems = state.menuItems;
+      if (menuItems.length === 0 && state.menuItems.length > 0) {
+        console.log("[hydrate] menu_items table empty — seeding", state.menuItems.length, "items to Supabase");
+        await Promise.all(state.menuItems.map((item) => upsertMenuItem(item).catch(console.error)));
+        finalMenuItems = state.menuItems; // keep local (DB now has them)
+      } else if (menuItems.length > 0) {
+        // DB has items — use DB as source of truth but keep any locally-added
+        // items that haven't synced yet (id not present in DB result).
+        const dbIds = new Set(menuItems.map((m) => m.id));
+        const localOnly = state.menuItems.filter((m) => !dbIds.has(m.id));
+        finalMenuItems = [...menuItems, ...localOnly];
+      }
+
       // Only overwrite if we got data — preserve local data if DB is empty
       usePOSStore.setState({
         orders: mergedOrders,
         tables: tables.length > 0 ? tables : state.tables,
-        menuItems: menuItems.length > 0 ? menuItems : state.menuItems,
+        menuItems: finalMenuItems,
         staffMembers: staffMembers.length > 0 ? staffMembers.map(s => ({
           id: s.id,
           name: s.name,

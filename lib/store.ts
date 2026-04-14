@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Order, OrderItem, OrderType, OrderStatus, Table, MenuItem, Modifier, AuditEntry, Shift, QueuedMutation, MutationKind } from "./data";
-import { tables as initialTables, menuItems as defaultMenuItems, defaultModifiers } from "./data";
+import type { Order, OrderItem, OrderType, OrderStatus, Table, MenuItem, Modifier, AuditEntry, Shift, QueuedMutation, MutationKind, Category } from "./data";
+import { tables as initialTables, menuItems as defaultMenuItems, defaultModifiers, defaultCategories } from "./data";
 import { getDefaultView, canAccessView, type ViewId } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
@@ -113,6 +113,12 @@ interface POSState {
   startEditOrder: (orderId: string) => void;
   saveEditOrder: () => void;
   cancelEditOrder: () => void;
+
+  // Menu Categories
+  menuCategories: Category[];
+  addMenuCategory: (cat: Category) => void;
+  updateMenuCategory: (id: string, data: Partial<Category>) => void;
+  deleteMenuCategory: (id: string) => void;
 
   // Menu Items
   menuItems: MenuItem[];
@@ -705,10 +711,31 @@ export const usePOSStore = create<POSState>()(
       setCustomerPhone: (phone) => set({ customerPhone: phone }),
       setOrderNotes: (notes) => set({ orderNotes: notes }),
 
+      // Menu Categories
+      menuCategories: defaultCategories,
+      addMenuCategory: (cat) => {
+        set((state) => ({ menuCategories: [...state.menuCategories, cat] }));
+        setTimeout(() => get().enqueueMutation("settings.update", { menuCategories: get().menuCategories }), 0);
+      },
+      updateMenuCategory: (id, data) => {
+        set((state) => ({
+          menuCategories: state.menuCategories.map((c) => c.id === id ? { ...c, ...data } : c),
+        }));
+        setTimeout(() => get().enqueueMutation("settings.update", { menuCategories: get().menuCategories }), 0);
+      },
+      deleteMenuCategory: (id) => {
+        set((state) => ({ menuCategories: state.menuCategories.filter((c) => c.id !== id) }));
+        setTimeout(() => get().enqueueMutation("settings.update", { menuCategories: get().menuCategories }), 0);
+      },
+
       // Menu Items
       menuItems: defaultMenuItems,
       addMenuItem: (item) => {
         set((state) => ({ menuItems: [...state.menuItems, item] }));
+        // Direct write-through so the item is in DB before the next hydration
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ upsertMenuItem }) => upsertMenuItem(item)).catch(console.error);
+        }
         setTimeout(() => get().enqueueMutation("menu.upsert", { item }), 0);
       },
       updateMenuItem: (id, data) => {
@@ -717,6 +744,9 @@ export const usePOSStore = create<POSState>()(
         }));
         const updatedItem = get().menuItems.find(i => i.id === id);
         if (updatedItem) {
+          if (typeof window !== "undefined") {
+            import("./supabase-queries").then(({ upsertMenuItem }) => upsertMenuItem(updatedItem)).catch(console.error);
+          }
           setTimeout(() => get().enqueueMutation("menu.upsert", { item: updatedItem }), 0);
         }
       },
@@ -724,6 +754,9 @@ export const usePOSStore = create<POSState>()(
         set((state) => ({
           menuItems: state.menuItems.filter((item) => item.id !== id)
         }));
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ deleteMenuItemFromDb }) => deleteMenuItemFromDb(id)).catch(console.error);
+        }
         setTimeout(() => get().enqueueMutation("menu.delete", { id }), 0);
       },
 
@@ -1369,6 +1402,7 @@ export const usePOSStore = create<POSState>()(
         set({
           orders: [],
           tables: initialTables,
+          menuCategories: defaultCategories,
           menuItems: defaultMenuItems,
           staffMembers: defaultStaffMembers,
           modifiers: [],
@@ -1514,6 +1548,7 @@ export const usePOSStore = create<POSState>()(
         pendingBillingOrderId: state.pendingBillingOrderId,
         orders: state.orders,
         tables: state.tables,
+        menuCategories: state.menuCategories,
         menuItems: state.menuItems,
         modifiers: state.modifiers,
         staffMembers: state.staffMembers,
@@ -1557,7 +1592,13 @@ export const usePOSStore = create<POSState>()(
             ...state,
             tables: initialTables,
             menuItems: defaultMenuItems,
+            menuCategories: defaultCategories,
           } as any;
+        }
+
+        // Ensure menuCategories exists for older persisted states
+        if (!state.menuCategories || !Array.isArray(state.menuCategories) || state.menuCategories.length === 0) {
+          state.menuCategories = defaultCategories;
         }
         return state;
       },

@@ -61,7 +61,7 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
-import type { Order, MenuItem, Modifier, Table as TableType } from "@/lib/data";
+import type { Order, MenuItem, Modifier, Table as TableType, Category } from "@/lib/data";
 import { uploadMenuImage } from "@/lib/supabase-queries";
 
 interface DataManagerProps {
@@ -72,6 +72,10 @@ export function DataManager({ onBack }: DataManagerProps) {
   const {
     orders,
     menuItems,
+    menuCategories,
+    addMenuCategory,
+    updateMenuCategory,
+    deleteMenuCategory,
     modifiers,
     addModifier,
     updateModifier,
@@ -115,6 +119,7 @@ export function DataManager({ onBack }: DataManagerProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   // Stats
   const totalOrders = orders.length;
@@ -608,6 +613,10 @@ export function DataManager({ onBack }: DataManagerProps) {
       case "modifier":
         deleteModifier(id);
         break;
+      case "category":
+        deleteMenuCategory(id);
+        toast.success("Category deleted");
+        break;
     }
     setShowDeleteConfirm(null);
   };
@@ -716,6 +725,19 @@ export function DataManager({ onBack }: DataManagerProps) {
       updateStaffMember(editingStaff.id, editingStaff);
     }
     setEditingStaff(null);
+  };
+
+  const handleSaveCategory = () => {
+    if (!editingCategory || !editingCategory.name.trim()) return;
+    if (editingCategory.id.startsWith("new-")) {
+      const newId = editingCategory.name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      addMenuCategory({ ...editingCategory, id: newId || `cat-${Date.now()}` });
+      toast.success("Category added");
+    } else {
+      updateMenuCategory(editingCategory.id, editingCategory);
+      toast.success("Category updated");
+    }
+    setEditingCategory(null);
   };
 
   return (
@@ -970,13 +992,62 @@ export function DataManager({ onBack }: DataManagerProps) {
               </CardContent>
             </Card>
 
+            {/* Categories Card */}
+            <Card className="bg-card border-border">
+              <CardHeader className="flex flex-row items-center justify-between py-3">
+                <CardTitle className="text-sm">Categories ({menuCategories.length})</CardTitle>
+                <Button
+                  size="sm"
+                  className="h-8 gap-1"
+                  onClick={() => setEditingCategory({ id: "new-" + Date.now(), name: "", icon: "tag" })}
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Category
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Name</TableHead>
+                      <TableHead className="text-xs">ID</TableHead>
+                      <TableHead className="text-xs">Items</TableHead>
+                      <TableHead className="text-xs text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {menuCategories.map((cat) => (
+                      <TableRow key={cat.id}>
+                        <TableCell className="text-xs font-medium capitalize">{cat.name}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{cat.id}</TableCell>
+                        <TableCell className="text-xs">{menuItems.filter(m => m.category === cat.id).length}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingCategory(cat)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                              onClick={() => setShowDeleteConfirm({ type: "category", id: cat.id, name: cat.name })}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
             <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between py-3">
                 <CardTitle className="text-sm">Menu Items ({filteredMenuItems.length})</CardTitle>{/* modifier-section-break */}
                 <Button
                   size="sm"
                   className="h-8 gap-1"
-                  onClick={() => setEditingMenuItem({ id: "new-" + Date.now(), name: "", price: 0, category: "coffee", available: true })}
+                  onClick={() => setEditingMenuItem({ id: "new-" + Date.now(), name: "", price: 0, category: menuCategories[0]?.id ?? "coffee", available: true })}
                 >
                   <Plus className="h-3 w-3" />
                   Add Item
@@ -1321,9 +1392,9 @@ export function DataManager({ onBack }: DataManagerProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="tea">Tea</SelectItem>
-                    <SelectItem value="coffee">Coffee</SelectItem>
-                    <SelectItem value="drinks">Drinks</SelectItem>
+                    {menuCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1404,6 +1475,39 @@ export function DataManager({ onBack }: DataManagerProps) {
                   </div>
                 )}
               </div>
+
+              {/* Modifier Assignment */}
+              {modifiers.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <Label className="text-xs font-semibold">Applicable Add-ons</Label>
+                  <p className="text-[11px] text-muted-foreground">Select which add-ons customers can choose for this item. Leave all unchecked to show every add-on.</p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {modifiers.map((mod) => {
+                      const selected = editingMenuItem.modifierIds?.includes(mod.id) ?? false;
+                      return (
+                        <button
+                          key={mod.id}
+                          type="button"
+                          onClick={() => {
+                            const current = editingMenuItem.modifierIds ?? [];
+                            const next = selected
+                              ? current.filter((id) => id !== mod.id)
+                              : [...current, mod.id];
+                            setEditingMenuItem({ ...editingMenuItem, modifierIds: next });
+                          }}
+                          className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-secondary/40 text-muted-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          {mod.name}{mod.price > 0 ? ` +₹${mod.price}` : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
@@ -1452,6 +1556,36 @@ export function DataManager({ onBack }: DataManagerProps) {
             <Button variant="outline" onClick={() => setEditingModifier(null)}>Cancel</Button>
             <Button onClick={handleSaveModifier}>
               {editingModifier?.id.startsWith("new-mod-") ? "Add Modifier" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Category Dialog */}
+      <Dialog open={!!editingCategory} onOpenChange={() => setEditingCategory(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingCategory?.id.startsWith("new-") ? "Add Category" : "Edit Category"}</DialogTitle>
+          </DialogHeader>
+          {editingCategory && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Category Name</Label>
+                <Input
+                  value={editingCategory.name}
+                  placeholder="e.g. Snacks"
+                  onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                />
+              </div>
+              {editingCategory.id.startsWith("new-") && (
+                <p className="text-[11px] text-muted-foreground">The ID will be auto-generated from the name (e.g. "Snacks" → "snacks").</p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingCategory(null)}>Cancel</Button>
+            <Button onClick={handleSaveCategory}>
+              {editingCategory?.id.startsWith("new-") ? "Add Category" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

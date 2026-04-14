@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePOSStore } from "@/lib/store";
-import { categories, type MenuItem, type Modifier } from "@/lib/data";
+import { type MenuItem, type Modifier } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +91,7 @@ export function NewOrder() {
     tables,
     orders,
     menuItems,
+    menuCategories,
     modifiers: availableModifiers,
     addToCart,
     removeFromCart,
@@ -147,6 +148,11 @@ export function NewOrder() {
       });
     }
   };
+
+  // Modifiers applicable to the current item: if item has modifierIds set, only show those; else show all
+  const itemModifiers: Modifier[] = currentMenuItem?.modifierIds && currentMenuItem.modifierIds.length > 0
+    ? availableModifiers.filter((m) => currentMenuItem.modifierIds!.includes(m.id))
+    : availableModifiers;
 
   const openModifierDialog = (item: MenuItem) => {
     setCurrentMenuItem(item);
@@ -413,9 +419,9 @@ export function NewOrder() {
             </span>
           </button>
           
-          {categories.map((cat) => {
+          {menuCategories.map((cat) => {
             const Icon = categoryIcons[cat.id];
-            const catCount = menuItems.filter(m => m.category === cat.id).length;
+            const catCount = menuItems.filter(m => m.category === cat.id && m.available).length;
             const isActive = activeCategory === cat.id;
             return (
               <button
@@ -447,7 +453,7 @@ export function NewOrder() {
             {filteredItems.map((item) => {
               const isCoffee = item.category === "coffee";
               const isTea = item.category === "tea";
-              const emoji = isCoffee ? "☕" : isTea ? "🍵" : "🥤";
+              const emoji = isCoffee ? "☕" : isTea ? "🍵" : "🥤"; // default fallback for any category
 
               return (
                 <motion.div
@@ -1018,7 +1024,7 @@ export function NewOrder() {
             <div className="space-y-3">
               <Label className="text-[14px] sm:text-[15px] font-bold text-foreground">Add-ons</Label>
               <div className="flex flex-col gap-2">
-                {availableModifiers.map((mod) => {
+                {itemModifiers.map((mod) => {
                   const isSelected = selectedModifiers.some(m => m.id === mod.id);
                   return (
                     <div 

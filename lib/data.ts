@@ -1,11 +1,14 @@
 // Menu Categories and Items based on SUHASHI Cafe menu
-export const categories = [
+export const defaultCategories = [
   { id: "tea", name: "Tea", icon: "leaf" },
   { id: "coffee", name: "Coffee", icon: "coffee" },
   { id: "drinks", name: "Drinks", icon: "cup-soda" },
-] as const;
+];
 
-export type Category = (typeof categories)[number];
+// Keep backward-compat export used in old static imports
+export const categories = defaultCategories;
+
+export type Category = { id: string; name: string; icon?: string };
 
 export interface MenuItem {
   id: string;
@@ -16,6 +19,8 @@ export interface MenuItem {
   available: boolean;
   image_url?: string;
   bestseller?: boolean;
+  /** IDs of modifiers applicable to this item. undefined/empty = all modifiers shown */
+  modifierIds?: string[];
 }
 
 export const menuItems: MenuItem[] = [
