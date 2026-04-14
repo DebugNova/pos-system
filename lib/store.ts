@@ -625,9 +625,7 @@ export const usePOSStore = create<POSState>()(
 
           // Direct write-through: push supplementary bill to Supabase immediately
           if (get().supabaseEnabled) {
-            if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-              (window as any).__posMarkOwnWrite(editingOrderId);
-            }
+
             import("./supabase-queries").then(({ insertSupplementaryBill }) => {
               insertSupplementaryBill(editingOrderId, newBill).catch(err => {
                 console.warn("[store] Direct write failed for supplementary bill, will sync later:", err?.message || err?.code || JSON.stringify(err));
@@ -724,17 +722,35 @@ export const usePOSStore = create<POSState>()(
       menuCategories: defaultCategories,
       addMenuCategory: (cat) => {
         set((state) => ({ menuCategories: [...state.menuCategories, cat] }));
-        setTimeout(() => get().enqueueMutation("settings.update", { menuCategories: get().menuCategories }), 0);
+        const cats = get().menuCategories;
+        get().enqueueMutation("settings.update", { changes: { menuCategories: cats } });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ updateSettingsInDb }) =>
+            updateSettingsInDb({ menuCategories: cats }).catch(console.error)
+          );
+        }
       },
       updateMenuCategory: (id, data) => {
         set((state) => ({
           menuCategories: state.menuCategories.map((c) => c.id === id ? { ...c, ...data } : c),
         }));
-        setTimeout(() => get().enqueueMutation("settings.update", { menuCategories: get().menuCategories }), 0);
+        const cats = get().menuCategories;
+        get().enqueueMutation("settings.update", { changes: { menuCategories: cats } });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ updateSettingsInDb }) =>
+            updateSettingsInDb({ menuCategories: cats }).catch(console.error)
+          );
+        }
       },
       deleteMenuCategory: (id) => {
         set((state) => ({ menuCategories: state.menuCategories.filter((c) => c.id !== id) }));
-        setTimeout(() => get().enqueueMutation("settings.update", { menuCategories: get().menuCategories }), 0);
+        const cats = get().menuCategories;
+        get().enqueueMutation("settings.update", { changes: { menuCategories: cats } });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ updateSettingsInDb }) =>
+            updateSettingsInDb({ menuCategories: cats }).catch(console.error)
+          );
+        }
       },
 
       // Menu Items
@@ -823,9 +839,7 @@ export const usePOSStore = create<POSState>()(
 
         // Direct write-through: push order to Supabase immediately for instant Realtime broadcast
         if (get().supabaseEnabled) {
-          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-            (window as any).__posMarkOwnWrite(id);
-          }
+
           import("./supabase-queries").then(({ upsertOrder }) => {
             upsertOrder(newOrder).then(() => {
               // Direct write succeeded — mark the queued mutation as synced so the
@@ -861,9 +875,7 @@ export const usePOSStore = create<POSState>()(
         // skipDirectWrite: when a follow-up action (e.g. confirmPayment) will immediately
         // do its own direct write with a merged payload, skip here to avoid race conditions.
         if (get().supabaseEnabled && !opts?.skipDirectWrite) {
-          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-            (window as any).__posMarkOwnWrite(orderId);
-          }
+
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, data).then(() => {
               get().markMutationSynced(mutId);
@@ -896,9 +908,7 @@ export const usePOSStore = create<POSState>()(
         // Task 14: Direct write-through for real-time KDS updates
         if (get().supabaseEnabled) {
           // Mark own write to prevent Realtime feedback loop
-          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-            (window as any).__posMarkOwnWrite(orderId);
-          }
+
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, { status }).then(() => {
               get().markMutationSynced(mutId);
@@ -973,9 +983,7 @@ export const usePOSStore = create<POSState>()(
         // CRITICAL direct write — single merged payload with billing fields + payment
         // This replaces the separate updateOrder direct-write to avoid race conditions
         if (get().supabaseEnabled) {
-          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-            (window as any).__posMarkOwnWrite(orderId);
-          }
+
           // Read the latest order state which includes billing fields set by the
           // preceding updateOrder() call (subtotal, discount, taxRate, etc.)
           const latestOrder = get().orders.find((o) => o.id === orderId);
@@ -1045,9 +1053,7 @@ export const usePOSStore = create<POSState>()(
 
         // Direct write-through for real-time KDS
         if (get().supabaseEnabled) {
-          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-            (window as any).__posMarkOwnWrite(orderId);
-          }
+
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, {
               status: "new",
@@ -1100,9 +1106,7 @@ export const usePOSStore = create<POSState>()(
 
         // Merged direct write — includes billing fields set by preceding updateOrder()
         if (get().supabaseEnabled) {
-          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-            (window as any).__posMarkOwnWrite(orderId);
-          }
+
           const latestOrder = get().orders.find((o) => o.id === orderId);
           const mergedPayload: Record<string, any> = {
             status: "completed",
@@ -1154,9 +1158,7 @@ export const usePOSStore = create<POSState>()(
 
         // Direct write-through for instant cross-device sync
         if (get().supabaseEnabled) {
-          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-            (window as any).__posMarkOwnWrite(orderId);
-          }
+
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, { status: "cancelled" }).then(() => {
               get().markMutationSynced(mutId);
@@ -1195,9 +1197,7 @@ export const usePOSStore = create<POSState>()(
           const mutId = get().enqueueMutation("order.update", { id: orderId, changes: { status: "served-unpaid" } });
 
           if (get().supabaseEnabled) {
-            if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-              (window as any).__posMarkOwnWrite(orderId);
-            }
+
             import("./supabase-queries").then(({ updateOrderInDb }) => {
               updateOrderInDb(orderId, { status: "served-unpaid" }).then(() => {
                 get().markMutationSynced(mutId);
@@ -1231,9 +1231,7 @@ export const usePOSStore = create<POSState>()(
 
         // Task 14: Direct write-through for table release visibility
         if (get().supabaseEnabled) {
-          if (typeof window !== "undefined" && (window as any).__posMarkOwnWrite) {
-            (window as any).__posMarkOwnWrite(orderId);
-          }
+
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, { status: "completed" }).then(() => {
               get().markMutationSynced(mutId);

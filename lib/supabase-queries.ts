@@ -753,6 +753,9 @@ function mapDbSettingsToLocal(db: any) {
     cardEnabled: db.card_enabled !== undefined ? db.card_enabled : true,
     upiQrCodeUrl: db.upi_qr_code_url,
     printers: db.printers || [],
+    menuCategories: Array.isArray(db.menu_categories) && db.menu_categories.length > 0
+      ? db.menu_categories
+      : undefined,  // undefined → hydrate.ts will keep existing local categories
   };
 }
 
@@ -774,5 +777,6 @@ function mapLocalSettingsToDb(settings: any) {
   if (settings.cardEnabled !== undefined) mapped.card_enabled = settings.cardEnabled;
   if (settings.upiQrCodeUrl !== undefined) mapped.upi_qr_code_url = settings.upiQrCodeUrl;
   if (settings.printers !== undefined) mapped.printers = settings.printers;
+  if (settings.menuCategories !== undefined) mapped.menu_categories = settings.menuCategories;
   return mapped;
 }

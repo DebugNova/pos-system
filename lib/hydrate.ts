@@ -14,6 +14,9 @@ let hydratePromise: Promise<void> | null = null;
 export async function hydrateStoreFromSupabase(): Promise<void> {
   if (hydratePromise) return hydratePromise;
   hydratePromise = (async () => {
+    // Enable direct writes immediately — don't wait for hydration to finish.
+    // Hydration is for READING data; writes should proceed independently.
+    usePOSStore.setState({ supabaseEnabled: true });
     try {
       // Only fetch ACTIVE orders — completed/cancelled orders stay in localStorage
       // and are only needed for reports (which use server-side PostgreSQL views).
@@ -70,6 +73,9 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
           initials: s.initials,
         })) : state.staffMembers,
         settings: settings ? { ...state.settings, ...settings } : state.settings,
+        // menuCategories is stored in settings.menu_categories DB column but surfaced
+        // as a top-level store field.  Hydrate it here if the DB row has data.
+        ...(settings?.menuCategories ? { menuCategories: settings.menuCategories } : {}),
         modifiers: modifiers.length > 0 ? modifiers : state.modifiers,
       });
 
@@ -80,8 +86,7 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
         staffMembers: staffMembers.length,
       });
 
-      // Task 14: Enable direct Supabase write-through now that hydration succeeded
-      usePOSStore.setState({ supabaseEnabled: true });
+      // supabaseEnabled already set at the top of this function
     } catch (error) {
       console.error("[hydrate] Failed to hydrate from Supabase:", error);
       // Keep existing localStorage data — offline-first behavior
@@ -94,23 +99,24 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
 
 /**
  * Start the background sync loop.
- * Runs every 30 seconds to drain the mutation queue.
- * 
+ * Runs every 8 seconds to drain the mutation queue.
+ *
  * Full re-hydration is NOT on a timer — Realtime subscriptions provide
- * live cross-device sync.  Re-hydration only happens on:
- *   • visibility change (tab refocus after >10s) — see use-realtime-sync.ts
+ * live cross-device sync. Re-hydration only happens on:
+ *   • visibility change (tab refocus after >3s) — see use-realtime-sync.ts
  *   • reconnect after going offline
  *   • Realtime channel error/timeout
- * 
+ *
  * Returns a cleanup function to clear the intervals.
  */
 export function startBackgroundSync(): () => void {
-  // Drain mutation queue every 30 seconds
+  // Drain mutation queue every 8 seconds for faster fallback on direct-write failures.
+  // The dedup logic in sync.ts prevents double-writes, so rapid retries are safe.
   const syncInterval = setInterval(() => {
     if (navigator.onLine) {
       syncPendingMutations().catch(console.error);
     }
-  }, 30_000);
+  }, 8_000);
 
   // Also drain any pending mutations right away
   if (navigator.onLine) {

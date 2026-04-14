@@ -242,49 +242,67 @@ export type Database = {
           address: string | null
           auto_print_kot: boolean | null
           cafe_name: string
+          cash_enabled: boolean | null
+          card_enabled: boolean | null
           created_at: string | null
           gst_enabled: boolean | null
           gst_number: string | null
           id: string
           kitchen_ready_alerts: boolean | null
+          menu_categories: Json | null
           order_alerts: boolean | null
           print_customer_copy: boolean | null
+          printers: Json | null
           session_timeout_minutes: number | null
           tax_rate: number
           updated_at: string | null
+          upi_enabled: boolean | null
           upi_id: string | null
+          upi_qr_code_url: string | null
         }
         Insert: {
           address?: string | null
           auto_print_kot?: boolean | null
           cafe_name?: string
+          cash_enabled?: boolean | null
+          card_enabled?: boolean | null
           created_at?: string | null
           gst_enabled?: boolean | null
           gst_number?: string | null
           id?: string
           kitchen_ready_alerts?: boolean | null
+          menu_categories?: Json | null
           order_alerts?: boolean | null
           print_customer_copy?: boolean | null
+          printers?: Json | null
           session_timeout_minutes?: number | null
           tax_rate?: number
           updated_at?: string | null
+          upi_enabled?: boolean | null
           upi_id?: string | null
+          upi_qr_code_url?: string | null
         }
         Update: {
           address?: string | null
           auto_print_kot?: boolean | null
           cafe_name?: string
+          cash_enabled?: boolean | null
+          card_enabled?: boolean | null
           created_at?: string | null
           gst_enabled?: boolean | null
           gst_number?: string | null
           id?: string
           kitchen_ready_alerts?: boolean | null
+          menu_categories?: Json | null
           order_alerts?: boolean | null
           print_customer_copy?: boolean | null
+          printers?: Json | null
           session_timeout_minutes?: number | null
           tax_rate?: number
           updated_at?: string | null
+          upi_enabled?: boolean | null
           upi_id?: string | null
+          upi_qr_code_url?: string | null
         }
         Relationships: []
       }

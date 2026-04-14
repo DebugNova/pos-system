@@ -10,9 +10,10 @@ export function getSupabase() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         auth: {
-          // Session lives only for the life of the browser process.
-          // sessionStorage survives reloads but is cleared when Chrome fully quits.
-          storage: typeof window !== "undefined" ? window.sessionStorage : undefined,
+          // Persist session in localStorage so it survives mobile tab suspensions
+          // (iOS Safari / Android Chrome wipe sessionStorage when backgrounded).
+          // For a dedicated café POS this is the correct choice.
+          storage: typeof window !== "undefined" ? window.localStorage : undefined,
           storageKey: "suhashi-pos-auth",
           persistSession: true,
           autoRefreshToken: true,

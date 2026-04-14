@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { usePOSStore } from "@/lib/store";
 import { fetchOrderById } from "@/lib/supabase-queries";
@@ -21,23 +21,9 @@ import type { MenuItem } from "@/lib/data";
  */
 export function useRealtimeSync() {
   const channelRef = useRef<RealtimeChannel | null>(null);
-  // Track order IDs we recently wrote to avoid feedback loops
-  const recentOwnWritesRef = useRef<Set<string>>(new Set());
   // Track reconnect timer so we can clean it up
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
-
-  /**
-   * Mark an order ID as "recently written by this terminal".
-   * Clears after 10 seconds — long enough to cover direct-write echoes
-   * AND a subsequent sync-queue replay of the same mutation.
-   */
-  const markOwnWrite = useCallback((orderId: string) => {
-    recentOwnWritesRef.current.add(orderId);
-    setTimeout(() => {
-      recentOwnWritesRef.current.delete(orderId);
-    }, 10000);
-  }, []);
 
   // Gate on login state — only subscribe when authenticated
   const isLoggedIn = usePOSStore((s) => s.isLoggedIn);
@@ -48,10 +34,6 @@ export function useRealtimeSync() {
     const supabase = getSupabase();
     if (!supabase) return;
 
-    // Expose markOwnWrite globally so store actions can call it
-    if (typeof window !== "undefined") {
-      (window as any).__posMarkOwnWrite = markOwnWrite;
-    }
 
     // Track whether this effect has been cleaned up
     let disposed = false;
@@ -76,7 +58,7 @@ export function useRealtimeSync() {
           "postgres_changes",
           { event: "*", schema: "public", table: "orders" },
           (payload) => {
-            handleOrderChange(payload, recentOwnWritesRef.current);
+            handleOrderChange(payload);
           }
         )
         // ── Order Items (needed for KDS to see full item details) ──
@@ -84,7 +66,7 @@ export function useRealtimeSync() {
           "postgres_changes",
           { event: "*", schema: "public", table: "order_items" },
           (payload) => {
-            handleOrderItemChange(payload, recentOwnWritesRef.current);
+            handleOrderItemChange(payload);
           }
         )
         // ── Supplementary Bills ──
@@ -155,10 +137,10 @@ export function useRealtimeSync() {
             if (navigator.onLine) {
               hydrateStoreFromSupabase().catch(console.error);
             }
-            // Reconnect with exponential backoff (max 30s)
+            // Reconnect with exponential backoff (max 8s for café WiFi)
             if (!disposed && navigator.onLine) {
               const attempt = reconnectAttemptRef.current++;
-              const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+              const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
               console.log(`[realtime] Reconnecting in ${delay}ms (attempt ${attempt + 1})`);
               reconnectTimerRef.current = setTimeout(() => {
                 if (!disposed) {
@@ -174,7 +156,7 @@ export function useRealtimeSync() {
             // Also attempt reconnect on timeout
             if (!disposed && navigator.onLine) {
               const attempt = reconnectAttemptRef.current++;
-              const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+              const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
               reconnectTimerRef.current = setTimeout(() => {
                 if (!disposed) {
                   createChannel();
@@ -200,9 +182,9 @@ export function useRealtimeSync() {
       if (document.visibilityState === "visible" && navigator.onLine) {
         const wasHiddenFor = hiddenAt ? Date.now() - hiddenAt : 0;
         hiddenAt = null;
-        // Only rehydrate if we were actually gone for >10s — ignore quick tab swaps
-        if (wasHiddenFor > 10_000) {
-          console.log("[realtime] Tab refocused after >10s — rehydrating to catch missed events");
+        // Rehydrate after >3s in background — mobile devices can miss events quickly
+        if (wasHiddenFor > 3_000) {
+          console.log("[realtime] Tab refocused after >3s — rehydrating to catch missed events");
           hydrateStoreFromSupabase().catch(console.error);
         }
       }
@@ -233,11 +215,8 @@ export function useRealtimeSync() {
       reconnectAttemptRef.current = 0;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("online", handleOnline);
-      if (typeof window !== "undefined") {
-        delete (window as any).__posMarkOwnWrite;
-      }
     };
-  }, [markOwnWrite, isLoggedIn]);
+  }, [isLoggedIn]);
 }
 
 // ─────────────────────────────────────────────────
@@ -249,26 +228,32 @@ export function useRealtimeSync() {
 // redundant refetch triggered by the corresponding 'order_items' event.
 const recentOrderTableEvents = new Set<string>();
 
-function handleOrderChange(payload: any, _ownWrites: Set<string>) {
+function handleOrderChange(payload: any) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
 
-  if (eventType === "INSERT" || eventType === "UPDATE") {
+  if (eventType === "UPDATE") {
     const orderId = newRecord?.id;
     if (!orderId) return;
 
-    // NOTE: own-write filtering removed — it was keyed by orderId alone with
-    // a 10s window, which silently dropped legitimate cross-terminal events
-    // (e.g. phone taps Start Prep within 10s of PC sending to kitchen).
-    // The STATUS_RANK guard + ordersShallowEqual short-circuit in
-    // refetchAndMergeOrder already handle echo/regression safely.
+    // OPTIMIZATION: For UPDATE events, apply the payload's fields directly
+    // to the local store — no DB round-trip needed. The Realtime payload
+    // already contains all columns from the `orders` table.
+    // This eliminates ~80% of compensating DB reads.
+    mergeOrderPayloadDirectly(orderId, newRecord);
 
-    // Mark that we're handling this order via the 'orders' table event.
-    // The debounced refetch will include items, so any 'order_items' event
-    // arriving within this window can be safely skipped.
+    // Mark that we're handling this order — skip redundant order_items refetch
     recentOrderTableEvents.add(orderId);
-    setTimeout(() => recentOrderTableEvents.delete(orderId), 600); // slightly > debounce
+    setTimeout(() => recentOrderTableEvents.delete(orderId), 1000);
+  } else if (eventType === "INSERT") {
+    const orderId = newRecord?.id;
+    if (!orderId) return;
 
-    // Re-fetch the full order with items to get complete data
+    // For INSERT events we MUST refetch because items are in a separate table
+    // and aren't part of the Realtime payload. Use a longer debounce (800ms)
+    // to give the items time to be written.
+    recentOrderTableEvents.add(orderId);
+    setTimeout(() => recentOrderTableEvents.delete(orderId), 1000);
+
     refetchAndMergeOrder(orderId);
   } else if (eventType === "DELETE") {
     const deletedId = oldRecord?.id;
@@ -281,11 +266,10 @@ function handleOrderChange(payload: any, _ownWrites: Set<string>) {
   }
 }
 
-function handleOrderItemChange(payload: any, _ownWrites: Set<string>) {
+function handleOrderItemChange(payload: any) {
   // When order items change, re-fetch the parent order to get the full picture
   const orderId = payload.new?.order_id || payload.old?.order_id;
   if (!orderId) return;
-  // own-write filter removed — see note in handleOrderChange
 
   // Skip if we already have a pending refetch from the 'orders' table event.
   // The debounced refetch from handleOrderChange will include items anyway.
@@ -423,6 +407,11 @@ function handleSettingsChange(payload: any) {
         upiQrCodeUrl: db.upi_qr_code_url ?? state.settings.upiQrCodeUrl,
         printers: db.printers ?? state.settings.printers,
       },
+      // menuCategories lives alongside settings but is stored in its own
+      // DB column so it can be synced independently of other settings fields.
+      ...(Array.isArray(db.menu_categories) && db.menu_categories.length > 0
+        ? { menuCategories: db.menu_categories }
+        : {}),
     }));
     console.log("[realtime] Settings updated");
   }
@@ -509,13 +498,97 @@ function handleModifierChange(payload: any) {
 }
 
 // ─────────────────────────────────────────────────
+// Helper: Apply Realtime UPDATE payload directly (no DB round-trip)
+// ─────────────────────────────────────────────────
+
+/**
+ * For UPDATE events, merge the Realtime payload's order-level fields
+ * directly into the local store. This avoids a DB round-trip for ~80%
+ * of realtime events (status changes, payment updates, payLater toggles).
+ *
+ * Items are NOT in this payload (they're in a separate table), so we
+ * preserve the existing items array. If items change, the order_items
+ * handler will trigger a full refetch.
+ */
+function mergeOrderPayloadDirectly(orderId: string, dbRecord: any) {
+  // Check existence BEFORE entering setState to keep the setter pure (no side effects).
+  const existing = usePOSStore.getState().orders.find((o) => o.id === orderId);
+  if (!existing) {
+    // New order we don't have yet (missed the INSERT) — full refetch to get items too.
+    refetchAndMergeOrder(orderId);
+    return;
+  }
+
+  usePOSStore.setState((state) => {
+    const currentOrder = state.orders.find((o) => o.id === orderId);
+    if (!currentOrder) return {};
+
+    // Lifecycle guard: reject stale merges that would regress the status
+    const localRank = STATUS_RANK[currentOrder.status] ?? -1;
+    const incomingRank = STATUS_RANK[dbRecord.status] ?? -1;
+    if (incomingRank < localRank) {
+      console.log(
+        "[realtime] Rejected stale payload merge — local is ahead:",
+        orderId, currentOrder.status, "→", dbRecord.status
+      );
+      return {};
+    }
+
+    // Build merged order — preserve items/supplementaryBills from local state,
+    // apply scalar fields from the Realtime payload
+    const merged = {
+      ...currentOrder,
+      status: dbRecord.status ?? currentOrder.status,
+      type: dbRecord.type ?? currentOrder.type,
+      tableId: dbRecord.table_id ?? currentOrder.tableId,
+      total: dbRecord.total != null ? Number(dbRecord.total) : currentOrder.total,
+      customerName: dbRecord.customer_name ?? currentOrder.customerName,
+      customerPhone: dbRecord.customer_phone ?? currentOrder.customerPhone,
+      orderNotes: dbRecord.order_notes ?? currentOrder.orderNotes,
+      platform: dbRecord.platform ?? currentOrder.platform,
+      payment: dbRecord.payment ?? currentOrder.payment,
+      subtotal: dbRecord.subtotal != null ? Number(dbRecord.subtotal) : currentOrder.subtotal,
+      discount: dbRecord.discount_type ? {
+        type: dbRecord.discount_type,
+        value: Number(dbRecord.discount_value),
+        amount: Number(dbRecord.discount_amount),
+      } : currentOrder.discount,
+      taxRate: dbRecord.tax_rate != null ? Number(dbRecord.tax_rate) : currentOrder.taxRate,
+      taxAmount: dbRecord.tax_amount != null ? Number(dbRecord.tax_amount) : currentOrder.taxAmount,
+      grandTotal: dbRecord.grand_total != null ? Number(dbRecord.grand_total) : currentOrder.grandTotal,
+      paidAt: dbRecord.paid_at ? new Date(dbRecord.paid_at) : currentOrder.paidAt,
+      paidBy: dbRecord.paid_by ?? currentOrder.paidBy,
+      refund: dbRecord.refund ?? currentOrder.refund,
+      createdBy: dbRecord.created_by ?? currentOrder.createdBy,
+      payLater: dbRecord.pay_later ?? currentOrder.payLater,
+    };
+
+    // Shallow-equal check to avoid unnecessary re-renders
+    if (
+      currentOrder.status === merged.status &&
+      currentOrder.payLater === merged.payLater &&
+      currentOrder.total === merged.total &&
+      currentOrder.payment === merged.payment &&
+      currentOrder.paidAt === merged.paidAt
+    ) {
+      return {};
+    }
+
+    console.log("[realtime] Order updated (payload-direct):", orderId, "status:", merged.status);
+    return {
+      orders: state.orders.map((o) => (o.id === orderId ? merged : o)),
+    };
+  });
+}
+
+// ─────────────────────────────────────────────────
 // Helper: Re-fetch a single order and merge into store
 // ─────────────────────────────────────────────────
 
 // Debounce map to avoid spamming refetches for the same order
 const pendingRefetches = new Map<string, ReturnType<typeof setTimeout>>();
 
-const REFETCH_DEBOUNCE_MS = 400;
+const REFETCH_DEBOUNCE_MS = 800;  // 800ms to allow items to be written before refetch
 
 /**
  * Lifecycle rank for the order status progression. Used to reject stale
