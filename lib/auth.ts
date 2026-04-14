@@ -19,7 +19,10 @@ export interface StaffUser {
  * Calls the `pin-auth` Edge Function which validates the PIN against the
  * `staff` table and returns a Supabase JWT with custom claims.
  */
-export async function loginWithPin(pin: string): Promise<{
+export async function loginWithPin(
+  pin: string,
+  staffId?: string,
+): Promise<{
   session: AuthSession;
   user: StaffUser;
 }> {
@@ -29,7 +32,7 @@ export async function loginWithPin(pin: string): Promise<{
   const response = await fetch(`${projectUrl}/functions/v1/pin-auth`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pin }),
+    body: JSON.stringify({ pin, staffId }),
   });
 
   if (!response.ok) {

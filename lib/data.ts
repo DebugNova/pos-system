@@ -74,11 +74,13 @@ export interface Table {
 }
 
 export const tables: Table[] = [
-  { id: "t1", number: 1, capacity: 2, status: "available" },
-  { id: "t2", number: 2, capacity: 2, status: "available" },
-  { id: "t3", number: 3, capacity: 4, status: "available" },
-  { id: "t4", number: 4, capacity: 4, status: "available" },
-  { id: "t5", number: 5, capacity: 6, status: "available" },
+  { id: "t1", number: 1, capacity: 3, status: "available" },
+  { id: "t2", number: 2, capacity: 3, status: "available" },
+  { id: "t3", number: 3, capacity: 3, status: "available" },
+  { id: "t4", number: 4, capacity: 2, status: "available" },
+  { id: "t5", number: 5, capacity: 2, status: "available" },
+  { id: "t6", number: 6, capacity: 3, status: "available" },
+  { id: "t7", number: 7, capacity: 4, status: "available" },
 ];
 
 export type OrderType = "dine-in" | "takeaway" | "delivery";

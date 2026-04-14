@@ -46,7 +46,7 @@ export function Login({ onLogin }: LoginProps) {
         // user is the canonical source of truth — it must match the staff
         // member the user clicked, otherwise the UI role and the cached
         // session role would drift and a refresh would silently switch roles.
-        const { user: authUser } = await loginWithPin(pin);
+        const { user: authUser } = await loginWithPin(pin, selectedStaff.id);
         if (authUser.id !== selectedStaff.id) {
           // PIN belongs to a different staff member — reject and tear down
           // the session that loginWithPin just established.

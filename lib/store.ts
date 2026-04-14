@@ -6,7 +6,7 @@ import { getDefaultView, canAccessView, type ViewId } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 13;
+const STORE_VERSION = 14;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -181,10 +181,9 @@ interface POSState {
 }
 
 const defaultStaffMembers: StaffMember[] = [
-  { id: "065006fd-d23b-46ed-8600-9584e31bf251", name: "Admin",   role: "Owner",   pin: "1234", initials: "AD" },
-  { id: "8a93ab58-a358-46c5-9c79-396370e4fd17", name: "Rahul S.", role: "Manager", pin: "2345", initials: "RS" },
-  { id: "a4574ed7-bbb0-44f6-a4d0-c39048f1e111", name: "Priya P.", role: "Manager", pin: "3456", initials: "PP" },
-  { id: "3670c7e0-26bd-48fe-8941-397707be9ed8", name: "Amit K.",  role: "Chef",    pin: "6789", initials: "AK" },
+  { id: "065006fd-d23b-46ed-8600-9584e31bf251", name: "Admin",         role: "Owner",   pin: "1234", initials: "AD" },
+  { id: "8a93ab58-a358-46c5-9c79-396370e4fd17", name: "Barista",       role: "Manager", pin: "1234", initials: "BA" },
+  { id: "3670c7e0-26bd-48fe-8941-397707be9ed8", name: "Kitchen Chief", role: "Chef",    pin: "1234", initials: "KC" },
 ];
 
 const defaultSettings: CafeSettings = {
