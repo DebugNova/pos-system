@@ -2,6 +2,55 @@ import { usePOSStore } from "./store";
 import { fetchOrdersByStatus, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers, upsertMenuItem } from "./supabase-queries";
 import { syncPendingMutations } from "./sync";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Lightweight active-order poll — bulletproof fallback when Realtime is broken
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ACTIVE_STATUSES = ["awaiting-payment", "new", "preparing", "ready", "served-unpaid"];
+
+let pollInFlight = false;
+
+/**
+ * Fetch only active orders from Supabase and merge them into the store.
+ * Much cheaper than a full hydrateStoreFromSupabase (no menu/staff/settings).
+ * Called every 10 seconds as a safety net when Realtime events are missed.
+ */
+async function pollActiveOrders(): Promise<void> {
+  if (pollInFlight || !navigator.onLine) return;
+  pollInFlight = true;
+  try {
+    const orders = await fetchOrdersByStatus(ACTIVE_STATUSES);
+    usePOSStore.setState((state) => {
+      // Keep terminal-status orders from local cache; replace active orders from server
+      const terminalOrders = state.orders.filter(
+        (o) => o.status === "completed" || o.status === "cancelled"
+      );
+      const activeOrderIds = new Set(orders.map((o) => o.id));
+      const keptTerminal = terminalOrders.filter((o) => !activeOrderIds.has(o.id));
+      const merged = [...orders, ...keptTerminal];
+
+      // Skip re-render if nothing changed (compare by id+status+itemCount)
+      const changed =
+        merged.length !== state.orders.length ||
+        merged.some((incoming) => {
+          const existing = state.orders.find((o) => o.id === incoming.id);
+          return (
+            !existing ||
+            existing.status !== incoming.status ||
+            existing.items.length !== incoming.items.length ||
+            (existing.supplementaryBills?.length ?? 0) !== (incoming.supplementaryBills?.length ?? 0)
+          );
+        });
+
+      return changed ? { orders: merged } : {};
+    });
+  } catch {
+    // Silent fail — polling is best-effort; Realtime or next poll will catch up
+  } finally {
+    pollInFlight = false;
+  }
+}
+
 /**
  * Hydrate the Zustand store from Supabase.
  * Called after a successful login or session restore.
@@ -118,6 +167,16 @@ export function startBackgroundSync(): () => void {
     }
   }, 8_000);
 
+  // Poll active orders every 10 seconds — bulletproof fallback for when the
+  // Supabase Realtime WebSocket is dead (iOS background, flaky WiFi, etc.).
+  // Only fetches active-status orders (not menu/staff/settings) so it's very
+  // lightweight: ~1–2 KB per poll, negligible on the free tier.
+  const pollInterval = setInterval(() => {
+    if (navigator.onLine && document.visibilityState === "visible") {
+      pollActiveOrders().catch(console.error);
+    }
+  }, 10_000);
+
   // Also drain any pending mutations right away
   if (navigator.onLine) {
     syncPendingMutations().catch(console.error);
@@ -136,6 +195,7 @@ export function startBackgroundSync(): () => void {
 
   return () => {
     clearInterval(syncInterval);
+    clearInterval(pollInterval);
     window.removeEventListener("online", handleOnline);
   };
 }

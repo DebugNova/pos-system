@@ -176,9 +176,11 @@ export function useRealtimeSync() {
     createChannel();
 
     // On window refocus, re-hydrate to catch any events missed while in background.
-    // Also reconnect the Realtime channel — iOS PWA kills WebSocket connections
-    // when the app is backgrounded (even briefly). Without an explicit reconnect,
-    // the channel silently stays dead and staff see stale screens.
+    // Also unconditionally reconnect the Realtime channel — iOS PWA kills WebSocket
+    // TCP connections the moment the app is backgrounded and does NOT fire the close
+    // event, so channelStatusRef.current stays "SUBSCRIBED" even though the socket
+    // is completely dead. Attempting to check status is therefore unreliable; the
+    // only safe behaviour is to always reconnect on every foreground event.
     let hiddenAt: number | null = null;
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
@@ -194,16 +196,11 @@ export function useRealtimeSync() {
           hydrateStoreFromSupabase().catch(console.error);
         }
 
-        // iOS PWA kills WebSocket TCP connections after ~2-3s in background and
-        // does NOT fire the close event, so channelStatusRef stays "SUBSCRIBED"
-        // even though the socket is dead. Reconnect any time the app was in the
-        // background for >2s — the cost is one WebSocket reconnect per foreground,
-        // which is negligible compared to missing live updates.
-        if (wasHiddenFor > 2_000 || channelStatusRef.current !== "SUBSCRIBED") {
-          console.log(
-            `[realtime] Reconnecting channel — was hidden ${wasHiddenFor}ms, status: ${channelStatusRef.current}`
-          );
-          if (!disposed) createChannel();
+        // Always reconnect — never trust the cached status on iOS/Android PWA.
+        // A fresh WebSocket reconnect costs ~100ms and is invisible to the user.
+        if (!disposed) {
+          console.log(`[realtime] Reconnecting channel on foreground (was hidden ${wasHiddenFor}ms)`);
+          createChannel();
         }
       }
     };
