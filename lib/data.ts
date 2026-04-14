@@ -27,17 +27,17 @@ export interface MenuItem {
 
 export const menuItems: MenuItem[] = [
   // Tea
-  { id: "tea-1", name: "Red Tea", price: 60, category: "tea", available: true, image_url: "/menu/RED TEA.png" },
-  { id: "tea-2", name: "Ginger Tea", price: 70, category: "tea", available: true, image_url: "/menu/GINGER TEA.png" },
-  { id: "tea-3", name: "Lemon Honey Tea", price: 90, category: "tea", available: true, image_url: "/menu/LEMON GINGER TEA.png" },
-  { id: "tea-4", name: "Honey Ginger Tea", price: 100, category: "tea", available: true, bestseller: true, image_url: "/menu/HONEY GINGER TEA.png" },
-  { id: "tea-5", name: "Lemon Tea", price: 70, category: "tea", available: true, image_url: "/menu/LEMON GINGER TEA.png" },
+  { id: "tea-1", name: "Red Tea", price: 60, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/RED TEA.png" },
+  { id: "tea-2", name: "Ginger Tea", price: 70, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/GINGER TEA.png" },
+  { id: "tea-3", name: "Lemon Honey Tea", price: 90, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/LEMON GINGER TEA.png" },
+  { id: "tea-4", name: "Honey Ginger Tea", price: 100, category: "tea", available: true, bestseller: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/HONEY GINGER TEA.png" },
+  { id: "tea-5", name: "Lemon Tea", price: 70, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/LEMON GINGER TEA.png" },
   
   // Coffee
   { id: "coffee-1", name: "Espresso", price: 70, category: "coffee", variants: [{ name: "Single", price: 70 }, { name: "Double", price: 90 }], available: true, image_url: "/menu/espresso.png" },
   { id: "coffee-2", name: "Cappuccino", price: 120, category: "coffee", available: true, bestseller: true, image_url: "/menu/cappucina.png" },
   { id: "coffee-3", name: "Latte", price: 120, category: "coffee", available: true, bestseller: true, image_url: "/menu/latte.png" },
-  { id: "coffee-4", name: "Americano", price: 100, category: "coffee", variants: [{ name: "Single", price: 100 }, { name: "Double", price: 130 }, { name: "Hazelnut", price: 130 }], available: true, image_url: "/menu/americano.png" },
+  { id: "coffee-4", name: "Americano", price: 100, category: "coffee", variants: [{ name: "Single", price: 100 }, { name: "Double", price: 130 }, { name: "Hazelnut", price: 130 }, { name: "Caramel", price: 130 }], available: true, image_url: "/menu/americano.png" },
   { id: "coffee-5", name: "Cinnamon Latte", price: 140, category: "coffee", available: true, image_url: "/menu/cianmon latte.png" },
   { id: "coffee-6", name: "Hazelnut", price: 160, category: "coffee", available: true, image_url: "/menu/hazelnut coffee.png" },
   { id: "coffee-7", name: "Caramel", price: 160, category: "coffee", available: true, image_url: "/menu/caramel coffe.png" },
