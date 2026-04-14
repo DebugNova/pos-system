@@ -29,7 +29,7 @@ export const menuItems: MenuItem[] = [
   // Tea
   { id: "tea-1", name: "Red Tea", price: 60, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/RED TEA.png" },
   { id: "tea-2", name: "Ginger Tea", price: 70, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/GINGER TEA.png" },
-  { id: "tea-3", name: "Lemon Honey Tea", price: 90, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/LEMON GINGER TEA.png" },
+  { id: "tea-3", name: "Lemon Ginger Tea", price: 90, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/LEMON GINGER TEA.png" },
   { id: "tea-4", name: "Honey Ginger Tea", price: 100, category: "tea", available: true, bestseller: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/HONEY GINGER TEA.png" },
   { id: "tea-5", name: "Lemon Tea", price: 70, category: "tea", available: true, modifierIds: ["sugar-free", "less-ice", "extra-hot", "honey"], image_url: "/menu/LEMON GINGER TEA.png" },
   
@@ -51,8 +51,8 @@ export const menuItems: MenuItem[] = [
   { id: "drink-1", name: "Green Apple", price: 150, category: "drinks", available: true, image_url: "/menu/GREEN APPLE DRINK.png" },
   { id: "drink-2", name: "Passion Fruit", price: 150, category: "drinks", available: true, image_url: "/menu/PASSION FRUIT DRINK.png" },
   { id: "drink-3", name: "Peach Iced Tea", price: 150, category: "drinks", available: true, image_url: "/menu/PEACH ICED TEA.png" },
-  { id: "drink-4", name: "Iced Americano", price: 140, category: "drinks", available: true, image_url: "/menu/ICED AMERICANO.png" },
-  { id: "drink-5", name: "Iced Latte", price: 150, category: "drinks", available: true, image_url: "/menu/ICED LATTE.png" },
+  { id: "drink-4", name: "Iced Americano", price: 140, category: "drinks", available: true, modifierIds: ["caramel", "hazelnut"], image_url: "/menu/ICED AMERICANO.png" },
+  { id: "drink-5", name: "Iced Latte", price: 150, category: "drinks", available: true, modifierIds: ["caramel", "hazelnut"], image_url: "/menu/ICED LATTE.png" },
   { id: "drink-6", name: "Iced Mocha", price: 170, category: "drinks", available: true, image_url: "/menu/ICED MOCHA.png" },
   
   // Pastry
@@ -84,6 +84,8 @@ export const defaultModifiers: Modifier[] = [
   { id: "extra-hot", name: "Extra Hot", price: 0 },
   { id: "whipped-cream", name: "Whipped Cream", price: 20 },
   { id: "honey", name: "Honey", price: 30 },
+  { id: "caramel", name: "Caramel", price: 30 },
+  { id: "hazelnut", name: "Hazelnut", price: 30 },
 ];
 
 export interface Table {
