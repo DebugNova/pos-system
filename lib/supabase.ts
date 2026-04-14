@@ -19,6 +19,14 @@ export function getSupabase() {
           autoRefreshToken: true,
           detectSessionInUrl: false,
         },
+        realtime: {
+          // Ping every 15s instead of the default 30s to keep the WebSocket
+          // alive through NAT timeouts and iOS background throttling.
+          // One WebSocket per device — minimal impact on free-tier limits.
+          heartbeatIntervalMs: 15_000,
+          // Reconnect faster: 500ms, 1s, 2s, 4s, 8s (cap at 8s for café use)
+          reconnectAfterMs: (tries: number) => Math.min(500 * Math.pow(2, tries), 8_000),
+        },
       }
     );
   }

@@ -194,11 +194,12 @@ export function useRealtimeSync() {
           hydrateStoreFromSupabase().catch(console.error);
         }
 
-        // iOS PWA aggressively closes WebSocket TCP connections when backgrounded.
-        // If the channel is no longer SUBSCRIBED, or we were in background >10s,
-        // force a fresh channel — this is the primary fix for "live updates stop
-        // working after backgrounding the installed PWA app".
-        if (wasHiddenFor > 10_000 || channelStatusRef.current !== "SUBSCRIBED") {
+        // iOS PWA kills WebSocket TCP connections after ~2-3s in background and
+        // does NOT fire the close event, so channelStatusRef stays "SUBSCRIBED"
+        // even though the socket is dead. Reconnect any time the app was in the
+        // background for >2s — the cost is one WebSocket reconnect per foreground,
+        // which is negligible compared to missing live updates.
+        if (wasHiddenFor > 2_000 || channelStatusRef.current !== "SUBSCRIBED") {
           console.log(
             `[realtime] Reconnecting channel — was hidden ${wasHiddenFor}ms, status: ${channelStatusRef.current}`
           );
@@ -214,8 +215,8 @@ export function useRealtimeSync() {
       if (!disposed) createChannel();
     };
 
-    // Periodic channel health check — every 30s, verify the channel is alive.
-    // Catches silent disconnects on café WiFi that don't fire CHANNEL_ERROR.
+    // Periodic channel health check — every 15s, verify the channel is alive.
+    // Catches silent disconnects on café WiFi / mobile data that don't fire CHANNEL_ERROR.
     const healthCheckInterval = setInterval(() => {
       if (
         !disposed &&
@@ -226,7 +227,7 @@ export function useRealtimeSync() {
         console.log("[realtime] Health check: channel lost — reconnecting");
         createChannel();
       }
-    }, 30_000);
+    }, 15_000);
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("online", handleOnline);
@@ -257,11 +258,6 @@ export function useRealtimeSync() {
 // Handlers
 // ─────────────────────────────────────────────────
 
-// Track orders that recently received an 'orders' table event — the debounced
-// refetch from that event will include items anyway, so we can skip the
-// redundant refetch triggered by the corresponding 'order_items' event.
-const recentOrderTableEvents = new Set<string>();
-
 function handleOrderChange(payload: any) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
 
@@ -274,20 +270,14 @@ function handleOrderChange(payload: any) {
     // already contains all columns from the `orders` table.
     // This eliminates ~80% of compensating DB reads.
     mergeOrderPayloadDirectly(orderId, newRecord);
-
-    // Mark that we're handling this order — skip redundant order_items refetch
-    recentOrderTableEvents.add(orderId);
-    setTimeout(() => recentOrderTableEvents.delete(orderId), 1000);
   } else if (eventType === "INSERT") {
     const orderId = newRecord?.id;
     if (!orderId) return;
 
     // For INSERT events we MUST refetch because items are in a separate table
-    // and aren't part of the Realtime payload. Use a longer debounce (800ms)
-    // to give the items time to be written.
-    recentOrderTableEvents.add(orderId);
-    setTimeout(() => recentOrderTableEvents.delete(orderId), 1000);
-
+    // and aren't part of the Realtime payload.
+    // order_items events for this order will also call refetchAndMergeOrder,
+    // extending the debounce window until the last item is written.
     refetchAndMergeOrder(orderId);
   } else if (eventType === "DELETE") {
     const deletedId = oldRecord?.id;
@@ -301,16 +291,11 @@ function handleOrderChange(payload: any) {
 }
 
 function handleOrderItemChange(payload: any) {
-  // When order items change, re-fetch the parent order to get the full picture
+  // When order items change, extend (or start) the debounced refetch for the
+  // parent order. Multiple item events reset the timer so the fetch fires
+  // after the LAST item is written — not 800ms after the order INSERT.
   const orderId = payload.new?.order_id || payload.old?.order_id;
   if (!orderId) return;
-
-  // Skip if we already have a pending refetch from the 'orders' table event.
-  // The debounced refetch from handleOrderChange will include items anyway.
-  if (recentOrderTableEvents.has(orderId)) {
-    console.log("[realtime] Skipping order_items refetch — orders event already handling:", orderId);
-    return;
-  }
 
   refetchAndMergeOrder(orderId);
 }
@@ -622,7 +607,9 @@ function mergeOrderPayloadDirectly(orderId: string, dbRecord: any) {
 // Debounce map to avoid spamming refetches for the same order
 const pendingRefetches = new Map<string, ReturnType<typeof setTimeout>>();
 
-const REFETCH_DEBOUNCE_MS = 800;  // 800ms to allow items to be written before refetch
+// 300ms: items extend this timer via handleOrderItemChange, so the fetch fires
+// 300ms after the LAST item event — not 800ms after the order INSERT.
+const REFETCH_DEBOUNCE_MS = 300;
 
 /**
  * Lifecycle rank for the order status progression. Used to reject stale
