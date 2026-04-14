@@ -6,7 +6,7 @@ import { getDefaultView, canAccessView, type ViewId } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 17;
+const STORE_VERSION = 18;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
@@ -1630,6 +1630,7 @@ export const usePOSStore = create<POSState>()(
             tables: initialTables,
             menuItems: defaultMenuItems,
             menuCategories: defaultCategories,
+            modifiers: defaultModifiers,
           } as any;
         }
 
