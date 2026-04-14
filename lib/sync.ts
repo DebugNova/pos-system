@@ -6,6 +6,8 @@ import {
   updateOrderInDb,
   deleteOrderFromDb,
   updateTableInDb,
+  upsertTable,
+  deleteTableFromDb,
   insertAuditEntry,
   upsertShift,
   updateSettingsInDb,
@@ -214,6 +216,14 @@ export async function sendMutation(m: QueuedMutation): Promise<void> {
 
     case "modifier.delete":
       await deleteModifierFromDb(m.payload.id as string);
+      break;
+
+    case "table.upsert":
+      await upsertTable(m.payload.table as any);
+      break;
+
+    case "table.delete":
+      await deleteTableFromDb(m.payload.id as string);
       break;
 
     default:

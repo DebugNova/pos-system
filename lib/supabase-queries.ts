@@ -159,6 +159,29 @@ export async function updateTableInDb(tableId: string, changes: Record<string, a
   if (error) throw error;
 }
 
+export async function upsertTable(table: Table): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("tables")
+    .upsert({
+      id: table.id,
+      number: table.number,
+      capacity: table.capacity,
+      status: table.status,
+      order_id: table.orderId || null,
+    }, { onConflict: "id" });
+  if (error) throw error;
+}
+
+export async function deleteTableFromDb(tableId: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("tables")
+    .delete()
+    .eq("id", tableId);
+  if (error) throw error;
+}
+
 // ============================================================
 // MENU ITEMS
 // ============================================================

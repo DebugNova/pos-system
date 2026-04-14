@@ -6,6 +6,7 @@ import { usePOSStore } from "@/lib/store";
 import { fetchOrderById } from "@/lib/supabase-queries";
 import { hydrateStoreFromSupabase } from "@/lib/hydrate";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { MenuItem } from "@/lib/data";
 
 /**
  * Hook: useRealtimeSync
@@ -132,6 +133,14 @@ export function useRealtimeSync() {
           { event: "*", schema: "public", table: "modifiers" },
           (payload) => {
             handleModifierChange(payload);
+          }
+        )
+        // ── Menu Items ──
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "menu_items" },
+          (payload) => {
+            handleMenuItemChange(payload);
           }
         )
         .subscribe((status, err) => {
@@ -309,23 +318,83 @@ function handleSupplementaryBillItemChange(payload: any) {
 }
 
 function handleTableChange(payload: any) {
-  const { eventType, new: newRecord } = payload;
+  const { eventType, new: newRecord, old: oldRecord } = payload;
 
-  if (eventType === "UPDATE" || eventType === "INSERT") {
+  if (eventType === "INSERT") {
     if (!newRecord?.id) return;
-
+    const incoming = {
+      id: newRecord.id as string,
+      number: newRecord.number as number,
+      capacity: newRecord.capacity as number,
+      status: newRecord.status as "available" | "occupied" | "waiting-payment",
+      orderId: newRecord.order_id || undefined,
+    };
+    usePOSStore.setState((state) => {
+      if (state.tables.some((t) => t.id === incoming.id)) return {};
+      return { tables: [...state.tables, incoming] };
+    });
+    console.log("[realtime] Table added:", incoming.number);
+  } else if (eventType === "UPDATE") {
+    if (!newRecord?.id) return;
     usePOSStore.setState((state) => ({
       tables: state.tables.map((t) =>
         t.id === newRecord.id
           ? {
               ...t,
-              status: newRecord.status,
+              number: newRecord.number ?? t.number,
+              capacity: newRecord.capacity ?? t.capacity,
+              status: newRecord.status ?? t.status,
               orderId: newRecord.order_id || undefined,
             }
           : t
       ),
     }));
     console.log("[realtime] Table updated:", newRecord.id, "→", newRecord.status);
+  } else if (eventType === "DELETE") {
+    const deletedId = oldRecord?.id;
+    if (!deletedId) return;
+    usePOSStore.setState((state) => ({
+      tables: state.tables.filter((t) => t.id !== deletedId),
+    }));
+    console.log("[realtime] Table deleted:", deletedId);
+  }
+}
+
+function handleMenuItemChange(payload: any) {
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+
+  if (eventType === "INSERT" || eventType === "UPDATE") {
+    if (!newRecord?.id) return;
+    const item: MenuItem = {
+      id: newRecord.id as string,
+      name: newRecord.name as string,
+      price: Number(newRecord.price) || 0,
+      category: newRecord.category as string,
+      variants: newRecord.variants || [],
+      available: newRecord.available as boolean,
+      image_url: newRecord.image_url || undefined,
+      bestseller: newRecord.bestseller || false,
+      modifierIds:
+        Array.isArray(newRecord.modifier_ids) && newRecord.modifier_ids.length > 0
+          ? (newRecord.modifier_ids as string[])
+          : undefined,
+    };
+    usePOSStore.setState((state) => {
+      const exists = state.menuItems.some((m) => m.id === item.id);
+      return {
+        menuItems: exists
+          ? state.menuItems.map((m) => (m.id === item.id ? item : m))
+          : [...state.menuItems, item],
+      };
+    });
+    console.log("[realtime] Menu item upserted:", item.name);
+  } else if (eventType === "DELETE") {
+    const deletedId = oldRecord?.id;
+    if (!deletedId) return;
+    usePOSStore.setState((state) => ({
+      menuItems: state.menuItems.filter((m) => m.id !== deletedId),
+    }));
+    console.log("[realtime] Menu item deleted:", deletedId);
   }
 }
 

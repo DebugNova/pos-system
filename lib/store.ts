@@ -334,7 +334,10 @@ export const usePOSStore = create<POSState>()(
       },
       addStaffMember: (staff) => {
         set((state) => ({ staffMembers: [...state.staffMembers, staff] }));
-        setTimeout(() => get().enqueueMutation("staff.upsert", { staff }), 0);
+        const mutId = get().enqueueMutation("staff.upsert", { staff });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ upsertStaff }) => upsertStaff(staff).then(() => get().markMutationSynced(mutId))).catch(console.error);
+        }
         get().addAuditEntry({ action: "staff_added", userId: get().currentUser?.name || "System", details: `Staff member ${staff.name} added` });
       },
       updateStaffMember: (id, data) => {
@@ -343,7 +346,10 @@ export const usePOSStore = create<POSState>()(
         }));
         const updatedStaff = get().staffMembers.find((s) => s.id === id);
         if (updatedStaff) {
-          setTimeout(() => get().enqueueMutation("staff.upsert", { staff: updatedStaff }), 0);
+          const mutId = get().enqueueMutation("staff.upsert", { staff: updatedStaff });
+          if (typeof window !== "undefined") {
+            import("./supabase-queries").then(({ upsertStaff }) => upsertStaff(updatedStaff).then(() => get().markMutationSynced(mutId))).catch(console.error);
+          }
         }
       },
       deleteStaffMember: (id) => {
@@ -351,7 +357,10 @@ export const usePOSStore = create<POSState>()(
         set((state) => ({
           staffMembers: state.staffMembers.filter((s) => s.id !== id)
         }));
-        setTimeout(() => get().enqueueMutation("staff.delete", { id }), 0);
+        const mutId = get().enqueueMutation("staff.delete", { id });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ deleteStaff }) => deleteStaff(id).then(() => get().markMutationSynced(mutId))).catch(console.error);
+        }
         if (staff) {
           get().addAuditEntry({ action: "staff_deleted", userId: get().currentUser?.name || "System", details: `Staff member ${staff.name} deleted` });
         }
@@ -764,7 +773,10 @@ export const usePOSStore = create<POSState>()(
       modifiers: defaultModifiers,
       addModifier: (mod) => {
         set((state) => ({ modifiers: [...state.modifiers, mod] }));
-        setTimeout(() => get().enqueueMutation("modifier.upsert", { modifier: mod }), 0);
+        const mutId = get().enqueueMutation("modifier.upsert", { modifier: mod });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ upsertModifier }) => upsertModifier(mod).then(() => get().markMutationSynced(mutId))).catch(console.error);
+        }
       },
       updateModifier: (id, data) => {
         set((state) => ({
@@ -772,14 +784,20 @@ export const usePOSStore = create<POSState>()(
         }));
         const updated = get().modifiers.find((m) => m.id === id);
         if (updated) {
-          setTimeout(() => get().enqueueMutation("modifier.upsert", { modifier: updated }), 0);
+          const mutId = get().enqueueMutation("modifier.upsert", { modifier: updated });
+          if (typeof window !== "undefined") {
+            import("./supabase-queries").then(({ upsertModifier }) => upsertModifier(updated).then(() => get().markMutationSynced(mutId))).catch(console.error);
+          }
         }
       },
       deleteModifier: (id) => {
         set((state) => ({
           modifiers: state.modifiers.filter((m) => m.id !== id),
         }));
-        setTimeout(() => get().enqueueMutation("modifier.delete", { id }), 0);
+        const mutId = get().enqueueMutation("modifier.delete", { id });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ deleteModifierFromDb }) => deleteModifierFromDb(id).then(() => get().markMutationSynced(mutId))).catch(console.error);
+        }
       },
 
       // Orders
@@ -1241,11 +1259,26 @@ export const usePOSStore = create<POSState>()(
       // Tables
       tables: initialTables,
 
-      addTable: (table) => set((state) => ({ tables: [...state.tables, table] })),
-      
-      updateTable: (tableId, data) => set((state) => ({
-        tables: state.tables.map((table) => table.id === tableId ? { ...table, ...data } : table)
-      })),
+      addTable: (table) => {
+        set((state) => ({ tables: [...state.tables, table] }));
+        const mutId = get().enqueueMutation("table.upsert", { table });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ upsertTable }) => upsertTable(table).then(() => get().markMutationSynced(mutId))).catch(console.error);
+        }
+      },
+
+      updateTable: (tableId, data) => {
+        set((state) => ({
+          tables: state.tables.map((table) => table.id === tableId ? { ...table, ...data } : table)
+        }));
+        const updatedTable = get().tables.find((t) => t.id === tableId);
+        if (updatedTable) {
+          const mutId = get().enqueueMutation("table.upsert", { table: updatedTable });
+          if (typeof window !== "undefined") {
+            import("./supabase-queries").then(({ upsertTable }) => upsertTable(updatedTable).then(() => get().markMutationSynced(mutId))).catch(console.error);
+          }
+        }
+      },
 
       updateTableStatus: (tableId, status, orderId) => {
         set((state) => ({
@@ -1267,9 +1300,13 @@ export const usePOSStore = create<POSState>()(
         }
       },
 
-      deleteTable: (tableId) => set((state) => ({
-        tables: state.tables.filter((t) => t.id !== tableId)
-      })),
+      deleteTable: (tableId) => {
+        set((state) => ({ tables: state.tables.filter((t) => t.id !== tableId) }));
+        const mutId = get().enqueueMutation("table.delete", { id: tableId });
+        if (typeof window !== "undefined") {
+          import("./supabase-queries").then(({ deleteTableFromDb }) => deleteTableFromDb(tableId).then(() => get().markMutationSynced(mutId))).catch(console.error);
+        }
+      },
 
       mergeTable: (sourceTableId, targetTableId) => {
         const tables = get().tables;

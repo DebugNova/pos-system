@@ -200,7 +200,9 @@ export type MutationKind =
   | "menu.upsert"
   | "menu.delete"
   | "modifier.upsert"
-  | "modifier.delete";
+  | "modifier.delete"
+  | "table.upsert"
+  | "table.delete";
 
 export interface QueuedMutation {
   id: string;
