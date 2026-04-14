@@ -6,7 +6,7 @@ import { getDefaultView, canAccessView, type ViewId } from "./roles";
 import { writeMutationToIDB, removeMutationFromIDB } from "./sync-idb";
 
 // Version to force refresh when data structure changes
-const STORE_VERSION = 15;
+const STORE_VERSION = 16;
 
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;

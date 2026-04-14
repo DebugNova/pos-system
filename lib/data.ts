@@ -3,7 +3,7 @@ export const defaultCategories = [
   { id: "tea", name: "Tea", icon: "leaf" },
   { id: "coffee", name: "Coffee", icon: "coffee" },
   { id: "drinks", name: "Drinks", icon: "cup-soda" },
-  { id: "cakes", name: "Cakes", icon: "cake" },
+  { id: "pastry", name: "Pastry", icon: "cake" },
   { id: "food", name: "Food", icon: "utensils" },
 ];
 
@@ -55,14 +55,14 @@ export const menuItems: MenuItem[] = [
   { id: "drink-5", name: "Iced Latte", price: 150, category: "drinks", available: true, image_url: "/menu/ICED LATTE.png" },
   { id: "drink-6", name: "Iced Mocha", price: 170, category: "drinks", available: true, image_url: "/menu/ICED MOCHA.png" },
   
-  // Cakes
-  { id: "cakes-1", name: "Brown butter chocolate chip cookie", price: 45, category: "cakes", available: true },
-  { id: "cakes-2", name: "Classic lamington", price: 70, category: "cakes", available: true },
-  { id: "cakes-3", name: "Blueberry lamington", price: 75, category: "cakes", available: true },
-  { id: "cakes-4", name: "Strawberry Lamington", price: 75, category: "cakes", available: true },
-  { id: "cakes-5", name: "Matcha Strawberry", price: 85, category: "cakes", available: true },
-  { id: "cakes-6", name: "Lemon white chocolate lamington", price: 80, category: "cakes", available: true },
-  { id: "cakes-7", name: "Tiramisu Tub", price: 240, category: "cakes", available: true },
+  // Pastry
+  { id: "pastry-1", name: "Brown butter chocolate chip cookie", price: 45, category: "pastry", available: true },
+  { id: "pastry-2", name: "Classic lamington", price: 70, category: "pastry", available: true },
+  { id: "pastry-3", name: "Blueberry lamington", price: 75, category: "pastry", available: true },
+  { id: "pastry-4", name: "Strawberry Lamington", price: 75, category: "pastry", available: true },
+  { id: "pastry-5", name: "Matcha Strawberry", price: 85, category: "pastry", available: true },
+  { id: "pastry-6", name: "Lemon white chocolate lamington", price: 80, category: "pastry", available: true },
+  { id: "pastry-7", name: "Tiramisu Tub", price: 240, category: "pastry", available: true },
 
   // Food
   { id: "food-1", name: "Korean creamcheese bun", price: 149, category: "food", available: true },
