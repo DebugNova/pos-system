@@ -4,7 +4,9 @@ const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
   cacheOnNavigation: true,
-  reloadOnOnline: true,
+  // Do NOT reload on reconnect — a hard reload kills in-flight orders and Realtime
+  // connections. Our own reconnect logic in use-realtime-sync.ts handles recovery.
+  reloadOnOnline: false,
   disable: process.env.NODE_ENV === "development",
 });
 

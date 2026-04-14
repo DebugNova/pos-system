@@ -24,6 +24,8 @@ export function useRealtimeSync() {
   // Track reconnect timer so we can clean it up
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
+  // Track current subscription status so visibility/health handlers can reconnect if needed
+  const channelStatusRef = useRef<string>("UNKNOWN");
 
   // Gate on login state — only subscribe when authenticated
   const isLoggedIn = usePOSStore((s) => s.isLoggedIn);
@@ -126,6 +128,7 @@ export function useRealtimeSync() {
           }
         )
         .subscribe((status, err) => {
+          channelStatusRef.current = status;
           console.log("[realtime] Subscription status:", status);
           if (status === "SUBSCRIBED") {
             console.log("[realtime] ✓ Connected — live updates active");
@@ -172,7 +175,10 @@ export function useRealtimeSync() {
     // Initial channel creation
     createChannel();
 
-    // On window refocus, re-hydrate to catch any events missed while in background
+    // On window refocus, re-hydrate to catch any events missed while in background.
+    // Also reconnect the Realtime channel — iOS PWA kills WebSocket connections
+    // when the app is backgrounded (even briefly). Without an explicit reconnect,
+    // the channel silently stays dead and staff see stale screens.
     let hiddenAt: number | null = null;
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
@@ -182,19 +188,45 @@ export function useRealtimeSync() {
       if (document.visibilityState === "visible" && navigator.onLine) {
         const wasHiddenFor = hiddenAt ? Date.now() - hiddenAt : 0;
         hiddenAt = null;
-        // Rehydrate after >3s in background — mobile devices can miss events quickly
+
         if (wasHiddenFor > 3_000) {
-          console.log("[realtime] Tab refocused after >3s — rehydrating to catch missed events");
+          console.log("[realtime] App foregrounded after >3s — rehydrating to catch missed events");
           hydrateStoreFromSupabase().catch(console.error);
+        }
+
+        // iOS PWA aggressively closes WebSocket TCP connections when backgrounded.
+        // If the channel is no longer SUBSCRIBED, or we were in background >10s,
+        // force a fresh channel — this is the primary fix for "live updates stop
+        // working after backgrounding the installed PWA app".
+        if (wasHiddenFor > 10_000 || channelStatusRef.current !== "SUBSCRIBED") {
+          console.log(
+            `[realtime] Reconnecting channel — was hidden ${wasHiddenFor}ms, status: ${channelStatusRef.current}`
+          );
+          if (!disposed) createChannel();
         }
       }
     };
 
-    // On reconnect after going offline, re-hydrate
+    // On reconnect after going offline, re-hydrate and reconnect channel
     const handleOnline = () => {
-      console.log("[realtime] Device back online — rehydrating");
+      console.log("[realtime] Device back online — rehydrating & reconnecting channel");
       hydrateStoreFromSupabase().catch(console.error);
+      if (!disposed) createChannel();
     };
+
+    // Periodic channel health check — every 30s, verify the channel is alive.
+    // Catches silent disconnects on café WiFi that don't fire CHANNEL_ERROR.
+    const healthCheckInterval = setInterval(() => {
+      if (
+        !disposed &&
+        document.visibilityState === "visible" &&
+        navigator.onLine &&
+        channelStatusRef.current !== "SUBSCRIBED"
+      ) {
+        console.log("[realtime] Health check: channel lost — reconnecting");
+        createChannel();
+      }
+    }, 30_000);
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("online", handleOnline);
@@ -202,6 +234,7 @@ export function useRealtimeSync() {
     return () => {
       disposed = true;
       console.log("[realtime] Removing pos-realtime channel");
+      clearInterval(healthCheckInterval);
       // Clear any pending reconnect timer
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
@@ -213,6 +246,7 @@ export function useRealtimeSync() {
       }
       channelRef.current = null;
       reconnectAttemptRef.current = 0;
+      channelStatusRef.current = "UNKNOWN";
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("online", handleOnline);
     };
