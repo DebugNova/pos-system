@@ -56,6 +56,27 @@ export async function fetchRecentCompletedOrders(hours: number = 48): Promise<Or
   return (data || []).map(mapDbOrderToLocal);
 }
 
+/**
+ * Fetch orders that were completed/cancelled within the last `minutes` minutes.
+ * Uses `paid_at` for completed orders and `created_at` for cancelled orders.
+ * This is a lightweight poll-safety-net query — it catches status transitions
+ * that Realtime missed (common on iOS PWA where WebSocket dies in background).
+ */
+export async function fetchRecentlyPaidOrders(minutes: number = 10): Promise<Order[]> {
+  const supabase = getSupabase();
+  const since = new Date(Date.now() - minutes * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("orders")
+    .select(`*, order_items (*), supplementary_bills (*, supplementary_bill_items (*))`)
+    .in("status", ["completed", "cancelled"])
+    .or(`paid_at.gte.${since},created_at.gte.${since}`)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return (data || []).map(mapDbOrderToLocal);
+}
+
 export async function fetchOrderById(orderId: string): Promise<Order | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase

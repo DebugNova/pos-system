@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePOSStore } from "@/lib/store";
+import { pollActiveOrders } from "@/lib/hydrate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,24 @@ export function Dashboard() {
   const { orders, tables, shifts, currentUser, setActiveView } = usePOSStore();
 
   const isOwner = currentUser?.role === "Owner";
+
+  // ── Live-update: poll on mount + periodic tick ──
+  // 1. Immediately poll when Dashboard mounts to catch orders completed
+  //    while the user was on Billing/Kitchen/other views.
+  // 2. Every 30 seconds, force a re-render so "X minutes ago" labels stay
+  //    fresh and any Zustand store updates that didn't trigger a render
+  //    (e.g., mutation from pollActiveOrders) are picked up.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    // Immediate poll for freshness on mount
+    if (navigator.onLine) {
+      pollActiveOrders().catch(console.error);
+    }
+
+    // Periodic re-render tick (30s)
+    const timer = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const todaySales = orders
     .filter((o) => o.status === "completed" && isToday(new Date(o.createdAt)))

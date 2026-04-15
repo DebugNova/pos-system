@@ -1,5 +1,5 @@
 import { usePOSStore } from "./store";
-import { fetchOrdersByStatus, fetchRecentCompletedOrders, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers, upsertMenuItem } from "./supabase-queries";
+import { fetchOrdersByStatus, fetchRecentCompletedOrders, fetchRecentlyPaidOrders, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers, upsertMenuItem } from "./supabase-queries";
 import { syncPendingMutations } from "./sync";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -11,25 +11,43 @@ const ACTIVE_STATUSES = ["awaiting-payment", "new", "preparing", "ready", "serve
 let pollInFlight = false;
 
 /**
- * Fetch only active orders from Supabase and merge them into the store.
- * Much cheaper than a full hydrateStoreFromSupabase (no menu/staff/settings).
- * Called every 10 seconds as a safety net when Realtime events are missed.
+ * Fetch active orders AND recently-completed orders, then merge into the store.
+ * This catches status transitions to "completed"/"cancelled" that Realtime
+ * missed (very common on iOS PWA where the OS kills WebSocket connections
+ * the moment the app is backgrounded).
+ *
+ * Without the recently-completed fetch, orders that transition from an active
+ * status (e.g. "ready") to "completed" would disappear from the store entirely
+ * — they're no longer in the active query, but the local store still has them
+ * as "ready" (not terminal), so they're not preserved as terminal orders either.
  */
-async function pollActiveOrders(): Promise<void> {
+export async function pollActiveOrders(): Promise<void> {
   if (pollInFlight || !navigator.onLine) return;
   pollInFlight = true;
   try {
-    const orders = await fetchOrdersByStatus(ACTIVE_STATUSES);
-    usePOSStore.setState((state) => {
-      // Keep terminal-status orders from local cache; replace active orders from server
-      const terminalOrders = state.orders.filter(
-        (o) => o.status === "completed" || o.status === "cancelled"
-      );
-      const activeOrderIds = new Set(orders.map((o) => o.id));
-      const keptTerminal = terminalOrders.filter((o) => !activeOrderIds.has(o.id));
-      const merged = [...orders, ...keptTerminal];
+    // Two parallel queries:
+    // 1. All active-status orders (awaiting-payment, new, preparing, ready, served-unpaid)
+    // 2. Orders completed/cancelled in the last 10 minutes (catches transitions Realtime missed)
+    const [activeOrders, recentlyPaid] = await Promise.all([
+      fetchOrdersByStatus(ACTIVE_STATUSES),
+      fetchRecentlyPaidOrders(10),
+    ]);
 
-      // Skip re-render if nothing changed (compare by id+status+itemCount)
+    usePOSStore.setState((state) => {
+      // Build a map of all server-returned orders (deduplicates by ID)
+      const serverMap = new Map<string, typeof activeOrders[0]>();
+      activeOrders.forEach((o) => serverMap.set(o.id, o));
+      recentlyPaid.forEach((o) => serverMap.set(o.id, o)); // recently-paid wins if in both
+
+      // Keep terminal orders from local cache that are OLDER than the 10-min window
+      // (i.e., they weren't returned by either query but are still valid local history)
+      const olderTerminal = state.orders.filter(
+        (o) => (o.status === "completed" || o.status === "cancelled") && !serverMap.has(o.id)
+      );
+
+      const merged = [...serverMap.values(), ...olderTerminal];
+
+      // Skip re-render if nothing changed — compare key fields
       const changed =
         merged.length !== state.orders.length ||
         merged.some((incoming) => {
@@ -38,7 +56,10 @@ async function pollActiveOrders(): Promise<void> {
             !existing ||
             existing.status !== incoming.status ||
             existing.items.length !== incoming.items.length ||
-            (existing.supplementaryBills?.length ?? 0) !== (incoming.supplementaryBills?.length ?? 0)
+            (existing.supplementaryBills?.length ?? 0) !== (incoming.supplementaryBills?.length ?? 0) ||
+            existing.grandTotal !== incoming.grandTotal ||
+            existing.total !== incoming.total ||
+            JSON.stringify(existing.payment) !== JSON.stringify(incoming.payment)
           );
         });
 
@@ -169,15 +190,15 @@ export function startBackgroundSync(): () => void {
     }
   }, 8_000);
 
-  // Poll active orders every 10 seconds — bulletproof fallback for when the
-  // Supabase Realtime WebSocket is dead (iOS background, flaky WiFi, etc.).
-  // Only fetches active-status orders (not menu/staff/settings) so it's very
-  // lightweight: ~1–2 KB per poll, negligible on the free tier.
+  // Poll active + recently-completed orders every 8 seconds — bulletproof
+  // fallback for when Supabase Realtime WebSocket is dead (iOS background,
+  // flaky café WiFi, etc.). Now also fetches recently-paid orders so
+  // status transitions to "completed" are never missed.
   const pollInterval = setInterval(() => {
     if (navigator.onLine && document.visibilityState === "visible") {
       pollActiveOrders().catch(console.error);
     }
-  }, 10_000);
+  }, 8_000);
 
   // Also drain any pending mutations right away
   if (navigator.onLine) {

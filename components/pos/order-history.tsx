@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePOSStore } from "@/lib/store";
+import { pollActiveOrders } from "@/lib/hydrate";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,6 +84,19 @@ export function OrderHistory() {
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [refundReason, setRefundReason] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
+
+  // ── Live-update: poll on mount + periodic tick ──
+  // Immediately fetches active + recently-completed orders from the server
+  // so the list is never stale when the user navigates here. The 30s tick
+  // keeps "X minutes ago" labels fresh and catches any missed updates.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (navigator.onLine) {
+      pollActiveOrders().catch(console.error);
+    }
+    const timer = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const filteredOrders = orders.filter((order) => {
     if (order.status === "awaiting-payment" || order.status === "served-unpaid") return false;
