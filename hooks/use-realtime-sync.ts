@@ -5,6 +5,8 @@ import { getSupabase } from "@/lib/supabase";
 import { usePOSStore } from "@/lib/store";
 import { fetchOrderById } from "@/lib/supabase-queries";
 import { hydrateStoreFromSupabase } from "@/lib/hydrate";
+import { tables as initialTables, menuItems as defaultMenuItems, defaultCategories, defaultModifiers } from "@/lib/data";
+import { setActiveControlChannel, clearActiveControlChannelIfMatches } from "@/lib/realtime-control";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { MenuItem } from "@/lib/data";
 
@@ -21,6 +23,10 @@ import type { MenuItem } from "@/lib/data";
  */
 export function useRealtimeSync() {
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // Separate, fixed-name channel dedicated to control broadcasts (e.g. nuke).
+  // Broadcasts only reach subscribers on the SAME channel name, so this must
+  // match POS_CONTROL_CHANNEL used by the sender in lib/store.ts.
+  const controlChannelRef = useRef<RealtimeChannel | null>(null);
   // Track reconnect timer so we can clean it up
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -39,6 +45,23 @@ export function useRealtimeSync() {
 
     // Track whether this effect has been cleaned up
     let disposed = false;
+
+    // ── Control channel: dedicated broadcast channel for nuke/reset events.
+    // Fixed name so every device converges on the same channel. Built once
+    // per mount and torn down on cleanup. The shared module-level reference
+    // is only set AFTER the server acks SUBSCRIBED — a broadcast sent on
+    // an un-subscribed channel would otherwise be dropped.
+    const controlChannel = supabase
+      .channel("pos-control")
+      .on("broadcast", { event: "nuke" }, () => {
+        handleNukeBroadcast();
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setActiveControlChannel(controlChannel);
+        }
+      });
+    controlChannelRef.current = controlChannel;
 
     /**
      * Build and subscribe to the Realtime channel.
@@ -207,8 +230,9 @@ export function useRealtimeSync() {
 
     // On reconnect after going offline, re-hydrate and reconnect channel
     const handleOnline = () => {
-      console.log("[realtime] Device back online — rehydrating & reconnecting channel");
-      hydrateStoreFromSupabase().catch(console.error);
+      console.log("[realtime] Device back online — reconnecting channel");
+      // NOTE: hydrateStoreFromSupabase is handled by the online listener in
+      // hydrate.ts's startBackgroundSync — no need to duplicate it here.
       if (!disposed) createChannel();
     };
 
@@ -243,6 +267,12 @@ export function useRealtimeSync() {
         supabase.removeChannel(channelRef.current);
       }
       channelRef.current = null;
+      // Tear down the dedicated control channel too
+      if (controlChannelRef.current) {
+        clearActiveControlChannelIfMatches(controlChannelRef.current);
+        supabase.removeChannel(controlChannelRef.current);
+      }
+      controlChannelRef.current = null;
       reconnectAttemptRef.current = 0;
       channelStatusRef.current = "UNKNOWN";
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -399,7 +429,7 @@ function handleMenuItemChange(payload: any) {
 }
 
 function handleSettingsChange(payload: any) {
-  if (payload.eventType === "UPDATE") {
+  if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
     const db = payload.new;
     if (!db) return;
 
@@ -481,6 +511,44 @@ function handleStaffChange(payload: any) {
       staffMembers: state.staffMembers.filter((s) => s.id !== deletedId),
     }));
     console.log("[realtime] Staff deleted:", deletedId);
+  }
+}
+
+function handleNukeBroadcast() {
+  console.log("[realtime] Nuke broadcast received — hard-resetting local state");
+  try {
+    // Hard-reset the Zustand store to defaults (matches local clearAllData)
+    usePOSStore.setState({
+      orders: [],
+      tables: initialTables,
+      menuCategories: defaultCategories,
+      menuItems: defaultMenuItems,
+      modifiers: defaultModifiers,
+      cart: [],
+      selectedTable: null,
+      customerName: "",
+      customerPhone: "",
+      orderNotes: "",
+      editingOrderId: null,
+      editMode: "none",
+      lockedItemIds: [],
+      auditLog: [],
+      syncQueue: [],
+      shifts: [],
+      currentShift: null,
+    } as any);
+
+    // Clear IndexedDB mutation queue so nothing replays and resurrects data
+    import("@/lib/sync-idb")
+      .then(({ clearAllMutationsFromIDB }) => clearAllMutationsFromIDB())
+      .catch(console.error);
+
+    // Re-hydrate from the (now empty) database so everything is in sync
+    if (navigator.onLine) {
+      hydrateStoreFromSupabase().catch(console.error);
+    }
+  } catch (err) {
+    console.error("[realtime] Failed to apply nuke broadcast:", err);
   }
 }
 
@@ -584,8 +652,11 @@ function mergeOrderPayloadDirectly(orderId: string, dbRecord: any) {
       currentOrder.status === merged.status &&
       currentOrder.payLater === merged.payLater &&
       currentOrder.total === merged.total &&
-      currentOrder.payment === merged.payment &&
-      currentOrder.paidAt === merged.paidAt
+      currentOrder.grandTotal === merged.grandTotal &&
+      currentOrder.subtotal === merged.subtotal &&
+      JSON.stringify(currentOrder.payment) === JSON.stringify(merged.payment) &&
+      currentOrder.paidAt?.getTime?.() === merged.paidAt?.getTime?.() &&
+      JSON.stringify(currentOrder.refund) === JSON.stringify(merged.refund)
     ) {
       return {};
     }
@@ -604,8 +675,8 @@ function mergeOrderPayloadDirectly(orderId: string, dbRecord: any) {
 // Debounce map to avoid spamming refetches for the same order
 const pendingRefetches = new Map<string, ReturnType<typeof setTimeout>>();
 
-// 300ms: items extend this timer via handleOrderItemChange, so the fetch fires
-// 300ms after the LAST item event — not 800ms after the order INSERT.
+// 300ms debounce: item events extend this timer via handleOrderItemChange,
+// so the fetch fires 300ms after the LAST item event.
 const REFETCH_DEBOUNCE_MS = 300;
 
 /**
@@ -627,23 +698,12 @@ const STATUS_RANK: Record<string, number> = {
   "cancelled": 5,
 };
 
-function ordersShallowEqual(a: any, b: any): boolean {
-  return (
-    a.status === b.status &&
-    a.payLater === b.payLater &&
-    a.total === b.total &&
-    a.items.length === b.items.length &&
-    (a.supplementaryBills?.length ?? 0) === (b.supplementaryBills?.length ?? 0)
-  );
-}
-
 async function refetchAndMergeOrder(orderId: string) {
-  // Debounce: if we already have a pending refetch for this order, skip
+  // Debounce: if we already have a pending refetch for this order, reset the timer
   if (pendingRefetches.has(orderId)) {
     clearTimeout(pendingRefetches.get(orderId)!);
   }
 
-  // Wait 400ms to batch rapid-fire events (e.g. order + items arriving together)
   const timer = setTimeout(async () => {
     pendingRefetches.delete(orderId);
     try {
@@ -652,8 +712,6 @@ async function refetchAndMergeOrder(orderId: string) {
 
       usePOSStore.setState((state) => {
         const existing = state.orders.find((o) => o.id === orderId);
-        // Skip merge if shallow-equal — avoids unnecessary re-renders and false sidebar ticks
-        if (existing && ordersShallowEqual(existing, updatedOrder)) return {};
 
         // Lifecycle guard: reject stale merges that would regress the order's
         // status. If the local terminal has already advanced the order (e.g.

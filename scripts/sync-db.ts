@@ -1,17 +1,16 @@
 import "dotenv/config";
-require("dotenv").config({ path: ".env.local" });
 import { menuItems, defaultCategories, defaultModifiers } from "../lib/data";
-import { upsertMenuItem, upsertModifier } from "../lib/supabase-queries";
-import { getSupabase } from "../lib/supabase";
+import { upsertMenuItem, upsertModifier, updateSettingsInDb } from "../lib/supabase-queries";
 
 async function sync() {
-  console.log("Syncing categories...");
-  const supabase = getSupabase();
-  for (const cat of defaultCategories) {
-    const { error } = await supabase.from("categories").upsert(cat);
-    if (error) console.error("Category error logs:", error);
+  console.log("Syncing categories to settings.menu_categories...");
+  try {
+    await updateSettingsInDb({ menuCategories: defaultCategories });
+    console.log("Categories synced to settings row");
+  } catch (e) {
+    console.error("Failed to sync categories:", e);
   }
-  
+
   console.log("Syncing menu items...");
   for (const item of menuItems) {
     try {

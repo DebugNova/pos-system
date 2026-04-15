@@ -1286,12 +1286,14 @@ export const usePOSStore = create<POSState>()(
               : table
           ),
         }));
-        get().enqueueMutation("table.update", { id: tableId, status, orderId });
+        const mutId = get().enqueueMutation("table.update", { id: tableId, status, orderId });
 
         // Direct write-through for instant cross-device table sync
         if (get().supabaseEnabled) {
           import("./supabase-queries").then(({ updateTableInDb }) => {
-            updateTableInDb(tableId, { status, orderId }).catch(err => {
+            updateTableInDb(tableId, { status, orderId }).then(() => {
+              get().markMutationSynced(mutId);
+            }).catch(err => {
               console.warn("[store] Direct write failed for updateTableStatus, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
             });
           });
@@ -1440,7 +1442,7 @@ export const usePOSStore = create<POSState>()(
           menuCategories: defaultCategories,
           menuItems: defaultMenuItems,
           staffMembers: defaultStaffMembers,
-          modifiers: [],
+          modifiers: defaultModifiers,
           cart: [],
           selectedTable: null,
           customerName: "",
@@ -1455,6 +1457,23 @@ export const usePOSStore = create<POSState>()(
           currentShift: null,
           settings: defaultSettings,
         });
+
+        // 4. Broadcast the reset to all other logged-in devices via the
+        //    pos-control Realtime broadcast channel. Listeners on other
+        //    terminals hard-reset their local state + re-hydrate from the
+        //    (now empty) database. Cascade DELETE events alone are not
+        //    enough because audit/shifts/categories aren't covered.
+        //    Uses the already-subscribed channel owned by useRealtimeSync,
+        //    which guarantees the sender and receivers are on the same
+        //    channel name ("pos-control").
+        if (get().supabaseEnabled) {
+          try {
+            const { sendPosControlBroadcast } = await import("./realtime-control");
+            await sendPosControlBroadcast("nuke", { at: Date.now() });
+          } catch (err) {
+            console.error("[store] Failed to broadcast nuke event:", err);
+          }
+        }
       },
 
       exportData: () => {

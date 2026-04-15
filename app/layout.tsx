@@ -13,8 +13,9 @@ export const viewport: Viewport = {
   themeColor: '#0a0a0a',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5,
-  userScalable: true,
+  maximumScale: 1,
+  minimumScale: 1,
+  userScalable: false,
   viewportFit: 'cover',
 }
 
@@ -52,7 +53,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${fraunces.variable} font-sans antialiased safe-top`} suppressHydrationWarning>
+      <body className={`${inter.variable} ${fraunces.variable} font-sans antialiased safe-top safe-x`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

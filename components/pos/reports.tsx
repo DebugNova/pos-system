@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePOSStore } from "@/lib/store";
 import { Loader2, Database, CalendarIcon, Download } from "lucide-react";
 import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns";
@@ -135,6 +135,29 @@ export function ReportsContent() {
       setUseServer(false);
     }
   }, [loadServerData, supabaseEnabled]);
+
+  // Live-refresh server-side reports when completed/ready orders change
+  // (e.g. a payment made on another terminal). Debounced so rapid-fire
+  // realtime events collapse into a single refetch.
+  const completedSignature = useMemo(
+    () =>
+      orders
+        .filter((o) => o.status === "completed" || o.status === "ready")
+        .map((o) => `${o.id}:${o.status}:${o.grandTotal ?? o.total ?? 0}`)
+        .join("|"),
+    [orders]
+  );
+  const lastSignatureRef = useRef(completedSignature);
+  useEffect(() => {
+    if (!supabaseEnabled) return;
+    // Skip if the signature hasn't actually changed (defensive against re-render loops)
+    if (completedSignature === lastSignatureRef.current) return;
+    lastSignatureRef.current = completedSignature;
+    const timer = setTimeout(() => {
+      loadServerData();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [completedSignature, supabaseEnabled, loadServerData]);
 
   const filteredOrders = useMemo(() => {
     if (!date?.from) return [];

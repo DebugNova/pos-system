@@ -36,6 +36,26 @@ export async function fetchOrdersByStatus(statuses: string[]): Promise<Order[]> 
   return (data || []).map(mapDbOrderToLocal);
 }
 
+/**
+ * Fetch completed & cancelled orders from the last `hours` hours.
+ * Used during hydration so that History and Reports views work on cold-start
+ * devices that weren't running when orders were completed on other terminals.
+ */
+export async function fetchRecentCompletedOrders(hours: number = 48): Promise<Order[]> {
+  const supabase = getSupabase();
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("orders")
+    .select(`*, order_items (*), supplementary_bills (*, supplementary_bill_items (*))`)
+    .in("status", ["completed", "cancelled"])
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+  return (data || []).map(mapDbOrderToLocal);
+}
+
 export async function fetchOrderById(orderId: string): Promise<Order | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase

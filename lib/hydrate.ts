@@ -1,5 +1,5 @@
 import { usePOSStore } from "./store";
-import { fetchOrdersByStatus, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers, upsertMenuItem } from "./supabase-queries";
+import { fetchOrdersByStatus, fetchRecentCompletedOrders, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers, upsertMenuItem } from "./supabase-queries";
 import { syncPendingMutations } from "./sync";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,11 +67,13 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
     // Hydration is for READING data; writes should proceed independently.
     usePOSStore.setState({ supabaseEnabled: true });
     try {
-      // Only fetch ACTIVE orders — completed/cancelled orders stay in localStorage
-      // and are only needed for reports (which use server-side PostgreSQL views).
+      // Fetch active orders + recent completed/cancelled orders (last 48h).
+      // Completed orders are needed for History and Reports views to work
+      // on cold-start devices that weren't running when payments happened.
       const activeStatuses = ["awaiting-payment", "new", "preparing", "ready", "served-unpaid"];
-      const [orders, tables, menuItems, staffMembers, settings, modifiers] = await Promise.all([
+      const [activeOrders, recentCompleted, tables, menuItems, staffMembers, settings, modifiers] = await Promise.all([
         fetchOrdersByStatus(activeStatuses),
+        fetchRecentCompletedOrders(48),
         fetchTables(),
         fetchMenuItems(),
         fetchStaff(),
@@ -81,18 +83,17 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
 
       const state = usePOSStore.getState();
 
-      // Merge active orders from Supabase with completed/cancelled orders from localStorage.
-      // We only fetched active statuses, so we must preserve terminal-status orders locally.
-      let mergedOrders = state.orders;
-      if (orders.length > 0 || state.orders.length > 0) {
-        const terminalOrders = state.orders.filter(
-          (o) => o.status === "completed" || o.status === "cancelled"
-        );
-        // Replace all active orders with the server's version, keep terminal ones from local
-        const activeOrderIds = new Set(orders.map((o) => o.id));
-        const keptTerminal = terminalOrders.filter((o) => !activeOrderIds.has(o.id));
-        mergedOrders = [...orders, ...keptTerminal];
-      }
+      // Merge: server active orders + server completed orders + any local-only
+      // completed orders that are older than 48h (not in recentCompleted).
+      const serverOrderIds = new Set([
+        ...activeOrders.map((o) => o.id),
+        ...recentCompleted.map((o) => o.id),
+      ]);
+      // Keep local completed orders that the server didn't return (older than 48h)
+      const olderLocalCompleted = state.orders.filter(
+        (o) => (o.status === "completed" || o.status === "cancelled") && !serverOrderIds.has(o.id)
+      );
+      const mergedOrders = [...activeOrders, ...recentCompleted, ...olderLocalCompleted];
 
       // If DB has no menu items, seed local items into Supabase so future
       // hydrations pick them up (one-time migration for new projects).
@@ -129,7 +130,8 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
       });
 
       console.log("[hydrate] Store hydrated from Supabase", {
-        orders: orders.length,
+        activeOrders: activeOrders.length,
+        recentCompleted: recentCompleted.length,
         tables: tables.length,
         menuItems: menuItems.length,
         staffMembers: staffMembers.length,

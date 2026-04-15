@@ -52,6 +52,7 @@ export type Database = {
           created_at: string | null
           id: string
           image_url: string | null
+          modifier_ids: Json | null
           name: string
           price: number
           updated_at: string | null
@@ -64,6 +65,7 @@ export type Database = {
           created_at?: string | null
           id: string
           image_url?: string | null
+          modifier_ids?: Json | null
           name: string
           price: number
           updated_at?: string | null
@@ -76,6 +78,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           image_url?: string | null
+          modifier_ids?: Json | null
           name?: string
           price?: number
           updated_at?: string | null
@@ -165,6 +168,7 @@ export type Database = {
           order_notes: string | null
           paid_at: string | null
           paid_by: string | null
+          pay_later: boolean | null
           payment: Json | null
           platform: string | null
           refund: Json | null
@@ -190,6 +194,7 @@ export type Database = {
           order_notes?: string | null
           paid_at?: string | null
           paid_by?: string | null
+          pay_later?: boolean | null
           payment?: Json | null
           platform?: string | null
           refund?: Json | null
@@ -215,6 +220,7 @@ export type Database = {
           order_notes?: string | null
           paid_at?: string | null
           paid_by?: string | null
+          pay_later?: boolean | null
           payment?: Json | null
           platform?: string | null
           refund?: Json | null

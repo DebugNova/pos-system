@@ -257,6 +257,41 @@
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
+.safe-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* iOS PWA full-height — use dvh so it responds to virtual keyboard / status bar.
+   Fallback to 100vh for browsers that don't support dvh. */
+html, body {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Prevent iOS Safari / iPad PWA from auto-zooming form fields when
+   font-size is < 16px. Applies only to coarse-pointer devices so desktop
+   typography is unaffected. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Replace h-screen with h-[100dvh] behavior globally — h-screen = 100vh
+   which on iOS PWA includes the hidden URL bar and cuts off the bottom.
+   Placed in @layer utilities so it wins against Tailwind's own utility.
+   Two-line declaration: browsers without dvh support fall back to vh. */
+@layer utilities {
+  .h-screen {
+    height: 100vh;
+    height: 100dvh;
+  }
+}
 
 /* Touch-optimized minimum targets */
 @media (pointer: coarse) {
