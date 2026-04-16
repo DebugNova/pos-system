@@ -461,12 +461,12 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
     >
       <CardHeader className="pb-3 border-b border-border/40 px-3 sm:px-4 pt-3 sm:pt-4">
         <div className="flex flex-col gap-2.5 sm:gap-3">
-          {/* Row 1: Order ID + Type + Payment */}
+          {/* Row 1: Customer Name + Type + Payment */}
           <div className="flex flex-wrap items-start justify-between gap-1.5 w-full">
             <div className="flex items-center gap-1.5 min-w-0 max-w-full flex-1">
               <TypeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <CardTitle className="text-sm font-bold text-foreground truncate" title={order.id.toUpperCase()}>
-                {order.id.toUpperCase()}
+              <CardTitle className="text-sm font-bold text-foreground truncate" title={order.customerName || "Guest"}>
+                {order.customerName || "Guest"}
               </CardTitle>
             </div>
             <div className="flex flex-wrap items-center justify-start sm:justify-end gap-1.5 shrink-0 min-w-0">
@@ -484,7 +484,7 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
             </div>
           </div>
 
-          {/* Row 2: Time + Table + Customer */}
+          {/* Row 2: Time + Table + Order ID + Phone */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground w-full" suppressHydrationWarning>
             <Badge variant="outline" className={cn("gap-1 border text-[10px] sm:text-[11px] font-medium whitespace-nowrap", styles.badge)}>
               <Timer className="h-3 w-3 shrink-0" />
@@ -496,11 +496,7 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
                 T-{order.tableId.replace("t", "")}
               </Badge>
             )}
-            {order.customerName && (
-              <Badge variant="outline" className="text-[10px] sm:text-[11px] border-border/50 max-w-[100px] justify-start overflow-hidden px-2">
-                <span className="truncate">{order.customerName}</span>
-              </Badge>
-            )}
+            <span className="text-[10px] sm:text-[11px] font-mono opacity-60 truncate max-w-[90px]">{order.id.toUpperCase()}</span>
             {order.customerPhone && (
               <Badge variant="outline" className="text-[10px] sm:text-[11px] border-dashed border-border/50">
                 📞 {order.customerPhone}

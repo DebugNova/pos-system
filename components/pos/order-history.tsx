@@ -251,8 +251,8 @@ export function OrderHistory() {
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className="font-semibold text-foreground truncate block max-w-full">
-                            {o.id.toUpperCase()}
+                          <span className="font-bold text-foreground text-base truncate block max-w-full">
+                            {o.customerName || "Guest"}
                           </span>
                           {o.tableId && (
                             <Badge variant="secondary" className="shrink-0 px-1.5 py-0 h-5 text-[10px] sm:text-[11px]">
@@ -261,17 +261,13 @@ export function OrderHistory() {
                           )}
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground w-full">
+                          <span className="shrink-0 whitespace-nowrap font-mono">{o.id.toUpperCase()}</span>
+                          <span className="shrink-0 text-muted-foreground/50">&bull;</span>
                           <span className="shrink-0 whitespace-nowrap">{o.items.length} items</span>
                           <span className="shrink-0 text-muted-foreground/50">&bull;</span>
                           <span suppressHydrationWarning className="shrink-0 whitespace-nowrap">
                             {formatDistanceToNow(o.createdAt, { addSuffix: true })}
                           </span>
-                          {o.customerName && (
-                            <>
-                              <span className="shrink-0 text-muted-foreground/50">&bull;</span>
-                              <span className="truncate max-w-[100px] sm:max-w-[120px] shrink block">{o.customerName}</span>
-                            </>
-                          )}
                           {o.customerPhone && (
                             <>
                               <span className="shrink-0 text-muted-foreground/50">&bull;</span>
@@ -324,9 +320,9 @@ export function OrderHistory() {
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{order?.id.toUpperCase()}</DialogTitle>
+            <DialogTitle>{order?.customerName || "Guest"}</DialogTitle>
             <DialogDescription>
-              Order details and actions
+              {order?.id.toUpperCase()} — Order details and actions
             </DialogDescription>
           </DialogHeader>
           {order && (
@@ -343,15 +339,12 @@ export function OrderHistory() {
               </div>
 
               {/* Customer and Staff Info */}
-              {(order.customerName || order.createdBy) && (
+              {(order.customerPhone || order.createdBy) && (
                 <div className="rounded-lg bg-secondary/50 p-3 flex justify-between">
-                  {order.customerName && (
+                  {order.customerPhone && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Customer</p>
-                      <p className="font-medium text-foreground">{order.customerName}</p>
-                      {order.customerPhone && (
-                        <p className="text-sm text-muted-foreground">📞 {order.customerPhone}</p>
-                      )}
+                      <p className="text-sm text-muted-foreground">Phone</p>
+                      <p className="font-medium text-foreground">📞 {order.customerPhone}</p>
                     </div>
                   )}
                   {order.createdBy && (

@@ -339,11 +339,11 @@ export function Billing() {
               )}
             >
               <div className="flex items-center justify-between">
-                <span className="font-medium text-foreground">{o.id.toUpperCase()}</span>
+                <span className="font-semibold text-foreground text-base">{o.customerName || "Guest"}</span>
                 <Badge variant="secondary" className={cn(
                   o.status === "served-unpaid" ? "text-destructive border-destructive/50" : "text-warning border-warning/50"
                 )}>
-                  {o.status === "awaiting-payment" ? "Awaiting Payment" : o.status === "served-unpaid" ? "Pay Now" : "Supplementary Bill"}
+                  {o.status === "awaiting-payment" ? "Pay Now" : o.status === "served-unpaid" ? "Pay Now" : "Supplementary Bill"}
                 </Badge>
               </div>
               <div className="mt-1 flex items-center justify-between text-sm">
@@ -356,7 +356,7 @@ export function Billing() {
               </div>
               <p className="mt-1 text-xs text-muted-foreground" suppressHydrationWarning>
                 {formatDistanceToNow(o.createdAt, { addSuffix: true })}
-                {o.customerName && ` • ${o.customerName}`}
+                {o.customerPhone && ` • 📞 ${o.customerPhone}`}
               </p>
             </button>
           ))}
@@ -419,10 +419,11 @@ export function Billing() {
               {/* Order Summary */}
               <Card className="mb-5 bg-card border-border">
                 <CardHeader className="p-4 sm:p-5 pb-3">
-                  {/* Order ID */}
-                  <CardTitle className="text-base sm:text-lg font-semibold truncate">{order.id.toUpperCase()}</CardTitle>
-                  {/* Badges Row */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {/* Customer Name */}
+                  <CardTitle className="text-lg sm:text-xl font-bold truncate">{order.customerName || "Guest"}</CardTitle>
+                  {/* Order ID + Badges Row */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <span className="text-xs text-muted-foreground font-mono">{order.id.toUpperCase()}</span>
                     {order.tableId && (
                       <Badge variant="secondary">Table {order.tableId.replace("t", "")}</Badge>
                     )}
@@ -431,11 +432,10 @@ export function Billing() {
                       <Badge variant="outline" className="opacity-70 font-normal">By {order.createdBy}</Badge>
                     )}
                   </div>
-                  {/* Customer Info */}
-                  {(order.customerName || order.customerPhone) && (
-                    <div className="flex flex-wrap items-center gap-1.5 mt-2 text-sm text-muted-foreground">
-                      {order.customerName && <span className="font-medium text-foreground">{order.customerName}</span>}
-                      {order.customerPhone && <span>📞 {order.customerPhone}</span>}
+                  {/* Phone */}
+                  {order.customerPhone && (
+                    <div className="flex items-center gap-1.5 mt-1.5 text-sm text-muted-foreground">
+                      <span>📞 {order.customerPhone}</span>
                     </div>
                   )}
                   {/* Action Buttons Row */}

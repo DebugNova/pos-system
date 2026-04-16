@@ -90,13 +90,15 @@ export function generateReceiptESCPOS(order: Order, settings: CafeSettings, pape
 
   // Order info
   const dateStr = new Date(order.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
-  parts.push(textToBytes(`Order: ${order.id.toUpperCase()}\n`));
+  parts.push(ESCPOS.BOLD_ON);
+  parts.push(textToBytes(`${order.customerName || "Guest"}\n`));
+  parts.push(ESCPOS.BOLD_OFF);
+  if (order.customerPhone) {
+    parts.push(textToBytes(`Phone: ${order.customerPhone}\n`));
+  }
+  parts.push(textToBytes(`${order.id.toUpperCase()}\n`));
   parts.push(textToBytes(`Date: ${dateStr}\n`));
   parts.push(textToBytes(`Type: ${order.type}${order.tableId ? `  Table ${order.tableId.replace("t", "")}` : ""}\n`));
-
-  if (order.customerName) {
-    parts.push(textToBytes(`Customer: ${order.customerName}\n`));
-  }
 
   parts.push(ESCPOS.SEPARATOR(cols));
 
@@ -187,18 +189,20 @@ export function generateKOTESCPOS(order: Order, settings: CafeSettings, paperWid
   // Order info
   const dateStr = new Date(order.createdAt).toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit" });
   parts.push(ESCPOS.BOLD_ON);
-  parts.push(textToBytes(`Order: ${order.id.toUpperCase()}\n`));
+  parts.push(ESCPOS.DOUBLE_ON);
+  parts.push(textToBytes(`${order.customerName || "Guest"}\n`));
+  parts.push(ESCPOS.NORMAL);
+  if (order.customerPhone) {
+    parts.push(textToBytes(`Phone: ${order.customerPhone}\n`));
+  }
   if (order.tableId) {
     parts.push(ESCPOS.DOUBLE_ON);
     parts.push(textToBytes(`TABLE ${order.tableId.replace("t", "")}\n`));
     parts.push(ESCPOS.NORMAL);
   }
   parts.push(textToBytes(`Type: ${order.type}  |  ${dateStr}\n`));
+  parts.push(textToBytes(`${order.id.toUpperCase()}\n`));
   parts.push(ESCPOS.BOLD_OFF);
-
-  if (order.customerName) {
-    parts.push(textToBytes(`Customer: ${order.customerName}\n`));
-  }
 
   parts.push(ESCPOS.SEPARATOR(cols));
 
@@ -276,10 +280,11 @@ export function generateKOTHTML(order: Order, settings: CafeSettings): string {
         <h1 style="margin: 0; font-size: 28px;">** KOT **</h1>
       </div>
       <div style="margin-bottom: 8px;">
-        <div style="font-weight: bold;">Order: ${order.id.toUpperCase()}</div>
+        <div style="font-size: 20px; font-weight: bold;">${order.customerName || "Guest"}</div>
+        ${order.customerPhone ? `<div style="font-size: 12px;">Phone: ${order.customerPhone}</div>` : ""}
         ${order.tableId ? `<div style="font-size: 24px; font-weight: bold; margin: 4px 0;">TABLE ${order.tableId.replace("t", "")}</div>` : ""}
         <div>${order.type} | ${dateStr}</div>
-        ${order.customerName ? `<div>Customer: ${order.customerName}</div>` : ""}
+        <div style="font-size: 11px; color: #666;">${order.id.toUpperCase()}</div>
       </div>
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
@@ -656,9 +661,10 @@ export function generateReceiptHTML(order: Order, settings: CafeSettings): strin
         ${settings.gstNumber ? `<div>GST: ${settings.gstNumber}</div>` : ""}
       </div>
       <div style="border-top: 1px dashed #999; border-bottom: 1px dashed #999; padding: 6px 0; margin-bottom: 8px;">
-        <div>Order: ${order.id.toUpperCase()} | ${dateStr}</div>
+        <div style="font-weight: bold; font-size: 16px;">${order.customerName || "Guest"}</div>
+        ${order.customerPhone ? `<div style="font-size: 12px;">Phone: ${order.customerPhone}</div>` : ""}
+        <div style="font-size: 11px; color: #666;">${order.id.toUpperCase()} | ${dateStr}</div>
         <div>Type: ${order.type}${order.tableId ? ` | Table ${order.tableId.replace("t", "")}` : ""}</div>
-        ${order.customerName ? `<div>Customer: ${order.customerName}</div>` : ""}
       </div>
       <table style="width: 100%; border-collapse: collapse;">
         <thead><tr style="border-bottom: 1px dashed #999;"><th style="text-align: left;">Item</th><th style="text-align: right;">Amt</th></tr></thead>

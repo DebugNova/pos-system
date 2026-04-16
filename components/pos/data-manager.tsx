@@ -874,10 +874,9 @@ export function DataManager({ onBack }: DataManagerProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Order ID</TableHead>
+                      <TableHead className="text-xs">Customer</TableHead>
                       <TableHead className="text-xs">Type</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
-                      <TableHead className="text-xs">Customer</TableHead>
                       <TableHead className="text-xs max-w-[200px]">Item Details</TableHead>
                       <TableHead className="text-xs">Total</TableHead>
                       <TableHead className="text-xs">Date</TableHead>
@@ -887,7 +886,11 @@ export function DataManager({ onBack }: DataManagerProps) {
                   <TableBody>
                     {filteredOrders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell className="text-xs font-medium">{order.id.toUpperCase()}</TableCell>
+                        <TableCell className="text-xs">
+                          <div className="font-bold">{order.customerName || "Guest"}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">{order.id.toUpperCase()}</div>
+                          {order.customerPhone && <div className="text-[10px] text-muted-foreground">📞 {order.customerPhone}</div>}
+                        </TableCell>
                         <TableCell className="text-xs">
                           <Badge variant="outline" className="text-[11px] sm:text-xs">{order.type}</Badge>
                         </TableCell>
@@ -899,7 +902,6 @@ export function DataManager({ onBack }: DataManagerProps) {
                             {order.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs">{order.customerName || "-"}{order.customerPhone ? ` (${order.customerPhone})` : ""}</TableCell>
                         <TableCell className="text-xs">
                           <div className="max-w-[250px] truncate" title={order.items.map(it => `${it.quantity}x ${it.name}${it.variant ? ` (${it.variant})` : ""}`).join(", ")}>
                             {order.items.map(it => `${it.quantity}x ${it.name}${it.variant ? ` (${it.variant})` : ""}`).join(", ") || "-"}
@@ -916,7 +918,7 @@ export function DataManager({ onBack }: DataManagerProps) {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingOrder(order)}>
                               <Pencil className="h-3 w-3" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "order", id: order.id, name: order.id.toUpperCase() })}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setShowDeleteConfirm({ type: "order", id: order.id, name: order.customerName || order.id.toUpperCase() })}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>

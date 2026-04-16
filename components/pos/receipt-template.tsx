@@ -45,20 +45,16 @@ export function ReceiptTemplate({ order, settings }: ReceiptTemplateProps) {
       </div>
 
       <div className="mb-4 pb-4 border-b border-dashed border-gray-400">
-        <div className="flex justify-between">
-          <span>Order: {order.id.toUpperCase()}</span>
+        <div className="font-bold text-base mb-1">{order.customerName || "Guest"}</div>
+        {order.customerPhone && <div className="text-xs mb-1">Phone: {order.customerPhone}</div>}
+        <div className="flex justify-between text-xs">
+          <span>{order.id.toUpperCase()}</span>
           <span>{format(order.createdAt, "dd/MM/yy HH:mm")}</span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between text-xs">
           <span>Type: {order.type}</span>
           {order.tableId && <span>Table {order.tableId.replace("t", "")}</span>}
         </div>
-        {(order.customerName || order.customerPhone) && (
-          <div className="mt-1 text-xs">
-            {order.customerName && <div>Customer: {order.customerName}</div>}
-            {order.customerPhone && <div>Phone: {order.customerPhone}</div>}
-          </div>
-        )}
       </div>
 
       <table className="w-full mb-4">

@@ -252,8 +252,8 @@ export function TableManagement() {
                   return tableOrders.map((tableOrder) => (
                     <div key={tableOrder.id} className="mt-2 space-y-1.5 rounded-lg bg-background/50 p-2 sm:p-2.5 border border-border/30">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground truncate max-w-[80px] sm:max-w-none">
-                          {tableOrder.id.toUpperCase()}
+                        <span className="text-sm font-bold text-foreground truncate max-w-[100px] sm:max-w-none">
+                          {tableOrder.customerName || "Guest"}
                         </span>
                         <span className="text-sm font-semibold text-foreground">
                           {tableOrder.total.toLocaleString("en-IN", {
@@ -263,12 +263,10 @@ export function TableManagement() {
                           })}
                         </span>
                       </div>
-                      {(tableOrder.customerName || tableOrder.customerPhone) && (
-                        <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
-                          {tableOrder.customerName && <span className="font-medium text-foreground">{tableOrder.customerName}</span>}
-                          {tableOrder.customerPhone && <span>• 📞 {tableOrder.customerPhone}</span>}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+                        {tableOrder.customerPhone && <span>📞 {tableOrder.customerPhone} •</span>}
+                        <span className="font-mono opacity-60">{tableOrder.id.toUpperCase()}</span>
+                      </div>
                       <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground" suppressHydrationWarning>
                         <Clock className="h-3 w-3 flex-shrink-0" />
                         <span className="truncate">

@@ -25,7 +25,10 @@ export function KOTTemplate({ order }: KOTTemplateProps) {
 
       {/* Order Info */}
       <div className="mb-3 pb-3 border-b border-dashed border-gray-400">
-        <div className="font-bold text-base">Order: {order.id.toUpperCase()}</div>
+        <div className="font-bold text-xl">{order.customerName || "Guest"}</div>
+        {order.customerPhone && (
+          <div className="text-xs mt-0.5">Phone: {order.customerPhone}</div>
+        )}
         {order.tableId && (
           <div className="text-2xl font-bold mt-1">
             TABLE {order.tableId.replace("t", "")}
@@ -35,11 +38,8 @@ export function KOTTemplate({ order }: KOTTemplateProps) {
           <span className="uppercase">{order.type}</span>
           <span>{format(order.createdAt, "HH:mm")}</span>
         </div>
-        {order.customerName && (
-          <div className="mt-1 text-xs">Customer: {order.customerName}</div>
-        )}
         <div className="text-xs text-gray-500 mt-1">
-          {format(order.createdAt, "dd/MM/yy")}
+          {order.id.toUpperCase()} • {format(order.createdAt, "dd/MM/yy")}
           {order.createdBy && ` • By ${order.createdBy}`}
         </div>
       </div>

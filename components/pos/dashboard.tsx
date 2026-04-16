@@ -317,8 +317,8 @@ export function Dashboard() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center flex-wrap gap-2">
-                        <p className="font-medium text-foreground truncate max-w-[120px] sm:max-w-[200px]">
-                          {order.id.toUpperCase()}
+                        <p className="font-bold text-foreground truncate max-w-[150px] sm:max-w-[200px]">
+                          {order.customerName || "Guest"}
                         </p>
                         {order.tableId && (
                           <span className="text-sm text-muted-foreground whitespace-nowrap">
