@@ -223,7 +223,10 @@ export type MutationKind =
   | "table.delete"
   | "order.full-edit"
   | "supplementary-bill.create"
-  | "supplementary-bill.payment";
+  | "supplementary-bill.payment"
+  | "supplementary-bill.update"
+  | "supplementary-bill.replace-items"
+  | "supplementary-bill.delete";
 
 export interface QueuedMutation {
   id: string;

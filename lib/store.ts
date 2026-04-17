@@ -11,6 +11,9 @@ const STORE_VERSION = 21;
 interface CartItem extends Omit<OrderItem, "id"> {
   tempId: string;
   originalItemId?: string;
+  origin?: "main" | "supp";
+  supplementaryBillId?: string;
+  supplementaryBillPaid?: boolean;
 }
 
 interface User {
@@ -532,10 +535,16 @@ export const usePOSStore = create<POSState>()(
 
         if (order.status === "new" || order.status === "preparing" || order.status === "ready") {
           editMode = "supplementary";
-          lockedItemIds = order.items.map((i) => i.id);
+          // Lock main items (already paid) + paid supp bill items
+          lockedItemIds = [
+            ...order.items.map((i) => i.id),
+            ...(order.supplementaryBills || [])
+              .filter((b) => !!b.payment)
+              .flatMap((b) => b.items.map((i) => i.id)),
+          ];
         }
 
-        // Load order items into cart
+        // Load main order items into cart
         const cartItems: CartItem[] = order.items.map((item) => ({
           tempId: `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           menuItemId: item.menuItemId,
@@ -546,7 +555,30 @@ export const usePOSStore = create<POSState>()(
           notes: item.notes,
           modifiers: item.modifiers,
           originalItemId: editMode === "supplementary" ? item.id : undefined,
+          origin: "main" as const,
         }));
+
+        // Load supplementary bill items into cart (only in supplementary mode)
+        if (editMode === "supplementary" && order.supplementaryBills) {
+          for (const bill of order.supplementaryBills) {
+            for (const item of bill.items) {
+              cartItems.push({
+                tempId: `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                menuItemId: item.menuItemId,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                variant: item.variant,
+                notes: item.notes,
+                modifiers: item.modifiers,
+                originalItemId: item.id,
+                origin: "supp" as const,
+                supplementaryBillId: bill.id,
+                supplementaryBillPaid: !!bill.payment,
+              });
+            }
+          }
+        }
 
         set({
           editingOrderId: orderId,
@@ -564,88 +596,204 @@ export const usePOSStore = create<POSState>()(
 
       saveEditOrder: () => {
         const { editingOrderId, cart, orderType, selectedTable, customerName, customerPhone, orderNotes, editMode, lockedItemIds } = get();
-        if (!editingOrderId || cart.length === 0) return;
+        if (!editingOrderId) return;
+        // In supplementary mode, cart always has locked items; only bail if truly empty in pre-payment mode
+        if (cart.length === 0 && editMode !== "supplementary") return;
 
         const oldOrder = get().orders.find((o) => o.id === editingOrderId);
         if (!oldOrder) return;
 
         if (editMode === "supplementary") {
-          const newCartItems = cart.filter(item => !item.originalItemId || !lockedItemIds.includes(item.originalItemId));
-          if (newCartItems.length === 0) return;
+          // === DIFF LOGIC: compare cart vs order's current supp bills ===
 
-          const computedTotal = newCartItems.reduce((sum, item) => {
-            const modsTotal = item.modifiers?.reduce((modSum, mod) => modSum + mod.price, 0) || 0;
-            return sum + (item.price + modsTotal) * item.quantity;
-          }, 0);
+          // Helper to compute item total
+          const calcTotal = (items: { price: number; quantity: number; modifiers?: { price: number }[] }[]) =>
+            items.reduce((sum, item) => {
+              const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+              return sum + (item.price + modsTotal) * item.quantity;
+            }, 0);
 
-          const newItems = newCartItems.map((item, index) => ({
-            id: `oi-${Date.now()}-${index}`,
-            menuItemId: item.menuItemId,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            variant: item.variant,
-            notes: item.notes,
-            modifiers: item.modifiers,
-          }));
+          // Helper to check if two items differ
+          const itemsDiffer = (a: any, b: any) =>
+            a.quantity !== b.quantity ||
+            a.price !== b.price ||
+            (a.variant || "") !== (b.variant || "") ||
+            (a.notes || "") !== (b.notes || "") ||
+            JSON.stringify(a.modifiers || []) !== JSON.stringify(b.modifiers || []);
 
-          const newBill = {
-            id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `bill-${Date.now()}`,
-            items: newItems,
-            total: computedTotal,
-            createdAt: new Date(),
-          };
+          const existingBills = oldOrder.supplementaryBills || [];
 
-          set((state) => ({
-            orders: state.orders.map((order) =>
-              order.id === editingOrderId
-                ? {
-                    ...order,
-                    supplementaryBills: [...(order.supplementaryBills || []), newBill],
-                  }
-                : order
-            ),
-            cart: [],
-            editingOrderId: null,
-            selectedTable: null,
-            customerName: "",
-            customerPhone: "",
-            orderNotes: "",
-            editMode: "none",
-            lockedItemIds: [],
-          }));
+          // 1. Collect new items (no originalItemId = brand new additions)
+          const brandNewItems = cart.filter((c) => !c.originalItemId);
 
+          // 2. Group current cart supp items by bill ID
+          const cartSuppByBill = new Map<string, typeof cart>();
+          for (const c of cart) {
+            if (c.origin === "supp" && c.supplementaryBillId) {
+              if (!cartSuppByBill.has(c.supplementaryBillId)) {
+                cartSuppByBill.set(c.supplementaryBillId, []);
+              }
+              cartSuppByBill.get(c.supplementaryBillId)!.push(c);
+            }
+          }
+
+          // 3. Diff each existing unpaid bill
+          const billUpdates: { billId: string; items: OrderItem[]; total: number }[] = [];
+          const billDeletes: string[] = [];
+          const auditChanges: { added: string[]; removed: string[]; modified: string[] } = { added: [], removed: [], modified: [] };
+
+          for (const bill of existingBills) {
+            if (bill.payment) continue; // paid bills are untouchable
+
+            const currentItems = cartSuppByBill.get(bill.id) || [];
+
+            if (currentItems.length === 0) {
+              // All items in this unpaid bill were removed → delete the bill
+              billDeletes.push(bill.id);
+              for (const item of bill.items) auditChanges.removed.push(item.name);
+              continue;
+            }
+
+            // Check if anything changed in this bill
+            let billChanged = currentItems.length !== bill.items.length;
+            if (!billChanged) {
+              for (const ci of currentItems) {
+                const orig = bill.items.find((i) => i.id === ci.originalItemId);
+                if (!orig || itemsDiffer(ci, orig)) { billChanged = true; break; }
+              }
+            }
+
+            if (billChanged) {
+              const updatedItems: OrderItem[] = currentItems.map((ci, idx) => ({
+                id: ci.originalItemId || `oi-${Date.now()}-supp-${idx}`,
+                menuItemId: ci.menuItemId,
+                name: ci.name,
+                price: ci.price,
+                quantity: ci.quantity,
+                variant: ci.variant,
+                notes: ci.notes,
+                modifiers: ci.modifiers,
+              }));
+              billUpdates.push({ billId: bill.id, items: updatedItems, total: calcTotal(updatedItems) });
+
+              for (const ci of currentItems) {
+                const orig = bill.items.find((i) => i.id === ci.originalItemId);
+                if (orig && itemsDiffer(ci, orig)) auditChanges.modified.push(ci.name);
+              }
+              for (const r of bill.items.filter((orig) => !currentItems.some((ci) => ci.originalItemId === orig.id))) {
+                auditChanges.removed.push(r.name);
+              }
+            }
+          }
+
+          // 4. Build new supp bill for brand-new items
+          let newBill: { id: string; items: OrderItem[]; total: number; createdAt: Date } | null = null;
+          if (brandNewItems.length > 0) {
+            const newItems = brandNewItems.map((item, index) => ({
+              id: `oi-${Date.now()}-${index}`,
+              menuItemId: item.menuItemId,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              variant: item.variant,
+              notes: item.notes,
+              modifiers: item.modifiers,
+            }));
+            newBill = {
+              id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `bill-${Date.now()}`,
+              items: newItems,
+              total: calcTotal(newItems),
+              createdAt: new Date(),
+            };
+            for (const ni of newItems) auditChanges.added.push(ni.name);
+          }
+
+          // 5. Bail if nothing changed
+          if (!newBill && billUpdates.length === 0 && billDeletes.length === 0) {
+            set({ cart: [], editingOrderId: null, selectedTable: null, customerName: "", customerPhone: "", orderNotes: "", editMode: "none", lockedItemIds: [] });
+            return;
+          }
+
+          // 6. Apply all changes to local state
+          set((state) => {
+            const order = state.orders.find((o) => o.id === editingOrderId);
+            if (!order) return {};
+
+            let updatedBills = [...(order.supplementaryBills || [])];
+            updatedBills = updatedBills.filter((b) => !billDeletes.includes(b.id));
+            for (const update of billUpdates) {
+              updatedBills = updatedBills.map((b) =>
+                b.id === update.billId ? { ...b, items: update.items, total: update.total } : b
+              );
+            }
+            if (newBill) updatedBills.push(newBill);
+
+            return {
+              orders: state.orders.map((o) =>
+                o.id === editingOrderId ? { ...o, supplementaryBills: updatedBills } : o
+              ),
+              cart: [],
+              editingOrderId: null,
+              selectedTable: null,
+              customerName: "",
+              customerPhone: "",
+              orderNotes: "",
+              editMode: "none",
+              lockedItemIds: [],
+            };
+          });
+
+          // 7. Audit entry
           get().addAuditEntry({
             action: "order_edited",
             userId: get().currentUser?.name || "System",
-            details: `Order ${editingOrderId.toUpperCase()} received a supplementary bill`,
+            details: `Order ${editingOrderId.toUpperCase()} supplementary edit`,
             orderId: editingOrderId,
-            metadata: { mode: "supplementary", addedItems: newItems }
+            metadata: { mode: "supplementary", changes: auditChanges },
           });
 
-          // Bug #3 fix: queue a mutation so offline/failed writes actually get replayed.
-          // Previously the "will sync later" log was misleading — nothing was queued,
-          // so on direct-write failure the bill only lived in localStorage.
-          const suppMutId = get().enqueueMutation("supplementary-bill.create", {
-            orderId: editingOrderId,
-            bill: {
-              id: newBill.id,
-              items: newBill.items,
-              total: newBill.total,
-              createdAt: newBill.createdAt instanceof Date ? newBill.createdAt.toISOString() : newBill.createdAt,
-            },
-          });
+          // 8. Sync to Supabase — enqueue mutations + direct write-through
+          for (const billId of billDeletes) {
+            const mutId = get().enqueueMutation("supplementary-bill.delete", { billId });
+            if (get().supabaseEnabled) {
+              import("./supabase-queries").then(({ deleteSupplementaryBill: delBill }) => {
+                delBill(billId)
+                  .then(() => get().markMutationSynced(mutId))
+                  .catch((err) => console.warn("[store] supp bill delete failed:", err?.message || err?.code));
+              });
+            }
+          }
 
-          // Direct write-through: push supplementary bill to Supabase immediately
-          if (get().supabaseEnabled) {
-
-            import("./supabase-queries").then(({ insertSupplementaryBill }) => {
-              insertSupplementaryBill(editingOrderId, newBill)
-                .then(() => get().markMutationSynced(suppMutId))
-                .catch(err => {
-                  console.warn("[store] Direct write failed for supplementary bill, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
-                });
+          for (const update of billUpdates) {
+            const mutId = get().enqueueMutation("supplementary-bill.replace-items", {
+              billId: update.billId, items: update.items, total: update.total,
             });
+            if (get().supabaseEnabled) {
+              import("./supabase-queries").then(({ replaceSupplementaryBillItems: replItems, updateSupplementaryBillTotal: updTotal }) => {
+                Promise.all([replItems(update.billId, update.items), updTotal(update.billId, update.total)])
+                  .then(() => get().markMutationSynced(mutId))
+                  .catch((err) => console.warn("[store] supp bill update failed:", err?.message || err?.code));
+              });
+            }
+          }
+
+          if (newBill) {
+            const suppMutId = get().enqueueMutation("supplementary-bill.create", {
+              orderId: editingOrderId,
+              bill: {
+                id: newBill.id,
+                items: newBill.items,
+                total: newBill.total,
+                createdAt: newBill.createdAt instanceof Date ? newBill.createdAt.toISOString() : newBill.createdAt,
+              },
+            });
+            if (get().supabaseEnabled) {
+              import("./supabase-queries").then(({ insertSupplementaryBill }) => {
+                insertSupplementaryBill(editingOrderId, newBill!)
+                  .then(() => get().markMutationSynced(suppMutId))
+                  .catch((err) => console.warn("[store] new supp bill create failed:", err?.message || err?.code));
+              });
+            }
           }
 
           get().setPendingBillingOrderId(editingOrderId);

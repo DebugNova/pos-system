@@ -211,6 +211,81 @@ export async function updateSupplementaryBillPayment(
   if (error) throw error;
 }
 
+/**
+ * Update the total on an existing supplementary bill row.
+ * Called after items within the bill are modified.
+ */
+export async function updateSupplementaryBillTotal(
+  billId: string,
+  total: number
+): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("supplementary_bills")
+    .update({ total })
+    .eq("id", billId);
+  if (error) throw error;
+}
+
+/**
+ * Replace all items in a supplementary bill with a new set.
+ * Mirrors the DELETE+UPSERT pattern used by replaceOrderItems.
+ */
+export async function replaceSupplementaryBillItems(
+  billId: string,
+  newItems: OrderItem[]
+): Promise<void> {
+  const supabase = getSupabase();
+
+  // Delete existing items for this bill
+  const { error: delError } = await supabase
+    .from("supplementary_bill_items")
+    .delete()
+    .eq("bill_id", billId);
+  if (delError) throw delError;
+
+  // Insert the new set
+  if (newItems.length > 0) {
+    const dbItems = newItems.map((item: any) => ({
+      id: item.id,
+      bill_id: billId,
+      menu_item_id: item.menuItemId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      variant: item.variant || null,
+      notes: item.notes || null,
+      modifiers: item.modifiers || [],
+    }));
+    const { error: insError } = await supabase
+      .from("supplementary_bill_items")
+      .upsert(dbItems, { onConflict: "id" });
+    if (insError) throw insError;
+  }
+}
+
+/**
+ * Delete a supplementary bill and its items.
+ * Items are deleted first (FK constraint), then the bill row.
+ */
+export async function deleteSupplementaryBill(billId: string): Promise<void> {
+  const supabase = getSupabase();
+
+  // Delete items first (FK → supplementary_bills)
+  const { error: itemsErr } = await supabase
+    .from("supplementary_bill_items")
+    .delete()
+    .eq("bill_id", billId);
+  if (itemsErr) throw itemsErr;
+
+  // Delete the bill row
+  const { error: billErr } = await supabase
+    .from("supplementary_bills")
+    .delete()
+    .eq("id", billId);
+  if (billErr) throw billErr;
+}
+
 export async function deleteOrderFromDb(orderId: string): Promise<void> {
   const supabase = getSupabase();
   const { error } = await supabase

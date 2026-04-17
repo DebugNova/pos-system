@@ -20,6 +20,9 @@ import {
   replaceOrderItems,
   insertSupplementaryBill,
   updateSupplementaryBillPayment,
+  updateSupplementaryBillTotal,
+  replaceSupplementaryBillItems,
+  deleteSupplementaryBill,
 } from "./supabase-queries";
 
 function formatError(error: unknown): {
@@ -255,6 +258,26 @@ export async function sendMutation(m: QueuedMutation): Promise<void> {
         m.payload.payment,
         m.payload.paidAt as string
       );
+      break;
+
+    case "supplementary-bill.update":
+      await updateSupplementaryBillTotal(
+        m.payload.billId as string,
+        m.payload.total as number
+      );
+      break;
+
+    case "supplementary-bill.replace-items": {
+      const billId = m.payload.billId as string;
+      const items = m.payload.items as any[];
+      const total = m.payload.total as number;
+      await replaceSupplementaryBillItems(billId, items);
+      await updateSupplementaryBillTotal(billId, total);
+      break;
+    }
+
+    case "supplementary-bill.delete":
+      await deleteSupplementaryBill(m.payload.billId as string);
       break;
 
     default:

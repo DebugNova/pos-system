@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { usePOSStore } from "@/lib/store";
 import { type MenuItem, type Modifier } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -655,7 +655,7 @@ export function NewOrder() {
           {editMode === "supplementary" && (
             <div className="mb-1 rounded bg-warning/5 px-2 py-1 border border-warning/20">
               <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">
-                Original items are locked. Customer will be charged a supplementary bill for any new items added.
+                Full order shown. Paid items are locked. Unpaid supp items are editable. New items create a supplementary bill.
               </p>
             </div>
           )}
@@ -734,26 +734,55 @@ export function NewOrder() {
             ) : (
               <div className="space-y-3">
                 <AnimatePresence initial={false}>
-                  {cart.map((item) => {
+                  {(() => {
+                    // Build section headers for supplementary mode
+                    const isSupp = editMode === "supplementary";
+                    const mainItems = isSupp ? cart.filter(i => i.origin === "main" || (!i.origin && i.originalItemId)) : [];
+                    const suppBillIds = isSupp ? [...new Set(cart.filter(i => i.origin === "supp").map(i => i.supplementaryBillId!))] : [];
+                    const newItems = isSupp ? cart.filter(i => !i.originalItemId) : [];
+                    // Track which sections have been rendered
+                    const renderedHeaders = new Set<string>();
+                    return cart.map((item) => {
                     const isLocked = Boolean(isEditing && editMode === "supplementary" && item.originalItemId && lockedItemIds.includes(item.originalItemId));
                     const isOwner = currentUser?.role === "Owner";
-                    const isNewlyAdded = !isLocked && editMode === "supplementary";
+                    const isNewlyAdded = editMode === "supplementary" && !item.originalItemId;
+                    const isUnpaidSupp = editMode === "supplementary" && item.origin === "supp" && !item.supplementaryBillPaid && !!item.originalItemId;
+                    const isPaidSupp = editMode === "supplementary" && item.origin === "supp" && item.supplementaryBillPaid;
+
+                    // Determine section header
+                    let sectionHeader: React.ReactNode = null;
+                    if (isSupp) {
+                      if ((item.origin === "main" || (!item.origin && item.originalItemId)) && !renderedHeaders.has("main")) {
+                        renderedHeaders.add("main");
+                        sectionHeader = <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider pb-1 pt-1 flex items-center gap-1.5"><Lock className="h-3 w-3" />Original Order</div>;
+                      } else if (item.origin === "supp" && item.supplementaryBillId && !renderedHeaders.has(item.supplementaryBillId)) {
+                        renderedHeaders.add(item.supplementaryBillId);
+                        const billIdx = suppBillIds.indexOf(item.supplementaryBillId) + 1;
+                        const paidLabel = item.supplementaryBillPaid ? "Paid ✓" : "Unpaid";
+                        sectionHeader = <div className={cn("text-[10px] sm:text-xs font-bold uppercase tracking-wider pb-1 pt-2 flex items-center gap-1.5", item.supplementaryBillPaid ? "text-muted-foreground" : "text-warning")}>Supp Bill #{billIdx} — {paidLabel}</div>;
+                      } else if (!item.originalItemId && !renderedHeaders.has("new")) {
+                        renderedHeaders.add("new");
+                        sectionHeader = <div className="text-[10px] sm:text-xs font-bold text-warning uppercase tracking-wider pb-1 pt-2 flex items-center gap-1.5">+ New Items</div>;
+                      }
+                    }
 
                     return (
+                      <React.Fragment key={item.tempId}>
+                      {sectionHeader}
                       <motion.div
-                        key={item.tempId}
                         layout
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, x: -20, scale: 0.9 }}
                         transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                        className={cn("rounded-lg p-3", isLocked ? "bg-muted/50 border border-border/50 opacity-80" : isNewlyAdded ? "bg-warning/10 border border-warning/30" : "bg-secondary/50")}
+                        className={cn("rounded-lg p-3", isLocked ? "bg-muted/50 border border-border/50 opacity-80" : isUnpaidSupp ? "bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50" : isNewlyAdded ? "bg-warning/10 border border-warning/30" : "bg-secondary/50")}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-1.5">
                               {isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
                               {isNewlyAdded && <Badge variant="outline" className="h-4 px-1 text-[8px] bg-warning/20 text-warning border-transparent">+ADD</Badge>}
+                              {isUnpaidSupp && <Badge variant="outline" className="h-4 px-1 text-[8px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-transparent">SUPP</Badge>}
                               <p className="font-medium text-foreground">{item.name}</p>
                             </div>
                             {item.variant && (
@@ -832,15 +861,23 @@ export function NewOrder() {
                               variant="destructive"
                               size="sm"
                               className="h-6 text-[11px] sm:text-xs"
-                              onClick={() => setItemToRemove({ orderId: editingOrderId, itemId: item.originalItemId!, tempId: item.tempId, name: item.name })}
+                              onClick={() => {
+                                if (isPaidSupp) {
+                                  toast.error("Cannot remove paid item", { description: "Refund flow required — not yet supported. Contact admin." });
+                                  return;
+                                }
+                                setItemToRemove({ orderId: editingOrderId, itemId: item.originalItemId!, tempId: item.tempId, name: item.name });
+                              }}
                             >
                               Remove Item (Owner)
                             </Button>
                           </div>
                         )}
                       </motion.div>
+                      </React.Fragment>
                     )
-                  })}
+                  });
+                  })()}
                 </AnimatePresence>
               </div>
             )}
@@ -902,10 +939,7 @@ export function NewOrder() {
                 <Button
                   size="lg"
                   className={cn("flex-1 h-14", editMode === "supplementary" ? "bg-warning hover:bg-warning/90 text-warning-foreground" : "bg-primary hover:bg-primary/90 text-primary-foreground")}
-                  disabled={
-                    cart.length === 0 ||
-                    (editMode === "supplementary" && !cart.some(c => !c.originalItemId || !lockedItemIds.includes(c.originalItemId)))
-                  }
+                  disabled={cart.length === 0 && editMode !== "supplementary"}
                   onClick={() => {
                     if (orderType === "dine-in" && !selectedTable) {
                       toast.error("Table not selected", {
@@ -918,7 +952,7 @@ export function NewOrder() {
                   }}
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  {editMode === "supplementary" ? "Add Supplementary Bill" : "Update Order"}
+                  {editMode === "supplementary" ? "Save Changes" : "Update Order"}
                 </Button>
               </div>
             ) : (
