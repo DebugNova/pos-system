@@ -14,7 +14,11 @@ interface KOTTemplateProps {
 export function KOTTemplate({ order }: KOTTemplateProps) {
   if (!order) return null;
 
-  const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const suppItemCount = order.supplementaryBills?.reduce(
+    (sum, bill) => sum + bill.items.reduce((s, i) => s + i.quantity, 0),
+    0
+  ) || 0;
+  const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0) + suppItemCount;
 
   return (
     <div className="kot-receipt hidden print:block bg-white text-black p-4 font-mono text-sm absolute top-0 left-0 w-[80mm] min-h-screen">
@@ -73,6 +77,39 @@ export function KOTTemplate({ order }: KOTTemplateProps) {
                 )}
               </td>
             </tr>
+          ))}
+          {order.supplementaryBills?.map((bill, billIdx) => (
+            <React.Fragment key={bill.id}>
+              <tr>
+                <td colSpan={2} className="pt-3 pb-1 text-sm font-bold border-t-2 border-black">
+                  ** ADD-ON #{billIdx + 1} **
+                </td>
+              </tr>
+              {bill.items.map((item) => (
+                <tr key={item.id} className="align-top border-b border-dashed border-gray-300">
+                  <td className="py-2 text-lg font-bold">{item.quantity}</td>
+                  <td className="py-2">
+                    <div className="text-base font-bold">
+                      <span className="inline-block px-1 mr-1 border border-black text-[10px] align-middle">ADD</span>
+                      {item.name}
+                    </div>
+                    {item.variant && (
+                      <div className="text-xs text-gray-500 mt-0.5">({item.variant})</div>
+                    )}
+                    {item.modifiers && item.modifiers.length > 0 && (
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        + {item.modifiers.map(m => m.name).join(", ")}
+                      </div>
+                    )}
+                    {item.notes && (
+                      <div className="text-xs text-red-600 font-bold mt-1">
+                        ⚠ {item.notes}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </React.Fragment>
           ))}
         </tbody>
       </table>

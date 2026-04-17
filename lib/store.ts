@@ -623,16 +623,31 @@ export const usePOSStore = create<POSState>()(
             metadata: { mode: "supplementary", addedItems: newItems }
           });
 
+          // Bug #3 fix: queue a mutation so offline/failed writes actually get replayed.
+          // Previously the "will sync later" log was misleading — nothing was queued,
+          // so on direct-write failure the bill only lived in localStorage.
+          const suppMutId = get().enqueueMutation("supplementary-bill.create", {
+            orderId: editingOrderId,
+            bill: {
+              id: newBill.id,
+              items: newBill.items,
+              total: newBill.total,
+              createdAt: newBill.createdAt instanceof Date ? newBill.createdAt.toISOString() : newBill.createdAt,
+            },
+          });
+
           // Direct write-through: push supplementary bill to Supabase immediately
           if (get().supabaseEnabled) {
 
             import("./supabase-queries").then(({ insertSupplementaryBill }) => {
-              insertSupplementaryBill(editingOrderId, newBill).catch(err => {
-                console.warn("[store] Direct write failed for supplementary bill, will sync later:", err?.message || err?.code || JSON.stringify(err));
-              });
+              insertSupplementaryBill(editingOrderId, newBill)
+                .then(() => get().markMutationSynced(suppMutId))
+                .catch(err => {
+                  console.warn("[store] Direct write failed for supplementary bill, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
+                });
             });
           }
-          
+
           get().setPendingBillingOrderId(editingOrderId);
           return;
         }
@@ -695,7 +710,38 @@ export const usePOSStore = create<POSState>()(
           details: `Order ${editingOrderId.toUpperCase()} was edited`,
           orderId: editingOrderId,
         });
-        
+
+        // Bug #1 fix: sync pre-payment edit to Supabase.
+        // Previously only local Zustand state was updated, so on reload or
+        // any other device the order still showed pre-edit items.
+        // Use `null` (not undefined) for cleared fields so mapLocalOrderToDb
+        // actually writes the clearing value instead of skipping the key.
+        const orderChanges: Record<string, any> = {
+          total: newTotal,
+          type: orderType,
+          tableId: newTableId ?? null,
+          customerName: customerName || null,
+          customerPhone: customerPhone || null,
+          orderNotes: orderNotes || null,
+        };
+        const mutId = get().enqueueMutation("order.full-edit", {
+          id: editingOrderId,
+          changes: orderChanges,
+          items: newItems,
+        });
+        if (get().supabaseEnabled) {
+          import("./supabase-queries").then(({ updateOrderInDb, replaceOrderItems }) => {
+            Promise.all([
+              updateOrderInDb(editingOrderId, orderChanges),
+              replaceOrderItems(editingOrderId, newItems),
+            ])
+              .then(() => get().markMutationSynced(mutId))
+              .catch(err => {
+                console.warn("[store] Direct write failed for pre-payment edit, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
+              });
+          });
+        }
+
         get().setPendingBillingOrderId(editingOrderId);
       },
 
@@ -1186,6 +1232,23 @@ export const usePOSStore = create<POSState>()(
         if (!order) return;
 
         const userName = get().currentUser?.name || "System";
+
+        // Bug #6 fix: block completion when supplementary bills are still unpaid.
+        // Route the cashier to billing to collect payment first so revenue is
+        // never lost by archiving an order with outstanding add-ons.
+        const hasUnpaidSupp = order.supplementaryBills?.some(b => !b.payment);
+        if (hasUnpaidSupp) {
+          get().setPendingBillingOrderId(orderId);
+          get().setActiveView("billing");
+          get().addAuditEntry({
+            action: "order_served",
+            userId: userName,
+            details: `Order ${orderId.toUpperCase()} cannot be completed — supplementary bill unpaid. Routed to billing.`,
+            orderId,
+            metadata: { reason: "unpaid_supplementary_bill" }
+          });
+          return;
+        }
 
         // If this is a pay-later order, move to served-unpaid instead of completed
         if (order.payLater) {

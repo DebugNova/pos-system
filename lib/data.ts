@@ -220,7 +220,10 @@ export type MutationKind =
   | "modifier.upsert"
   | "modifier.delete"
   | "table.upsert"
-  | "table.delete";
+  | "table.delete"
+  | "order.full-edit"
+  | "supplementary-bill.create"
+  | "supplementary-bill.payment";
 
 export interface QueuedMutation {
   id: string;

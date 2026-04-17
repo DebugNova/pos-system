@@ -18,12 +18,14 @@ interface ReceiptTemplateProps {
 export function ReceiptTemplate({ order, settings }: ReceiptTemplateProps) {
   if (!order) return null;
 
-  const subtotal = order.subtotal || order.total || 0;
+  const baseSubtotal = order.subtotal || order.total || 0;
+  const suppTotal = order.supplementaryBills?.reduce((s, b) => s + (b.total || 0), 0) || 0;
+  const subtotal = baseSubtotal + suppTotal;
   const discountAmount = order.discount?.amount || 0;
   
   let taxRatePercent = order.taxRate;
   let taxAmount = order.taxAmount;
-  
+
   if (taxAmount === undefined || taxAmount === null) {
     if (settings.gstEnabled && settings.taxRate > 0) {
       taxRatePercent = settings.taxRate;
@@ -33,8 +35,19 @@ export function ReceiptTemplate({ order, settings }: ReceiptTemplateProps) {
       taxAmount = 0;
     }
   }
-  
+
   const grandTotal = order.grandTotal !== undefined && order.grandTotal !== null ? order.grandTotal : (subtotal - discountAmount + (taxAmount || 0));
+
+  // When supplementary bills have been paid, their tax is rolled into
+  // `order.grandTotal` but not into `order.taxAmount`. Derive the display
+  // tax so the printed breakdown (Subtotal − Discount + Tax = Total) balances.
+  if (suppTotal > 0 && order.grandTotal !== undefined && order.grandTotal !== null) {
+    taxAmount = order.grandTotal - (subtotal - discountAmount);
+    if (taxAmount < 0) taxAmount = 0;
+    if (taxRatePercent === undefined || taxRatePercent === null) {
+      taxRatePercent = settings.gstEnabled ? settings.taxRate : 0;
+    }
+  }
 
   return (
     <div className="print-receipt hidden print:block bg-white text-black p-4 font-mono text-sm absolute top-0 left-0 w-[80mm] min-h-screen">
@@ -83,6 +96,34 @@ export function ReceiptTemplate({ order, settings }: ReceiptTemplateProps) {
               </td>
             </tr>
           )})}
+          {order.supplementaryBills?.map((bill, billIdx) => (
+            <React.Fragment key={bill.id}>
+              <tr>
+                <td colSpan={2} className="pt-2 pb-1 text-xs font-bold border-t border-dashed border-gray-400">
+                  + Add-on #{billIdx + 1}{bill.payment ? "" : " (Unpaid)"}
+                </td>
+              </tr>
+              {bill.items.map((item) => {
+                const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                return (
+                  <tr key={item.id} className="align-top">
+                    <td className="py-1">
+                      <div>{item.quantity} x {item.name}</div>
+                      {item.variant && <div className="text-xs text-gray-500 ml-4">({item.variant})</div>}
+                      {item.modifiers && item.modifiers.length > 0 && (
+                        <div className="text-xs text-gray-500 ml-4">
+                          + {item.modifiers.map(m => m.name).join(", ")}
+                        </div>
+                      )}
+                    </td>
+                    <td className="text-right py-1">
+                      {(item.quantity * (item.price + modsTotal)).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </tbody>
       </table>
 

@@ -17,6 +17,9 @@ import {
   deleteMenuItemFromDb,
   upsertModifier,
   deleteModifierFromDb,
+  replaceOrderItems,
+  insertSupplementaryBill,
+  updateSupplementaryBillPayment,
 } from "./supabase-queries";
 
 function formatError(error: unknown): {
@@ -224,6 +227,34 @@ export async function sendMutation(m: QueuedMutation): Promise<void> {
 
     case "table.delete":
       await deleteTableFromDb(m.payload.id as string);
+      break;
+
+    case "order.full-edit": {
+      const id = m.payload.id as string;
+      const changes = m.payload.changes as Record<string, any> | undefined;
+      const items = m.payload.items as any[] | undefined;
+      if (changes && Object.keys(changes).length > 0) {
+        await updateOrderInDb(id, changes);
+      }
+      if (items) {
+        await replaceOrderItems(id, items as any);
+      }
+      break;
+    }
+
+    case "supplementary-bill.create":
+      await insertSupplementaryBill(
+        m.payload.orderId as string,
+        m.payload.bill as any
+      );
+      break;
+
+    case "supplementary-bill.payment":
+      await updateSupplementaryBillPayment(
+        m.payload.billId as string,
+        m.payload.payment,
+        m.payload.paidAt as string
+      );
       break;
 
     default:

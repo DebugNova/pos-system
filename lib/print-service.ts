@@ -108,8 +108,8 @@ export function generateReceiptESCPOS(order: Order, settings: CafeSettings, pape
   parts.push(ESCPOS.BOLD_OFF);
   parts.push(ESCPOS.SEPARATOR(cols));
 
-  for (const item of order.items) {
-    const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+  const renderReceiptItem = (item: any) => {
+    const modsTotal = item.modifiers?.reduce((s: number, m: any) => s + m.price, 0) || 0;
     const amount = ((item.price + modsTotal) * item.quantity).toFixed(0);
     const itemText = `${item.quantity}x ${item.name}`;
     parts.push(textToBytes(padRight(itemText, cols - 10) + padLeft(`₹${amount}`, 10) + "\n"));
@@ -117,14 +117,33 @@ export function generateReceiptESCPOS(order: Order, settings: CafeSettings, pape
       parts.push(textToBytes(`   (${item.variant})\n`));
     }
     if (item.modifiers && item.modifiers.length > 0) {
-      parts.push(textToBytes(`   + ${item.modifiers.map(m => m.name).join(", ")}\n`));
+      parts.push(textToBytes(`   + ${item.modifiers.map((m: any) => m.name).join(", ")}\n`));
+    }
+  };
+
+  for (const item of order.items) {
+    renderReceiptItem(item);
+  }
+
+  if (order.supplementaryBills && order.supplementaryBills.length > 0) {
+    for (let idx = 0; idx < order.supplementaryBills.length; idx++) {
+      const bill = order.supplementaryBills[idx];
+      parts.push(ESCPOS.SEPARATOR(cols));
+      parts.push(ESCPOS.BOLD_ON);
+      parts.push(textToBytes(`+ Add-on #${idx + 1}${bill.payment ? "" : " (Unpaid)"}\n`));
+      parts.push(ESCPOS.BOLD_OFF);
+      for (const item of bill.items) {
+        renderReceiptItem(item);
+      }
     }
   }
 
   parts.push(ESCPOS.SEPARATOR(cols));
 
   // Totals
-  const subtotal = order.subtotal || order.total || 0;
+  const baseSubtotal = order.subtotal || order.total || 0;
+  const suppTotal = (order.supplementaryBills || []).reduce((s, b) => s + (b.total || 0), 0);
+  const subtotal = baseSubtotal + suppTotal;
   const discountAmount = order.discount?.amount || 0;
   let taxAmount = order.taxAmount;
   if (taxAmount === undefined || taxAmount === null) {
@@ -137,6 +156,12 @@ export function generateReceiptESCPOS(order: Order, settings: CafeSettings, pape
   const grandTotal = order.grandTotal !== undefined && order.grandTotal !== null
     ? order.grandTotal
     : (subtotal - discountAmount + (taxAmount || 0));
+
+  // Balance ESC/POS breakdown when supp bills contribute to grandTotal but not taxAmount
+  if (suppTotal > 0 && order.grandTotal !== undefined && order.grandTotal !== null) {
+    taxAmount = order.grandTotal - (subtotal - discountAmount);
+    if (taxAmount < 0) taxAmount = 0;
+  }
 
   parts.push(textToBytes(padRight("Subtotal", cols - 12) + padLeft(`₹${subtotal.toFixed(0)}`, 12) + "\n"));
 
@@ -212,10 +237,11 @@ export function generateKOTESCPOS(order: Order, settings: CafeSettings, paperWid
   parts.push(ESCPOS.BOLD_OFF);
   parts.push(ESCPOS.SEPARATOR(cols));
 
-  for (const item of order.items) {
+  const renderKotItem = (item: any, isAddon: boolean) => {
     parts.push(ESCPOS.BOLD_ON);
     parts.push(ESCPOS.DOUBLE_HEIGHT_ON);
-    parts.push(textToBytes(padRight(String(item.quantity), 5) + item.name + "\n"));
+    const label = isAddon ? `[ADD] ${item.name}` : item.name;
+    parts.push(textToBytes(padRight(String(item.quantity), 5) + label + "\n"));
     parts.push(ESCPOS.NORMAL);
     parts.push(ESCPOS.BOLD_OFF);
 
@@ -223,10 +249,27 @@ export function generateKOTESCPOS(order: Order, settings: CafeSettings, paperWid
       parts.push(textToBytes(`     (${item.variant})\n`));
     }
     if (item.modifiers && item.modifiers.length > 0) {
-      parts.push(textToBytes(`     + ${item.modifiers.map(m => m.name).join(", ")}\n`));
+      parts.push(textToBytes(`     + ${item.modifiers.map((m: any) => m.name).join(", ")}\n`));
     }
     if (item.notes) {
       parts.push(textToBytes(`     NOTE: ${item.notes}\n`));
+    }
+  };
+
+  for (const item of order.items) {
+    renderKotItem(item, false);
+  }
+
+  if (order.supplementaryBills && order.supplementaryBills.length > 0) {
+    for (let idx = 0; idx < order.supplementaryBills.length; idx++) {
+      const bill = order.supplementaryBills[idx];
+      parts.push(ESCPOS.SEPARATOR(cols));
+      parts.push(ESCPOS.BOLD_ON);
+      parts.push(textToBytes(`** ADD-ON #${idx + 1} **\n`));
+      parts.push(ESCPOS.BOLD_OFF);
+      for (const item of bill.items) {
+        renderKotItem(item, true);
+      }
     }
   }
 
@@ -237,9 +280,14 @@ export function generateKOTESCPOS(order: Order, settings: CafeSettings, paperWid
     parts.push(ESCPOS.BOLD_OFF);
   }
 
+  const kotSuppItems = (order.supplementaryBills || []).reduce(
+    (sum, bill) => sum + bill.items.reduce((s: number, i: any) => s + i.quantity, 0),
+    0
+  );
+  const kotTotalItems = order.items.reduce((s, i) => s + i.quantity, 0) + kotSuppItems;
   parts.push(ESCPOS.SEPARATOR(cols));
   parts.push(ESCPOS.ALIGN_CENTER);
-  parts.push(textToBytes(`${order.items.reduce((s, i) => s + i.quantity, 0)} items total\n`));
+  parts.push(textToBytes(`${kotTotalItems} items total\n`));
   parts.push(ESCPOS.FEED_LINES(3));
   parts.push(ESCPOS.CUT);
 
@@ -254,17 +302,32 @@ export function generateKOTHTML(order: Order, settings: CafeSettings): string {
     hour: "2-digit", minute: "2-digit"
   });
 
-  const itemsHtml = order.items.map(item => `
+  const renderItemRow = (item: any, isAddon = false) => `
     <tr style="border-bottom: 1px dashed #999;">
       <td style="padding: 6px 0; font-size: 18px; font-weight: bold;">${item.quantity}</td>
       <td style="padding: 6px 4px;">
-        <div style="font-size: 16px; font-weight: bold;">${item.name}</div>
+        <div style="font-size: 16px; font-weight: bold;">
+          ${isAddon ? '<span style="display:inline-block;border:1px solid #000;padding:0 4px;font-size:10px;margin-right:4px;vertical-align:middle;">ADD</span>' : ""}${item.name}
+        </div>
         ${item.variant ? `<div style="font-size: 12px; color: #666;">(${item.variant})</div>` : ""}
-        ${item.modifiers && item.modifiers.length > 0 ? `<div style="font-size: 12px; color: #666;">+ ${item.modifiers.map(m => m.name).join(", ")}</div>` : ""}
+        ${item.modifiers && item.modifiers.length > 0 ? `<div style="font-size: 12px; color: #666;">+ ${item.modifiers.map((m: any) => m.name).join(", ")}</div>` : ""}
         ${item.notes ? `<div style="font-size: 12px; color: #c00; font-weight: bold;">⚠ ${item.notes}</div>` : ""}
       </td>
     </tr>
+  `;
+
+  const mainItemsHtml = order.items.map((item) => renderItemRow(item, false)).join("");
+  const suppItemsHtml = (order.supplementaryBills || []).map((bill, idx) => `
+    <tr><td colspan="2" style="padding: 10px 0 4px; border-top: 2px solid #000; font-weight: bold; font-size: 14px;">** ADD-ON #${idx + 1} **</td></tr>
+    ${bill.items.map((item: any) => renderItemRow(item, true)).join("")}
   `).join("");
+  const itemsHtml = mainItemsHtml + suppItemsHtml;
+
+  const suppItemCount = (order.supplementaryBills || []).reduce(
+    (sum, bill) => sum + bill.items.reduce((s: number, i: any) => s + i.quantity, 0),
+    0
+  );
+  const totalItemCount = order.items.reduce((s, i) => s + i.quantity, 0) + suppItemCount;
 
   return `
     <!DOCTYPE html>
@@ -303,7 +366,7 @@ export function generateKOTHTML(order: Order, settings: CafeSettings): string {
         </div>
       ` : ""}
       <div style="text-align: center; margin-top: 12px; border-top: 1px dashed #999; padding-top: 8px;">
-        ${order.items.reduce((s, i) => s + i.quantity, 0)} items total
+        ${totalItemCount} items total
       </div>
     </body>
     </html>
@@ -616,7 +679,9 @@ export function generateReceiptHTML(order: Order, settings: CafeSettings): strin
     hour: "2-digit", minute: "2-digit"
   });
 
-  const subtotal = order.subtotal || order.total || 0;
+  const baseSubtotal = order.subtotal || order.total || 0;
+  const suppTotal = (order.supplementaryBills || []).reduce((s, b) => s + (b.total || 0), 0);
+  const subtotal = baseSubtotal + suppTotal;
   const discountAmount = order.discount?.amount || 0;
   let taxAmount = order.taxAmount;
   if (taxAmount === undefined || taxAmount === null) {
@@ -630,20 +695,32 @@ export function generateReceiptHTML(order: Order, settings: CafeSettings): strin
     ? order.grandTotal
     : (subtotal - discountAmount + (taxAmount || 0));
 
-  const itemsHtml = order.items.map(item => {
-    const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+  // Balance printed breakdown when supp bills contribute to grandTotal but not taxAmount
+  if (suppTotal > 0 && order.grandTotal !== undefined && order.grandTotal !== null) {
+    taxAmount = order.grandTotal - (subtotal - discountAmount);
+    if (taxAmount < 0) taxAmount = 0;
+  }
+
+  const renderReceiptRow = (item: any) => {
+    const modsTotal = item.modifiers?.reduce((s: number, m: any) => s + m.price, 0) || 0;
     const amt = ((item.price + modsTotal) * item.quantity).toFixed(0);
     return `
       <tr>
         <td style="padding: 3px 0;">
           ${item.quantity}x ${item.name}
           ${item.variant ? `<br><span style="font-size: 11px; color: #666; margin-left: 16px;">(${item.variant})</span>` : ""}
-          ${item.modifiers && item.modifiers.length > 0 ? `<br><span style="font-size: 11px; color: #666; margin-left: 16px;">+ ${item.modifiers.map(m => m.name).join(", ")}</span>` : ""}
+          ${item.modifiers && item.modifiers.length > 0 ? `<br><span style="font-size: 11px; color: #666; margin-left: 16px;">+ ${item.modifiers.map((m: any) => m.name).join(", ")}</span>` : ""}
         </td>
         <td style="padding: 3px 0; text-align: right;">₹${amt}</td>
       </tr>
     `;
-  }).join("");
+  };
+  const mainReceiptRows = order.items.map(renderReceiptRow).join("");
+  const suppReceiptRows = (order.supplementaryBills || []).map((bill, idx) => `
+    <tr><td colspan="2" style="padding: 6px 0 2px; border-top: 1px dashed #999; font-size: 11px; font-weight: bold;">+ Add-on #${idx + 1}${bill.payment ? "" : " (Unpaid)"}</td></tr>
+    ${bill.items.map(renderReceiptRow).join("")}
+  `).join("");
+  const itemsHtml = mainReceiptRows + suppReceiptRows;
 
   return `
     <!DOCTYPE html>

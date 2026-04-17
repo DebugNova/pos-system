@@ -165,6 +165,52 @@ export async function updateOrderInDb(orderId: string, changes: Record<string, a
   if (error) throw error;
 }
 
+/**
+ * Replace all order_items for a given order with a fresh set.
+ * Used by the pre-payment edit flow so edited items actually reach Supabase
+ * (previously items were only updated in local Zustand state).
+ */
+export async function replaceOrderItems(orderId: string, newItems: OrderItem[]): Promise<void> {
+  const supabase = getSupabase();
+  const { error: delError } = await supabase
+    .from("order_items")
+    .delete()
+    .eq("order_id", orderId);
+  if (delError) throw delError;
+
+  if (newItems.length > 0) {
+    const dbItems = newItems.map((item) => ({
+      ...mapLocalItemToDb(item),
+      order_id: orderId,
+    }));
+    const { error: insError } = await supabase
+      .from("order_items")
+      .upsert(dbItems, { onConflict: "id" });
+    if (insError) throw insError;
+  }
+}
+
+/**
+ * Persist payment info on a supplementary bill row. Needed because
+ * `supplementaryBills` is nested JSON from the frontend's perspective but
+ * lives in its own table — `mapLocalOrderToDb` intentionally ignores it.
+ */
+export async function updateSupplementaryBillPayment(
+  billId: string,
+  payment: any,
+  paidAt: Date | string
+): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("supplementary_bills")
+    .update({
+      payment,
+      paid_at: paidAt instanceof Date ? paidAt.toISOString() : paidAt,
+    })
+    .eq("id", billId);
+  if (error) throw error;
+}
+
 export async function deleteOrderFromDb(orderId: string): Promise<void> {
   const supabase = getSupabase();
   const { error } = await supabase

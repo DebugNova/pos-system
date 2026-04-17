@@ -71,7 +71,9 @@ export function Billing() {
     confirmPaymentForServedOrder,
     cancelAwaitingPaymentOrder,
     pendingBillingOrderId,
-    setPendingBillingOrderId
+    setPendingBillingOrderId,
+    enqueueMutation,
+    supabaseEnabled,
   } = usePOSStore();
   const permissions = getPermissions(currentUser?.role || "Chef");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -211,11 +213,55 @@ export function Billing() {
 
       confirmPaymentAndSendToKitchen(selectedOrder, payment);
     } else {
-      const updatedBills = order!.supplementaryBills!.map(b => b.payment ? b : { ...b, payment, paidAt: new Date() });
+      const paidAtDate = new Date();
+      const newlyPaidBillIds: string[] = [];
+      const updatedBills = order!.supplementaryBills!.map(b => {
+        if (b.payment) return b;
+        newlyPaidBillIds.push(b.id);
+        return { ...b, payment, paidAt: paidAtDate };
+      });
+      const newGrandTotal = (order!.grandTotal || order!.total) + grandTotal;
       updateOrder(selectedOrder, {
         supplementaryBills: updatedBills,
-        grandTotal: (order!.grandTotal || order!.total) + grandTotal
+        grandTotal: newGrandTotal,
+      }, { skipDirectWrite: true });
+
+      // Bug #2 fix: persist the payment info on each supplementary_bill row
+      // (mapLocalOrderToDb intentionally ignores supplementaryBills, so without
+      // these explicit writes the bill would stay unpaid in Supabase and
+      // reappear in the billing queue on reload — double-billing risk).
+      //
+      // Sequence writes: supplementary_bills payment rows FIRST, then the
+      // orders.grand_total update. This ensures a second terminal receives
+      // the "bill paid" realtime event before the "grand_total increased"
+      // event, so it can never show an unpaid-bill flicker.
+      const paidAtIso = paidAtDate.toISOString();
+      const suppMutIds = newlyPaidBillIds.map(billId =>
+        enqueueMutation("supplementary-bill.payment", { billId, payment, paidAt: paidAtIso })
+      );
+      const orderMutId = enqueueMutation("order.update", {
+        id: selectedOrder,
+        changes: { grandTotal: newGrandTotal },
       });
+
+      if (supabaseEnabled) {
+        (async () => {
+          try {
+            const { updateSupplementaryBillPayment, updateOrderInDb } = await import("@/lib/supabase-queries");
+            await Promise.all(
+              newlyPaidBillIds.map((billId, idx) =>
+                updateSupplementaryBillPayment(billId, payment, paidAtDate)
+                  .then(() => usePOSStore.getState().markMutationSynced(suppMutIds[idx]))
+              )
+            );
+            await updateOrderInDb(selectedOrder, { grandTotal: newGrandTotal });
+            usePOSStore.getState().markMutationSynced(orderMutId);
+          } catch (err: any) {
+            console.warn("[billing] Direct write failed for supp bill payment, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
+          }
+        })();
+      }
+
       addAuditEntry({
         action: "payment_recorded",
         userId: currentUser?.name || "System",
