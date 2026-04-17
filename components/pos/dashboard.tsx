@@ -62,7 +62,9 @@ export function Dashboard() {
     (o) => o.status === "new" || o.status === "preparing" || o.status === "ready"
   ).length;
   const kitchenQueue = orders.filter((o) => o.status === "preparing").length;
-  const awaitingPaymentOrders = orders.filter((o) => o.status === "awaiting-payment").length;
+  const awaitingPaymentOrders = orders.filter(
+    (o) => o.status === "awaiting-payment" || o.status === "served-unpaid" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
+  ).length;
 
   const recentOrders = orders.slice(0, 5);
 
