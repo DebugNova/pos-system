@@ -640,7 +640,7 @@ export function NewOrder() {
             <div className={cn("mb-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 shadow-sm", editMode === "supplementary" ? "bg-warning/10" : "bg-primary/10")}>
               {editMode === "supplementary" ? <Lock className="h-3.5 w-3.5 text-warning" /> : <Pencil className="h-3.5 w-3.5 text-primary" />}
               <span className={cn("text-xs font-semibold", editMode === "supplementary" ? "text-warning" : "text-primary")}>
-                {editMode === "supplementary" ? `Supplementary Bill: ${editingOrderId?.toUpperCase()}` : `Editing ${editingOrderId?.toUpperCase()}`}
+                {editMode === "supplementary" ? `Add to Bill: ${editingOrderId?.toUpperCase()}` : `Editing ${editingOrderId?.toUpperCase()}`}
               </span>
               <Button
                 variant="ghost"
@@ -655,7 +655,7 @@ export function NewOrder() {
           {editMode === "supplementary" && (
             <div className="mb-1 rounded bg-warning/5 px-2 py-1 border border-warning/20">
               <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">
-                Full order shown. Paid items are locked. Unpaid supp items are editable. New items create a supplementary bill.
+                Order is in kitchen. Edit freely — removing or reducing paid items auto-records a refund; adding items goes to the balance due.
               </p>
             </div>
           )}
@@ -749,20 +749,22 @@ export function NewOrder() {
                     const isUnpaidSupp = editMode === "supplementary" && item.origin === "supp" && !item.supplementaryBillPaid && !!item.originalItemId;
                     const isPaidSupp = editMode === "supplementary" && item.origin === "supp" && item.supplementaryBillPaid;
 
-                    // Determine section header
+                    // Determine section header.
+                    // UX simplification: collapse "Supp Bill #N — Paid/Unpaid" into
+                    // just two sections — "Paid Items" and "Pending Payment" — so
+                    // the cafe sees ONE continuous bill, not a stack of supp bills.
                     let sectionHeader: React.ReactNode = null;
                     if (isSupp) {
-                      if ((item.origin === "main" || (!item.origin && item.originalItemId)) && !renderedHeaders.has("main")) {
-                        renderedHeaders.add("main");
-                        sectionHeader = <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider pb-1 pt-1 flex items-center gap-1.5"><Lock className="h-3 w-3" />Original Order</div>;
-                      } else if (item.origin === "supp" && item.supplementaryBillId && !renderedHeaders.has(item.supplementaryBillId)) {
-                        renderedHeaders.add(item.supplementaryBillId);
-                        const billIdx = suppBillIds.indexOf(item.supplementaryBillId) + 1;
-                        const paidLabel = item.supplementaryBillPaid ? "Paid ✓" : "Unpaid";
-                        sectionHeader = <div className={cn("text-[10px] sm:text-xs font-bold uppercase tracking-wider pb-1 pt-2 flex items-center gap-1.5", item.supplementaryBillPaid ? "text-muted-foreground" : "text-warning")}>Supp Bill #{billIdx} — {paidLabel}</div>;
-                      } else if (!item.originalItemId && !renderedHeaders.has("new")) {
-                        renderedHeaders.add("new");
-                        sectionHeader = <div className="text-[10px] sm:text-xs font-bold text-warning uppercase tracking-wider pb-1 pt-2 flex items-center gap-1.5">+ New Items</div>;
+                      const isPendingSection = (!item.origin && !item.originalItemId) // brand new
+                        || (item.origin === "supp" && !item.supplementaryBillPaid);
+                      const isPaidSection = (item.origin === "main" || (!item.origin && item.originalItemId))
+                        || (item.origin === "supp" && item.supplementaryBillPaid);
+                      if (isPaidSection && !renderedHeaders.has("paid")) {
+                        renderedHeaders.add("paid");
+                        sectionHeader = <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider pb-1 pt-1 flex items-center gap-1.5">Paid Items (editable)</div>;
+                      } else if (isPendingSection && !renderedHeaders.has("pending")) {
+                        renderedHeaders.add("pending");
+                        sectionHeader = <div className="text-[10px] sm:text-xs font-bold text-warning uppercase tracking-wider pb-1 pt-2 flex items-center gap-1.5">+ Pending Payment</div>;
                       }
                     }
 

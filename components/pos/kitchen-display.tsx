@@ -20,10 +20,24 @@ import {
   ArrowUpDown,
   Timer,
   BellRing,
+  XCircle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Pencil } from "lucide-react";
 import type { Order } from "@/lib/data";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 const orderTypeIcons = {
   "dine-in": UtensilsCrossed,
@@ -81,7 +95,7 @@ function sortOrders(orders: Order[], sort: SortType): Order[] {
 
 
 export function KitchenDisplay() {
-  const { orders, updateOrderStatus, startEditOrder, markOrderServed } = usePOSStore();
+  const { orders, updateOrderStatus, startEditOrder, markOrderServed, cancelPlacedOrder } = usePOSStore();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortType>("oldest");
@@ -178,6 +192,15 @@ export function KitchenDisplay() {
 
   const handleComplete = (orderId: string) => {
     markOrderServed(orderId);
+  };
+
+  const handleCancel = (orderId: string, reason: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    cancelPlacedOrder(orderId, reason || undefined);
+    const refundMsg = order?.payment && !order.payLater
+      ? ` Full refund of ₹${order.grandTotal ?? order.total} recorded.`
+      : "";
+    toast.success(`Order ${orderId.toUpperCase()} cancelled.${refundMsg}`);
   };
 
   const filterTabs: { id: FilterType; label: string; icon: React.ElementType }[] = [
@@ -323,6 +346,7 @@ export function KitchenDisplay() {
                 column="new"
                 onAction={() => handleAccept(order.id)}
                 onEdit={() => startEditOrder(order.id)}
+                onCancel={(reason) => handleCancel(order.id, reason)}
               />
             ))}
             {newOrders.length === 0 && (
@@ -353,6 +377,7 @@ export function KitchenDisplay() {
                 column="preparing"
                 onAction={() => handleReady(order.id)}
                 onEdit={() => startEditOrder(order.id)}
+                onCancel={(reason) => handleCancel(order.id, reason)}
               />
             ))}
             {preparingOrders.length === 0 && (
@@ -383,6 +408,7 @@ export function KitchenDisplay() {
                 column="ready"
                 onAction={() => handleComplete(order.id)}
                 onEdit={() => startEditOrder(order.id)}
+                onCancel={(reason) => handleCancel(order.id, reason)}
               />
             ))}
             {readyOrders.length === 0 && (
@@ -407,10 +433,15 @@ interface KitchenOrderCardProps {
   column: "new" | "preparing" | "ready";
   onAction: () => void;
   onEdit: () => void;
+  onCancel: (reason: string) => void;
 }
 
-function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardProps) {
+function KitchenOrderCard({ order, column, onAction, onEdit, onCancel }: KitchenOrderCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const isPaid = !!order.payment && !order.payLater;
+  const refundableAmount = order.grandTotal ?? order.total;
   const TypeIcon = orderTypeIcons[order.type];
   const elapsed = getElapsedMinutes(order.createdAt);
   const urgency = getUrgency(elapsed);
@@ -594,12 +625,57 @@ function KitchenOrderCard({ order, column, onAction, onEdit }: KitchenOrderCardP
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 flex-1 sm:flex-none h-9 px-3 min-w-0"
+            className="gap-1.5 h-9 px-2.5 min-w-0"
             onClick={onEdit}
+            title="Edit order"
           >
             <Pencil className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">Edit</span>
+            <span className="hidden sm:inline truncate">Edit</span>
           </Button>
+          <AlertDialog open={showCancel} onOpenChange={setShowCancel}>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 h-9 px-2.5 min-w-0 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                title="Cancel order"
+              >
+                <XCircle className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline truncate">Cancel</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="w-[95vw] max-w-md">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancel order {order.id.toUpperCase()}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {isPaid
+                    ? `This order was paid. Cancelling will record a full refund of ₹${refundableAmount.toLocaleString("en-IN")} and release the table.`
+                    : `This order will be cancelled and the table released. No payment has been taken.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-2 pt-2">
+                <Textarea
+                  placeholder="Reason (e.g., wrong order, customer left...)"
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="resize-none bg-secondary border-none"
+                />
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setCancelReason("")}>Keep Order</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    onCancel(cancelReason.trim());
+                    setCancelReason("");
+                    setShowCancel(false);
+                  }}
+                >
+                  Confirm Cancel
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             size="sm"
             variant={action.variant}

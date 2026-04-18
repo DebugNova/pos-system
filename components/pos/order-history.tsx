@@ -75,7 +75,9 @@ const orderTypeIcons = {
 };
 
 export function OrderHistory() {
-  const { orders, updateOrder, updateOrderStatus, updateTableStatus, currentUser, settings } = usePOSStore();
+  const { orders, updateOrder, updateOrderStatus, updateTableStatus, currentUser, settings, cancelPlacedOrder } = usePOSStore();
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -448,7 +450,7 @@ export function OrderHistory() {
                     </div>
                     {order.supplementaryBills.map((bill, i) => (
                       <div key={bill.id} className="flex justify-between text-muted-foreground mb-1">
-                        <span>Supplementary #{i + 1}</span>
+                        <span>Added Items #{i + 1}</span>
                         <span>{bill.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
                       </div>
                     ))}
@@ -545,6 +547,12 @@ export function OrderHistory() {
                     <Printer className="h-4 w-4" />
                     Print
                   </Button>
+                  {(order.status === "new" || order.status === "preparing" || order.status === "ready") && (
+                    <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowCancelDialog(true)}>
+                      <XCircle className="h-4 w-4" />
+                      Cancel Order
+                    </Button>
+                  )}
                   {!order.refund && order.status === "completed" && (
                     <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowRefundDialog(true)}>
                       <RotateCcw className="h-4 w-4" />
@@ -597,6 +605,50 @@ export function OrderHistory() {
                </AlertDialogFooter>
              </div>
              )}
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Cancel Placed Order Dialog */}
+        <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Order</AlertDialogTitle>
+              <AlertDialogDescription>
+                {order?.payment && !order?.payLater
+                  ? `This order was paid. Cancelling records a full refund of ${((order?.grandTotal ?? order?.total) || 0).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })} and releases the table.`
+                  : "The order will be cancelled and the table released. No refund is needed."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {order && (
+              <div className="space-y-4 pt-4">
+                <div>
+                  <Label className="text-sm">Reason (Optional)</Label>
+                  <Input
+                    placeholder="e.g., Wrong order, customer left..."
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    className="mt-1 bg-secondary border-none"
+                  />
+                </div>
+                <AlertDialogFooter className="pt-2">
+                  <AlertDialogCancel onClick={() => { setShowCancelDialog(false); setCancelReason(""); }} className="flex-1 mt-0">
+                    Keep Order
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      cancelPlacedOrder(order.id, cancelReason.trim() || undefined);
+                      toast.success(`Order ${order.id.toUpperCase()} cancelled`);
+                      setShowCancelDialog(false);
+                      setCancelReason("");
+                      setSelectedOrder(null);
+                    }}
+                    className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Confirm Cancel
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </div>
+            )}
           </AlertDialogContent>
         </AlertDialog>
 

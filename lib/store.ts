@@ -147,6 +147,7 @@ interface POSState {
   sendToKitchenPayLater: (orderId: string) => void;
   confirmPaymentForServedOrder: (orderId: string, payment: import("./data").PaymentRecord) => void;
   cancelAwaitingPaymentOrder: (orderId: string, reason?: string) => void;
+  cancelPlacedOrder: (orderId: string, reason?: string) => void;
   markOrderServed: (orderId: string) => void;
 
   // Tables
@@ -535,9 +536,10 @@ export const usePOSStore = create<POSState>()(
 
         if (order.status === "new" || order.status === "preparing" || order.status === "ready") {
           editMode = "supplementary";
-          // Lock main items (already paid) + paid supp bill items
+          // Only PAID supplementary bill items stay locked (they're sealed transactions
+          // with their own payment record). Main paid items are editable — any net
+          // reduction produces a refund, any net increase is added to the balance-due bill.
           lockedItemIds = [
-            ...order.items.map((i) => i.id),
             ...(order.supplementaryBills || [])
               .filter((b) => !!b.payment)
               .flatMap((b) => b.items.map((i) => i.id)),
@@ -686,8 +688,12 @@ export const usePOSStore = create<POSState>()(
             }
           }
 
-          // 4. Build new supp bill for brand-new items
+          // 4. Build new supp bill for brand-new items.
+          //    UX unification: if there's already an UNPAID supp bill, APPEND the
+          //    new items to it instead of creating a 2nd unpaid bill. This keeps
+          //    the order at most ONE "balance due" surface in billing + edit views.
           let newBill: { id: string; items: OrderItem[]; total: number; createdAt: Date } | null = null;
+          let mergedBillUpdate: { billId: string; items: OrderItem[]; total: number } | null = null;
           if (brandNewItems.length > 0) {
             const newItems = brandNewItems.map((item, index) => ({
               id: `oi-${Date.now()}-${index}`,
@@ -699,17 +705,123 @@ export const usePOSStore = create<POSState>()(
               notes: item.notes,
               modifiers: item.modifiers,
             }));
-            newBill = {
-              id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `bill-${Date.now()}`,
-              items: newItems,
-              total: calcTotal(newItems),
-              createdAt: new Date(),
-            };
             for (const ni of newItems) auditChanges.added.push(ni.name);
+
+            // Find an existing unpaid bill that we're KEEPING (not in billDeletes)
+            // and that we haven't already queued for full-replacement. Priority:
+            // (1) a bill in billUpdates (merge with its new items), else
+            // (2) any other unpaid bill that survived unchanged.
+            const keptUpdate = billUpdates.find((u) => !billDeletes.includes(u.billId));
+            const keptUnchangedBill = existingBills.find(
+              (b) => !b.payment && !billDeletes.includes(b.id) && !billUpdates.some((u) => u.billId === b.id)
+            );
+
+            if (keptUpdate) {
+              const combined = [...keptUpdate.items, ...newItems];
+              keptUpdate.items = combined;
+              keptUpdate.total = calcTotal(combined);
+            } else if (keptUnchangedBill) {
+              const combined = [...keptUnchangedBill.items, ...newItems];
+              mergedBillUpdate = {
+                billId: keptUnchangedBill.id,
+                items: combined,
+                total: calcTotal(combined),
+              };
+              billUpdates.push(mergedBillUpdate);
+            } else {
+              newBill = {
+                id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `bill-${Date.now()}`,
+                items: newItems,
+                total: calcTotal(newItems),
+                createdAt: new Date(),
+              };
+            }
+          }
+
+          // 4b. MAIN-ITEM DIFF — paid main items are now editable.
+          //     Net reduction → accumulate refund on order.refund.
+          //     Net increase → inject "Order Adjustment" into the balance-due bill.
+          //     Order.items + order.total are replaced to mirror the cart.
+          const mainCartItems = cart.filter((c) => c.origin === "main");
+          const newMainItems: OrderItem[] = mainCartItems.map((ci, idx) => ({
+            id: ci.originalItemId || `oi-${Date.now()}-main-${idx}`,
+            menuItemId: ci.menuItemId,
+            name: ci.name,
+            price: ci.price,
+            quantity: ci.quantity,
+            variant: ci.variant,
+            notes: ci.notes,
+            modifiers: ci.modifiers,
+          }));
+          const oldMainItems = oldOrder.items;
+          const oldMainTotal = calcTotal(oldMainItems);
+          const newMainTotal = calcTotal(newMainItems);
+          let mainChanged = oldMainItems.length !== newMainItems.length;
+          if (!mainChanged) {
+            for (const orig of oldMainItems) {
+              const now = newMainItems.find((n) => n.id === orig.id);
+              if (!now || itemsDiffer(now, orig)) { mainChanged = true; break; }
+            }
+          }
+
+          let updatedMainItems: OrderItem[] | null = null;
+          let updatedOrderTotal: number | null = null;
+          let accumulatedRefund: any = null;
+          let refundDelta = 0;
+          let upchargeAmount = 0;
+
+          if (mainChanged) {
+            updatedMainItems = newMainItems;
+            updatedOrderTotal = newMainTotal;
+
+            for (const orig of oldMainItems) {
+              const now = newMainItems.find((n) => n.id === orig.id);
+              if (!now) auditChanges.removed.push(orig.name);
+              else if (itemsDiffer(now, orig)) auditChanges.modified.push(now.name);
+            }
+
+            const delta = oldMainTotal - newMainTotal;
+            if (delta > 0.001) {
+              refundDelta = delta;
+              const existing = oldOrder.refund;
+              accumulatedRefund = {
+                amount: (existing?.amount || 0) + delta,
+                reason: existing?.reason
+                  ? `${existing.reason}; Item edit refund`
+                  : "Order items edited — refund for reduction",
+                refundedAt: new Date(),
+                refundedBy: get().currentUser?.name || "System",
+              };
+            } else if (delta < -0.001) {
+              upchargeAmount = -delta;
+              const adjustmentItem: OrderItem = {
+                id: `oi-${Date.now()}-adj`,
+                menuItemId: "__adjustment__",
+                name: "Order Adjustment",
+                price: Math.round(upchargeAmount * 100) / 100,
+                quantity: 1,
+              };
+              const targetUpdate = billUpdates.find((u) => !billDeletes.includes(u.billId));
+              if (targetUpdate) {
+                targetUpdate.items = [...targetUpdate.items, adjustmentItem];
+                targetUpdate.total = calcTotal(targetUpdate.items);
+              } else if (newBill) {
+                newBill.items = [...newBill.items, adjustmentItem];
+                newBill.total = calcTotal(newBill.items);
+              } else {
+                newBill = {
+                  id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `bill-${Date.now()}`,
+                  items: [adjustmentItem],
+                  total: adjustmentItem.price,
+                  createdAt: new Date(),
+                };
+              }
+              auditChanges.added.push(`Order Adjustment (+₹${Math.round(upchargeAmount)})`);
+            }
           }
 
           // 5. Bail if nothing changed
-          if (!newBill && billUpdates.length === 0 && billDeletes.length === 0) {
+          if (!newBill && billUpdates.length === 0 && billDeletes.length === 0 && !mainChanged) {
             set({ cart: [], editingOrderId: null, selectedTable: null, customerName: "", customerPhone: "", orderNotes: "", editMode: "none", lockedItemIds: [] });
             return;
           }
@@ -730,7 +842,15 @@ export const usePOSStore = create<POSState>()(
 
             return {
               orders: state.orders.map((o) =>
-                o.id === editingOrderId ? { ...o, supplementaryBills: updatedBills } : o
+                o.id === editingOrderId
+                  ? {
+                      ...o,
+                      supplementaryBills: updatedBills,
+                      ...(updatedMainItems ? { items: updatedMainItems } : {}),
+                      ...(updatedOrderTotal != null ? { total: updatedOrderTotal } : {}),
+                      ...(accumulatedRefund ? { refund: accumulatedRefund } : {}),
+                    }
+                  : o
               ),
               cart: [],
               editingOrderId: null,
@@ -792,6 +912,52 @@ export const usePOSStore = create<POSState>()(
                 insertSupplementaryBill(editingOrderId, newBill!)
                   .then(() => get().markMutationSynced(suppMutId))
                   .catch((err) => console.warn("[store] new supp bill create failed:", err?.message || err?.code));
+              });
+            }
+          }
+
+          // Main-item edit: persist new items + updated total (+ refund if any)
+          if (updatedMainItems) {
+            const orderChanges: Record<string, any> = { total: updatedOrderTotal };
+            if (accumulatedRefund) {
+              orderChanges.refund = {
+                ...accumulatedRefund,
+                refundedAt: accumulatedRefund.refundedAt instanceof Date
+                  ? accumulatedRefund.refundedAt.toISOString()
+                  : accumulatedRefund.refundedAt,
+              };
+            }
+            const mainMutId = get().enqueueMutation("order.full-edit", {
+              id: editingOrderId,
+              changes: orderChanges,
+              items: updatedMainItems,
+            });
+            if (get().supabaseEnabled) {
+              import("./supabase-queries").then(({ updateOrderInDb, replaceOrderItems }) => {
+                Promise.all([
+                  updateOrderInDb(editingOrderId, orderChanges),
+                  replaceOrderItems(editingOrderId, updatedMainItems!),
+                ])
+                  .then(() => get().markMutationSynced(mainMutId))
+                  .catch((err) => console.warn("[store] main-items edit failed:", err?.message || err?.code));
+              });
+            }
+
+            if (refundDelta > 0) {
+              get().addAuditEntry({
+                action: "refund",
+                userId: get().currentUser?.name || "System",
+                details: `Order ${editingOrderId.toUpperCase()} — items reduced, ₹${Math.round(refundDelta)} refund recorded`,
+                orderId: editingOrderId,
+                metadata: { amount: refundDelta, reason: "main_items_edit_reduction" },
+              });
+            } else if (upchargeAmount > 0) {
+              get().addAuditEntry({
+                action: "order_edited",
+                userId: get().currentUser?.name || "System",
+                details: `Order ${editingOrderId.toUpperCase()} — items increased, ₹${Math.round(upchargeAmount)} added to balance due`,
+                orderId: editingOrderId,
+                metadata: { amount: upchargeAmount, reason: "main_items_edit_upcharge" },
               });
             }
           }
@@ -1366,13 +1532,113 @@ export const usePOSStore = create<POSState>()(
           get().updateTableStatus(order.tableId, "available");
         }
 
-        get().addAuditEntry({ 
-          action: "void", 
-          userId: userName, 
-          details: reason ? `Order ${orderId.toUpperCase()} voided: ${reason}` : `Order ${orderId.toUpperCase()} voided`, 
+        get().addAuditEntry({
+          action: "void",
+          userId: userName,
+          details: reason ? `Order ${orderId.toUpperCase()} voided: ${reason}` : `Order ${orderId.toUpperCase()} voided`,
           orderId,
           metadata: { reason }
         });
+      },
+
+      cancelPlacedOrder: (orderId, reason) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order) return;
+        // Valid for any post-payment pre-service status (kitchen stages).
+        if (order.status !== "new" && order.status !== "preparing" && order.status !== "ready") return;
+
+        const userName = get().currentUser?.name || "System";
+        const nowIso = new Date().toISOString();
+
+        // Compute refund: full grand total (or total) for paid orders.
+        // Pay-later orders have no payment yet, so no refund entry.
+        const isPaid = !!order.payment && !order.payLater;
+        const paidTotal = order.grandTotal ?? order.total ?? 0;
+        const suppPaidTotal = (order.supplementaryBills || [])
+          .filter((b) => !!b.payment)
+          .reduce((s, b) => s + (b.total || 0), 0);
+        const refundAmount = isPaid ? paidTotal + suppPaidTotal : 0;
+
+        const refundEntry = refundAmount > 0
+          ? {
+              amount: refundAmount,
+              reason,
+              refundedAt: new Date(),
+              refundedBy: userName,
+            }
+          : undefined;
+
+        // Any unpaid supp bills on this order must be removed so they don't
+        // keep appearing as "Balance Due" in the billing list after cancel.
+        const unpaidSuppBillIds = (order.supplementaryBills || [])
+          .filter((b) => !b.payment)
+          .map((b) => b.id);
+
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  status: "cancelled",
+                  supplementaryBills: (o.supplementaryBills || []).filter((b) => !unpaidSuppBillIds.includes(b.id)),
+                  ...(refundEntry ? { refund: refundEntry } : {}),
+                }
+              : o
+          ),
+        }));
+
+        // Sync unpaid supp bill deletions to Supabase.
+        for (const billId of unpaidSuppBillIds) {
+          const bMutId = get().enqueueMutation("supplementary-bill.delete", { billId });
+          if (get().supabaseEnabled) {
+            import("./supabase-queries").then(({ deleteSupplementaryBill: delBill }) => {
+              delBill(billId)
+                .then(() => get().markMutationSynced(bMutId))
+                .catch((err) => console.warn("[store] supp bill delete on cancel failed:", err?.message || err?.code));
+            });
+          }
+        }
+
+        const changes: Record<string, any> = { status: "cancelled" };
+        if (refundEntry) {
+          changes.refund = {
+            ...refundEntry,
+            refundedAt: refundEntry.refundedAt.toISOString(),
+          };
+        }
+        const mutId = get().enqueueMutation("order.update", { id: orderId, changes });
+
+        if (get().supabaseEnabled) {
+          import("./supabase-queries").then(({ updateOrderInDb }) => {
+            updateOrderInDb(orderId, changes).then(() => {
+              get().markMutationSynced(mutId);
+            }).catch(err => {
+              console.warn("[store] Direct write failed for cancelPlacedOrder, queued mutation will retry:", err?.message || err?.code || JSON.stringify(err));
+            });
+          });
+        }
+
+        if (order.tableId) {
+          get().updateTableStatus(order.tableId, "available");
+        }
+
+        if (refundEntry) {
+          get().addAuditEntry({
+            action: "refund",
+            userId: userName,
+            details: `Order ${orderId.toUpperCase()} cancelled after kitchen — refunded ₹${refundAmount}${reason ? `: ${reason}` : ""}`,
+            orderId,
+            metadata: { reason, amount: refundAmount, fromStatus: order.status },
+          });
+        } else {
+          get().addAuditEntry({
+            action: "void",
+            userId: userName,
+            details: `Order ${orderId.toUpperCase()} cancelled from ${order.status}${reason ? `: ${reason}` : ""}`,
+            orderId,
+            metadata: { reason, fromStatus: order.status, payLater: !!order.payLater },
+          });
+        }
       },
 
       markOrderServed: (orderId) => {

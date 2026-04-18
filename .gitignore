@@ -14,3 +14,10 @@ next.user-config.*
 node_modules
 .next/
 .DS_Store
+scratch/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+dist/
+build/

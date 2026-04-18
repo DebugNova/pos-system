@@ -45,6 +45,7 @@ import {
   Pencil,
   Clock,
   UtensilsCrossed,
+  Zap,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -88,9 +89,17 @@ export function Billing() {
   const [voidReason, setVoidReason] = useState("");
   const [showSplitDialog, setShowSplitDialog] = useState(false);
 
-  const pendingPaymentOrders = orders.filter(
-    (o) => o.status === "awaiting-payment" || o.status === "served-unpaid" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
-  );
+  const pendingPaymentOrders = orders.filter((o) => {
+    // Cancelled / completed orders should never appear in the pending bills list,
+    // even if they still have leftover unpaid supp bill rows. This prevents
+    // staff from being forced to "pay" a cancelled order.
+    if (o.status === "cancelled" || o.status === "completed") return false;
+    return (
+      o.status === "awaiting-payment" ||
+      o.status === "served-unpaid" ||
+      (o.supplementaryBills && o.supplementaryBills.some((b) => !b.payment))
+    );
+  });
 
   const order = selectedOrder ? orders.find((o) => o.id === selectedOrder) : null;
 
@@ -103,6 +112,29 @@ export function Billing() {
       setPendingBillingOrderId(null);
     }
   }, [pendingBillingOrderId, orders, setPendingBillingOrderId]);
+
+  // If the selected order is cancelled/completed (e.g. cancelled from another
+  // device via Realtime, or cancelled from the kitchen screen) — drop the
+  // selection so the payment panel doesn't stay stuck on a phantom bill.
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const o = orders.find((x) => x.id === selectedOrder);
+    if (!o || o.status === "cancelled" || o.status === "completed") {
+      setSelectedOrder(null);
+      setPaymentMethod(null);
+      setPaymentComplete(false);
+    }
+  }, [selectedOrder, orders]);
+
+  // Auto-select the first enabled payment method when an order is opened.
+  // Cafe staff want one-tap flow; picking "cash" silently 90% of the time
+  // removes an unnecessary step.
+  useEffect(() => {
+    if (!selectedOrder || paymentMethod || paymentComplete) return;
+    if (settings.cashEnabled) setPaymentMethod("cash");
+    else if (settings.upiEnabled) setPaymentMethod("upi");
+    else if (settings.cardEnabled) setPaymentMethod("card");
+  }, [selectedOrder, paymentMethod, paymentComplete, settings.cashEnabled, settings.upiEnabled, settings.cardEnabled]);
 
   const isServedUnpaid = order?.status === "served-unpaid";
   const isSupplementary = order?.status && order.status !== "awaiting-payment" && order.status !== "served-unpaid";
@@ -308,6 +340,102 @@ export function Billing() {
     }, 100);
   };
 
+  const handleQuickCash = () => {
+    if (!selectedOrder || !settings.cashEnabled) return;
+    const exact = Math.ceil(grandTotal);
+    setPaymentMethod("cash");
+    setCashReceived(String(exact));
+    // Defer the actual payment commit so the cashReceived state is visible in
+    // the receipt calculations if they render.
+    setTimeout(() => {
+      const payment: PaymentRecord = {
+        method: "cash",
+        amount: grandTotal,
+        transactionId: `txn-${Date.now()}`,
+        cashReceived: exact,
+        change: exact - grandTotal,
+      };
+      if (isServedUnpaid) {
+        updateOrder(selectedOrder, {
+          subtotal,
+          discount: discountAmount > 0 ? { type: discountType, amount: discountAmount, value: parseFloat(discount) } : undefined,
+          taxRate: settings.gstEnabled ? settings.taxRate : 0,
+          taxAmount: tax,
+          grandTotal,
+        }, { skipDirectWrite: true });
+        confirmPaymentForServedOrder(selectedOrder, payment);
+      } else if (!isSupplementary) {
+        updateOrder(selectedOrder, {
+          subtotal,
+          discount: discountAmount > 0 ? { type: discountType, amount: discountAmount, value: parseFloat(discount) } : undefined,
+          taxRate: settings.gstEnabled ? settings.taxRate : 0,
+          taxAmount: tax,
+          grandTotal,
+        }, { skipDirectWrite: true });
+        confirmPaymentAndSendToKitchen(selectedOrder, payment);
+      } else {
+        const paidAtDate = new Date();
+        const newlyPaidBillIds: string[] = [];
+        const updatedBills = order!.supplementaryBills!.map(b => {
+          if (b.payment) return b;
+          newlyPaidBillIds.push(b.id);
+          return { ...b, payment, paidAt: paidAtDate };
+        });
+        const newGrandTotal = (order!.grandTotal || order!.total) + grandTotal;
+        updateOrder(selectedOrder, { supplementaryBills: updatedBills, grandTotal: newGrandTotal }, { skipDirectWrite: true });
+        const paidAtIso = paidAtDate.toISOString();
+        const suppMutIds = newlyPaidBillIds.map(billId =>
+          enqueueMutation("supplementary-bill.payment", { billId, payment, paidAt: paidAtIso })
+        );
+        const orderMutId = enqueueMutation("order.update", { id: selectedOrder, changes: { grandTotal: newGrandTotal } });
+        if (supabaseEnabled) {
+          (async () => {
+            try {
+              const { updateSupplementaryBillPayment, updateOrderInDb } = await import("@/lib/supabase-queries");
+              await Promise.all(
+                newlyPaidBillIds.map((billId, idx) =>
+                  updateSupplementaryBillPayment(billId, payment, paidAtDate)
+                    .then(() => usePOSStore.getState().markMutationSynced(suppMutIds[idx]))
+                )
+              );
+              await updateOrderInDb(selectedOrder, { grandTotal: newGrandTotal });
+              usePOSStore.getState().markMutationSynced(orderMutId);
+            } catch (err: any) {
+              console.warn("[billing] Direct write failed for quick cash supp bill payment:", err?.message || err?.code || JSON.stringify(err));
+            }
+          })();
+        }
+        addAuditEntry({
+          action: "payment_recorded",
+          userId: currentUser?.name || "System",
+          details: `Balance payment of ₹${payment.amount} recorded for order ${selectedOrder}`,
+          orderId: selectedOrder,
+          metadata: { method: payment.method, amount: payment.amount, transactionId: payment.transactionId, cashier: currentUser?.name || "System", quickCash: true },
+        });
+      }
+      setLastPayment({ amount: grandTotal, change: exact - grandTotal });
+      setPaymentComplete(true);
+
+      if (!isSupplementary && settings.autoPrintKot) {
+        const kotPrinters = settings.printers?.filter(p => p.type === "kot" && p.enabled) || [];
+        const freshOrder = orders.find(o => o.id === selectedOrder);
+        if (kotPrinters.length > 0 && freshOrder) {
+          printToAllPrinters(kotPrinters, freshOrder, settings, "kot").then(({ results }) => {
+            const failures = results.filter(r => !r.success);
+            if (failures.length > 0) toast.error(`KOT print failed on: ${failures.map(f => f.printer).join(", ")}`);
+          });
+        }
+      }
+      if (settings.printCustomerCopy) {
+        const receiptPrinters = settings.printers?.filter(p => p.type === "receipt" && p.enabled) || [];
+        const freshOrder = orders.find(o => o.id === selectedOrder);
+        if (receiptPrinters.length > 0 && freshOrder) {
+          printToAllPrinters(receiptPrinters, freshOrder, settings, "receipt").catch(() => {});
+        }
+      }
+    }, 0);
+  };
+
   const handlePayLater = () => {
     if (!selectedOrder) return;
     sendToKitchenPayLater(selectedOrder);
@@ -389,7 +517,7 @@ export function Billing() {
                 <Badge variant="secondary" className={cn(
                   o.status === "served-unpaid" ? "text-destructive border-destructive/50" : "text-warning border-warning/50"
                 )}>
-                  {o.status === "awaiting-payment" ? "Pay Now" : o.status === "served-unpaid" ? "Pay Now" : "Supplementary Bill"}
+                  {o.status === "awaiting-payment" ? "Pay Now" : o.status === "served-unpaid" ? "Pay Now" : "Balance Due"}
                 </Badge>
               </div>
               <div className="mt-1 flex items-center justify-between text-sm">
@@ -592,6 +720,20 @@ export function Billing() {
                 </div>
               )}
 
+              {/* Quick Pay Row — one-tap exact cash */}
+              {settings.cashEnabled && (
+                <div className="mb-4">
+                  <Button
+                    onClick={handleQuickCash}
+                    className="w-full h-14 text-base font-bold gap-2 bg-success text-success-foreground hover:bg-success/90 shadow-md"
+                  >
+                    <Zap className="h-5 w-5" />
+                    Quick Pay — Cash {Math.ceil(grandTotal).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground text-center mt-1.5">One-tap: records exact cash, prints receipt, done.</p>
+                </div>
+              )}
+
               {/* Bill Summary */}
               <div className="mb-5 rounded-lg bg-secondary/50 p-4 space-y-2.5">
                 <div className="flex justify-between text-sm">
@@ -625,7 +767,7 @@ export function Billing() {
 
               {/* Payment Methods */}
               <div className="mb-5">
-                <Label className="mb-2 block text-sm font-medium">Payment Method</Label>
+                <Label className="mb-2 block text-sm font-medium">Or choose another method</Label>
                 <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                   {settings.cashEnabled && (
                     <button
