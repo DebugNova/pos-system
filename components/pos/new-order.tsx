@@ -39,8 +39,6 @@ import {
   Leaf,
   Coffee,
   CupSoda,
-  Printer,
-  CreditCard,
   User,
   Edit3,
   X,
@@ -71,7 +69,7 @@ const categoryIcons: Record<string, React.ElementType> = {
 export function NewOrder() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [editingItem, setEditingItem] = useState<string | null>(null);
+
   const [itemNotes, setItemNotes] = useState("");
   const [selectedVariant, setSelectedVariant] = useState<string>("");
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
@@ -79,6 +77,8 @@ export function NewOrder() {
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
   const [itemToRemove, setItemToRemove] = useState<{ orderId: string, itemId: string, tempId: string, name: string } | null>(null);
+  // Track which existing cart item is being customized (edit modifiers/variant/notes)
+  const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null);
 
   const {
     cart,
@@ -105,7 +105,7 @@ export function NewOrder() {
     setCustomerPhone,
     setOrderNotes,
     addOrder,
-    setPendingBillingOrderId,
+    updateCartItem,
     saveEditOrder,
     cancelEditOrder,
     getCartTotal,
@@ -189,7 +189,7 @@ export function NewOrder() {
     if (cart.length === 0) return;
     if (orderType === "dine-in" && !selectedTable) {
       toast.error("Table not selected", {
-        description: "Please select a table for the dine-in order before proceeding to payment.",
+        description: "Please select a table for the dine-in order.",
       });
       return;
     }
@@ -200,9 +200,13 @@ export function NewOrder() {
       return;
     }
 
+    // Create order directly as "new" (kitchen-ready) with payLater flag.
+    // This skips the payment screen — the customer pays after being served.
     const newId = addOrder({
       type: orderType,
-      status: "awaiting-payment",
+      status: "new",
+      payLater: true,
+      subtotal: getCartTotal(),
       tableId: orderType === "dine-in" ? selectedTable || undefined : undefined,
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
@@ -218,26 +222,86 @@ export function NewOrder() {
         modifiers: item.modifiers,
       })),
       total: getCartTotal(),
+    }, { initialStatus: "new" });
+
+    // Auto-print KOT
+    if (settings.autoPrintKot) {
+      const kotPrinters = settings.printers?.filter((p: any) => p.type === "kot" && p.enabled) || [];
+      if (kotPrinters.length > 0) {
+        const freshOrder = usePOSStore.getState().orders.find((o: any) => o.id === newId);
+        if (freshOrder) {
+          import("@/lib/print-service").then(({ printToAllPrinters }) => {
+            printToAllPrinters(kotPrinters, freshOrder, settings, "kot").then(({ results }: any) => {
+              const failures = results.filter((r: any) => !r.success);
+              if (failures.length > 0) {
+                toast.error(`KOT print failed on: ${failures.map((f: any) => f.printer).join(", ")}`);
+              }
+            });
+          });
+        }
+      }
+    }
+
+    clearCart();
+    setShowMobileCart(false);
+
+    toast.success("Order sent to kitchen!", {
+      description: `Order ${newId.toUpperCase()} is now being prepared. Payment will be collected later.`,
+    });
+  };
+
+
+  // Open the full customization dialog for an existing cart item
+  const handleEditCartItem = (tempId: string) => {
+    const item = cart.find((i) => i.tempId === tempId);
+    if (!item) return;
+
+    // Find the corresponding menu item to get variant/modifier options
+    const menuItem = menuItems.find((m) => m.id === item.menuItemId);
+    if (!menuItem) {
+      // Fallback: if no menu item found, just open notes editor
+      handleEditItemNotes(tempId);
+      return;
+    }
+
+    setEditingCartItemId(tempId);
+    setCurrentMenuItem(menuItem);
+    setSelectedVariant(item.variant || (menuItem.variants && menuItem.variants.length > 0 ? menuItem.variants[0].name : ""));
+    setSelectedModifiers(item.modifiers || []);
+    setItemNotes(item.notes || "");
+    setShowModifierDialog(true);
+  };
+
+  // Save customization edits to an existing cart item
+  const handleSaveCartItemCustomization = () => {
+    if (!editingCartItemId || !currentMenuItem) return;
+
+    const variant = currentMenuItem.variants?.find((v) => v.name === selectedVariant);
+    const price = variant ? variant.price : currentMenuItem.price;
+
+    updateCartItem(editingCartItemId, {
+      variant: selectedVariant || undefined,
+      modifiers: selectedModifiers.length > 0 ? selectedModifiers : undefined,
+      notes: itemNotes || undefined,
+      price: price,
     });
 
-    setPendingBillingOrderId(newId);
-    clearCart();
-    setActiveView("billing");
+    setEditingCartItemId(null);
+    setShowModifierDialog(false);
+    setCurrentMenuItem(null);
+    setSelectedVariant("");
+    setItemNotes("");
+    setSelectedModifiers([]);
   };
 
-  const handleEditItemNotes = (tempId: string) => {
-    const item = cart.find((i) => i.tempId === tempId);
-    if (item) {
-      setEditingItem(tempId);
-      setItemNotes(item.notes || "");
-    }
-  };
-
-  const handleSaveItemNotes = () => {
-    if (editingItem) {
-      updateItemNotes(editingItem, itemNotes);
-      setEditingItem(null);
+  const handleCloseModifierDialog = (open: boolean) => {
+    setShowModifierDialog(open);
+    if (!open) {
+      setEditingCartItemId(null);
+      setCurrentMenuItem(null);
+      setSelectedVariant("");
       setItemNotes("");
+      setSelectedModifiers([]);
     }
   };
 
@@ -269,7 +333,7 @@ export function NewOrder() {
         if (table) setSelectedTable(table.id);
       }
 
-      // Ctrl+Enter → Proceed to Payment
+      // Ctrl+Enter → Place Order
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         handleProceedToPayment();
@@ -792,7 +856,7 @@ export function NewOrder() {
                             )}
                             {item.modifiers && item.modifiers.length > 0 && (
                               <p className="text-xs text-muted-foreground">
-                                {item.modifiers.map(m => m.name).join(", ")}
+                                + {item.modifiers.map(m => m.name).join(", ")}
                               </p>
                             )}
                             <p className={cn("text-sm font-semibold", isLocked ? "text-muted-foreground" : "text-primary")}>
@@ -813,7 +877,7 @@ export function NewOrder() {
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 text-muted-foreground active:scale-90 transition-transform"
-                              onClick={() => handleEditItemNotes(item.tempId)}
+                              onClick={() => handleEditCartItem(item.tempId)}
                             >
                               <Edit3 className="h-3 w-3" />
                             </Button>
@@ -968,8 +1032,8 @@ export function NewOrder() {
                   disabled={cart.length === 0}
                   onClick={handleProceedToPayment}
                 >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Proceed to Payment
+                  <UtensilsCrossed className="mr-2 h-4 w-4" />
+                  Place Order
                 </Button>
               </div>
             )}
@@ -978,7 +1042,7 @@ export function NewOrder() {
       </div>
 
       {/* Modifier Dialog */}
-      <Dialog open={showModifierDialog} onOpenChange={setShowModifierDialog}>
+      <Dialog open={showModifierDialog} onOpenChange={handleCloseModifierDialog}>
         <DialogContent variant="bottom-sheet" showCloseButton={false} className="max-w-lg sm:max-w-md grid grid-rows-[auto_minmax(0,1fr)_auto] p-0 gap-0 border-none rounded-t-[24px] sm:rounded-[24px] bg-[#f8f9fa] dark:bg-[#121212] overflow-hidden shadow-2xl">
           
           {/* ROW 1: HEADER (Back Button + Image + Title) */}
@@ -992,7 +1056,7 @@ export function NewOrder() {
                   ? "bg-black/40 border-white/20 text-white hover:bg-black/60" 
                   : "bg-background/90 border-border shadow-black/10 text-foreground hover:bg-secondary"
               )}
-              onClick={() => setShowModifierDialog(false)}
+              onClick={() => handleCloseModifierDialog(false)}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -1111,9 +1175,9 @@ export function NewOrder() {
           <div className="p-4 sm:p-5 bg-background border-t border-border shadow-[0_-15px_30px_rgb(0,0,0,0.04)] z-20">
             <Button 
                className="w-full h-[52px] sm:h-14 text-[16px] sm:text-lg font-bold rounded-xl bg-[#EA7531] hover:bg-[#D56525] text-white shadow-[0_8px_20px_rgba(234,117,49,0.25)] flex justify-between px-6 active:scale-[0.98] transition-transform" 
-               onClick={handleAddWithModifiers}
+               onClick={editingCartItemId ? handleSaveCartItemCustomization : handleAddWithModifiers}
             >
-              <span className="tracking-wide">Add item</span>
+              <span className="tracking-wide">{editingCartItemId ? "Save changes" : "Add item"}</span>
               <span className="bg-white/20 px-3 py-1 rounded-md text-[15px] sm:text-[16px] tracking-tight backdrop-blur-sm">
                 {((currentMenuItem?.variants?.find(v => v.name === selectedVariant)?.price || currentMenuItem?.price || 0) + selectedModifiers.reduce((acc, m) => acc + m.price, 0)).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
               </span>
@@ -1122,33 +1186,6 @@ export function NewOrder() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Notes Dialog */}
-      <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
-        <DialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Notes</DialogTitle>
-            <DialogDescription>
-              Add special instructions for this item
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <Textarea
-              placeholder="Add notes..."
-              value={itemNotes}
-              onChange={(e) => setItemNotes(e.target.value)}
-              className="bg-secondary border-none"
-            />
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setEditingItem(null)}>
-                Cancel
-              </Button>
-              <Button className="flex-1" onClick={handleSaveItemNotes}>
-                Save
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Owner Remove Item Dialog */}
       <AlertDialog open={!!itemToRemove} onOpenChange={(open) => !open && setItemToRemove(null)}>

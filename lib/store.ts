@@ -107,6 +107,7 @@ interface POSState {
   updateQuantity: (tempId: string, quantity: number) => void;
   updateItemNotes: (tempId: string, notes: string) => void;
   updateItemVariant: (tempId: string, variant: string) => void;
+  updateCartItem: (tempId: string, data: { variant?: string; modifiers?: Modifier[]; notes?: string; price?: number }) => void;
   clearCart: () => void;
   setOrderType: (type: OrderType) => void;
   setSelectedTable: (tableId: string | null) => void;
@@ -525,6 +526,14 @@ export const usePOSStore = create<POSState>()(
         }));
       },
 
+      updateCartItem: (tempId, data) => {
+        set((state) => ({
+          cart: state.cart.map((item) =>
+            item.tempId === tempId ? { ...item, ...data } : item
+          ),
+        }));
+      },
+
       clearCart: () => set({ cart: [], selectedTable: null, customerName: "", customerPhone: "", orderNotes: "", editingOrderId: null, editMode: "none", lockedItemIds: [] }),
 
       startEditOrder: (orderId) => {
@@ -534,7 +543,10 @@ export const usePOSStore = create<POSState>()(
         let editMode: POSState["editMode"] = "pre-payment";
         let lockedItemIds: string[] = [];
 
-        if (order.status === "new" || order.status === "preparing" || order.status === "ready") {
+        // Only use supplementary mode if the order has actually been paid.
+        // For unpaid 'pay-later' orders sitting in the kitchen, we just edit the main bill directly.
+        const isPaid = !!order.payment || !!order.paidAt;
+        if (isPaid && (order.status === "new" || order.status === "preparing" || order.status === "ready")) {
           editMode = "supplementary";
           // Only PAID supplementary bill items stay locked (they're sealed transactions
           // with their own payment record). Main paid items are editable — any net
@@ -1505,20 +1517,39 @@ export const usePOSStore = create<POSState>()(
 
       cancelAwaitingPaymentOrder: (orderId, reason) => {
         const order = get().orders.find((o) => o.id === orderId);
-        if (!order || order.status !== "awaiting-payment") return;
+        if (!order || (order.status !== "awaiting-payment" && order.status !== "served-unpaid")) return;
 
         const userName = get().currentUser?.name || "System";
 
+        const unpaidSuppBillIds = (order.supplementaryBills || [])
+          .filter((b) => !b.payment)
+          .map((b) => b.id);
+
         set((state) => ({
           orders: state.orders.map((o) =>
-            o.id === orderId ? { ...o, status: "cancelled" } : o
+            o.id === orderId ? { 
+              ...o, 
+              status: "cancelled",
+              supplementaryBills: (o.supplementaryBills || []).filter((b) => !unpaidSuppBillIds.includes(b.id)),
+            } : o
           ),
         }));
+        
+        for (const billId of unpaidSuppBillIds) {
+          const bMutId = get().enqueueMutation("supplementary-bill.delete", { billId });
+          if (get().supabaseEnabled) {
+            import("./supabase-queries").then(({ deleteSupplementaryBill: delBill }) => {
+              delBill(billId)
+                .then(() => get().markMutationSynced(bMutId))
+                .catch((err) => console.warn("[store] supp bill delete on cancel failed:", err?.message || err?.code));
+            });
+          }
+        }
+
         const mutId = get().enqueueMutation("order.update", { id: orderId, changes: { status: "cancelled" } });
 
         // Direct write-through for instant cross-device sync
         if (get().supabaseEnabled) {
-
           import("./supabase-queries").then(({ updateOrderInDb }) => {
             updateOrderInDb(orderId, { status: "cancelled" }).then(() => {
               get().markMutationSynced(mutId);

@@ -575,6 +575,11 @@ function KitchenOrderCard({ order, column, onAction, onEdit, onCancel }: Kitchen
                   )}
                 </span>
               </span>
+              {item.modifiers && item.modifiers.length > 0 && (
+                <span className="text-[11px] sm:text-xs text-muted-foreground pl-[24px] mt-0.5 leading-tight font-medium">
+                  + {item.modifiers.map(m => m.name).join(", ")}
+                </span>
+              )}
               {item.notes && (
                 <span className="text-[11px] sm:text-xs text-muted-foreground italic pl-[24px] mt-0.5 leading-tight">
                   ↳ {item.notes}
@@ -598,6 +603,11 @@ function KitchenOrderCard({ order, column, onAction, onEdit, onCancel }: Kitchen
                     )}
                   </span>
                 </div>
+                {item.modifiers && item.modifiers.length > 0 && (
+                  <span className="text-[11px] sm:text-xs text-muted-foreground pl-[40px] mt-0.5 leading-tight font-medium break-words">
+                    + {item.modifiers.map(m => m.name).join(", ")}
+                  </span>
+                )}
                 {item.notes && (
                   <span className="text-[11px] sm:text-xs text-muted-foreground italic pl-[40px] mt-0.5 leading-tight break-words">
                     ↳ {item.notes}

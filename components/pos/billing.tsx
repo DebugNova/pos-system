@@ -71,6 +71,7 @@ export function Billing() {
     sendToKitchenPayLater,
     confirmPaymentForServedOrder,
     cancelAwaitingPaymentOrder,
+    cancelPlacedOrder,
     pendingBillingOrderId,
     setPendingBillingOrderId,
     enqueueMutation,
@@ -474,15 +475,20 @@ export function Billing() {
   };
 
   const handleVoidOrder = () => {
-    if (!selectedOrder) return;
+    if (!selectedOrder || !order) return;
 
-    cancelAwaitingPaymentOrder(selectedOrder, voidReason);
+    if (order.status === "awaiting-payment" || order.status === "served-unpaid") {
+      cancelAwaitingPaymentOrder(selectedOrder, voidReason);
+    } else {
+      cancelPlacedOrder(selectedOrder, voidReason);
+    }
+
     setSelectedOrder(null);
     setShowVoidDialog(false);
     setVoidReason("");
 
-    toast.success("Order voided successfully", {
-      description: `Order ${selectedOrder.toUpperCase()} voided and table released`
+    toast.success("Bill cancelled successfully", {
+      description: `Bill for order ${selectedOrder.toUpperCase()} has been cancelled.`
     });
   };
 
@@ -949,21 +955,20 @@ export function Billing() {
             {/* Fixed Bottom Action Bar */}
             <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-card p-3 md:static md:bottom-auto md:z-auto md:shrink-0 md:p-4">
               <div className="flex flex-col gap-2 md:flex-row md:gap-3">
-                {/* Void Order — only for awaiting-payment */}
-                {order.status === "awaiting-payment" && (
-                  <AlertDialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10 h-11 md:h-12 text-sm">
-                        <RotateCcw className="h-4 w-4" />
-                        Void Order
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Void Order</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to void this order? The customer's table will be released.
-                        </AlertDialogDescription>
+                {/* Cancel Bill — for any pending bill */}
+                <AlertDialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10 h-11 md:h-12 text-sm">
+                      <RotateCcw className="h-4 w-4" />
+                      Cancel Bill
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="w-[95vw] max-w-lg sm:max-w-md max-h-[85vh] overflow-y-auto">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancel Bill</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to cancel this bill? The order will be cancelled.
+                      </AlertDialogDescription>
                       </AlertDialogHeader>
                       <div className="space-y-4 pt-4">
                         <div>
@@ -980,13 +985,12 @@ export function Billing() {
                             Cancel
                           </AlertDialogCancel>
                           <AlertDialogAction onClick={handleVoidOrder} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Confirm Void
+                            Confirm Cancel
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </div>
                     </AlertDialogContent>
                   </AlertDialog>
-                )}
                 <Button variant="outline" className="gap-2 h-11 md:h-12 text-sm" onClick={() => window.print()}>
                   <Printer className="h-4 w-4" />
                   Print Bill
