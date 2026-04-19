@@ -109,9 +109,14 @@ export function POSSidebar() {
   // flips a paid/accepted order back to `new`.
   const kitchenAdvancedIdsRef = useRef<Set<string>>(new Set());
 
-  const pendingBillsCount = orders.filter(
-    (o) => o.status === "awaiting-payment" || o.status === "served-unpaid" || (o.supplementaryBills && o.supplementaryBills.some(b => !b.payment))
-  ).length;
+  const pendingBillsCount = orders.filter((o) => {
+    if (o.status === "cancelled" || o.status === "completed") return false;
+    return (
+      o.status === "awaiting-payment" ||
+      o.status === "served-unpaid" ||
+      (o.supplementaryBills && o.supplementaryBills.some((b) => !b.payment))
+    );
+  }).length;
 
   const pendingKitchenCount = orders.filter(
     (o) => o.status === "new"
@@ -121,12 +126,14 @@ export function POSSidebar() {
     () =>
       new Set(
         orders
-          .filter(
-            (o) =>
+          .filter((o) => {
+            if (o.status === "cancelled" || o.status === "completed") return false;
+            return (
               o.status === "awaiting-payment" ||
               o.status === "served-unpaid" ||
               (o.supplementaryBills && o.supplementaryBills.some((b) => !b.payment))
-          )
+            );
+          })
           .map((o) => o.id)
       ),
     [orders]
