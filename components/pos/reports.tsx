@@ -246,7 +246,30 @@ export function ReportsContent() {
   }, [filteredOrders, useServer, serverStaff]);
 
   const itemDetails = useMemo(() => {
-    if (useServer) return serverItemDetails;
+    if (useServer) {
+      // v_item_details groups by (menu_item_id, sale_date), so multi-day ranges
+      // return one row per item per day. Collapse to one row per menu item.
+      const map = new Map<string, any>();
+      serverItemDetails.forEach((row: any) => {
+        const key = row.menuItemId;
+        const existing = map.get(key);
+        if (existing) {
+          existing.totalQuantity += Number(row.totalQuantity) || 0;
+          existing.grossRevenue += Number(row.grossRevenue) || 0;
+          existing.timesInOrder += Number(row.timesInOrder) || 0;
+        } else {
+          map.set(key, {
+            menuItemId: row.menuItemId,
+            name: row.name,
+            category: row.category,
+            totalQuantity: Number(row.totalQuantity) || 0,
+            grossRevenue: Number(row.grossRevenue) || 0,
+            timesInOrder: Number(row.timesInOrder) || 0,
+          });
+        }
+      });
+      return Array.from(map.values());
+    }
     const itemMap = new Map<string, any>();
     filteredOrders.forEach(o => {
       const addedToOrder = new Set();
