@@ -22,7 +22,7 @@ interface User {
   pin: string;
 }
 
-interface StaffMember {
+export interface StaffMember {
   id: string;
   name: string;
   role: string;
@@ -48,7 +48,7 @@ export interface PrinterConfig {
   enabled: boolean;
 }
 
-interface CafeSettings {
+export interface CafeSettings {
   cafeName: string;
   gstNumber: string;
   address: string;
@@ -73,6 +73,12 @@ interface POSState {
   isLoggedIn: boolean;
   currentUser: User | null;
   staffMembers: StaffMember[];
+  isSubscriptionActive: boolean | null;
+  subscriptionExpiryDate: string | null;
+  lastDismissedExpiryWarningDate: string | null;
+  setSubscriptionStatus: (status: boolean) => void;
+  setSubscriptionExpiryDate: (date: string | null) => void;
+  dismissExpiryWarning: () => void;
   login: (user: User) => void;
   restoreSession: (user: User) => void;
   logout: () => void;
@@ -81,7 +87,7 @@ interface POSState {
   deleteStaffMember: (id: string) => void;
 
   // Navigation
-  activeView: "dashboard" | "orders" | "tables" | "kitchen" | "reports" | "settings" | "billing" | "history";
+  activeView: "dashboard" | "orders" | "tables" | "kitchen" | "reports" | "settings" | "billing" | "history" | "subscription";
   setActiveView: (view: POSState["activeView"]) => void;
 
   // Settings
@@ -300,6 +306,15 @@ export const usePOSStore = create<POSState>()(
       isLoggedIn: false,
       currentUser: null,
       staffMembers: defaultStaffMembers,
+      isSubscriptionActive: null,
+      subscriptionExpiryDate: null,
+      lastDismissedExpiryWarningDate: null,
+      setSubscriptionStatus: (status) => set({ isSubscriptionActive: status }),
+      setSubscriptionExpiryDate: (date) => set({ subscriptionExpiryDate: date }),
+      dismissExpiryWarning: () => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        set({ lastDismissedExpiryWarningDate: todayStr });
+      },
       login: (user) => {
         set({
           isLoggedIn: true,
@@ -325,7 +340,12 @@ export const usePOSStore = create<POSState>()(
       },
       logout: () => {
         const userName = get().currentUser?.name || "Unknown";
-        set({ isLoggedIn: false, currentUser: null, activeView: "dashboard" });
+        set({ 
+          isLoggedIn: false, 
+          currentUser: null, 
+          activeView: "dashboard",
+          lastDismissedExpiryWarningDate: null
+        });
         get().addAuditEntry({ action: "logout", userId: userName, details: `${userName} logged out` });
 
         // Clear session-scoped caches and revoke the Supabase session.

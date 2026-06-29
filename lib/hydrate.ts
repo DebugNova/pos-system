@@ -1,5 +1,5 @@
 import { usePOSStore } from "./store";
-import { fetchOrdersByStatus, fetchRecentCompletedOrders, fetchRecentlyPaidOrders, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers, upsertMenuItem } from "./supabase-queries";
+import { fetchOrdersByStatus, fetchRecentCompletedOrders, fetchRecentlyPaidOrders, fetchTables, fetchMenuItems, fetchStaff, fetchSettings, fetchModifiers, upsertMenuItem, fetchSubscriptionStatus } from "./supabase-queries";
 import { syncPendingMutations } from "./sync";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
       // Completed orders are needed for History and Reports views to work
       // on cold-start devices that weren't running when payments happened.
       const activeStatuses = ["awaiting-payment", "new", "preparing", "ready", "served-unpaid"];
-      const [activeOrders, recentCompleted, tables, menuItems, staffMembers, settings, modifiers] = await Promise.all([
+      const [activeOrders, recentCompleted, tables, menuItems, staffMembers, settings, modifiers, isSubActive, subDetails] = await Promise.all([
         fetchOrdersByStatus(activeStatuses),
         fetchRecentCompletedOrders(48),
         fetchTables(),
@@ -100,6 +100,8 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
         fetchStaff(),
         fetchSettings(),
         fetchModifiers(),
+        fetchSubscriptionStatus(),
+        import("./supabase-queries").then(m => m.fetchActiveSubscriptionDetails()),
       ]);
 
       const state = usePOSStore.getState();
@@ -148,6 +150,8 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
         // as a top-level store field.  Hydrate it here if the DB row has data.
         ...(settings?.menuCategories ? { menuCategories: settings.menuCategories } : {}),
         modifiers: modifiers.length > 0 ? modifiers : state.modifiers,
+        isSubscriptionActive: isSubActive,
+        subscriptionExpiryDate: subDetails?.currentPeriodEnd || null,
       });
 
       console.log("[hydrate] Store hydrated from Supabase", {

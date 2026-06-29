@@ -37,6 +37,8 @@ export function ReportsContent() {
   });
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [rangeCalendarOpen, setRangeCalendarOpen] = useState(false);
 
   // Server-side data states
   const [serverLoading, setServerLoading] = useState(false);
@@ -45,6 +47,7 @@ export function ReportsContent() {
   const [serverPayments, setServerPayments] = useState<PaymentData[]>([]);
   const [serverTopItems, setServerTopItems] = useState<TopItemData[]>([]);
   const [serverStaff, setServerStaff] = useState<StaffData[]>([]);
+  const [serverDailyPayments, setServerDailyPayments] = useState<{ saleDate: string; method: string; total: number; count: number }[]>([]);
   const [serverTotals, setServerTotals] = useState<{ totalRevenue: number; totalOrders: number; avgOrderValue: number } | null>(null);
   const [serverItemDetails, setServerItemDetails] = useState<any[]>([]);
 
@@ -59,7 +62,7 @@ export function ReportsContent() {
       const isSingleDay = fromStr === toStr;
 
       const [dailySales, hourly, payments, topItems, staff, itemDetails] = await Promise.all([
-        fetchDailySales(90),
+        fetchDailySales(365),
         isSingleDay ? fetchHourlyRevenue(fromStr) : Promise.resolve([]),
         isSingleDay ? fetchPaymentBreakdown(fromStr) : Promise.resolve([]),
         isSingleDay ? fetchTopItems(fromStr, 10) : Promise.resolve([]),
@@ -80,8 +83,11 @@ export function ReportsContent() {
       if (!isSingleDay) {
         // Multi-day aggregate logic
         const allPayments = await Promise.all(filteredDailySales.map((s: any) => fetchPaymentBreakdown(s.saleDate)));
+        const flattenedPayments = allPayments.flat();
+        setServerDailyPayments(flattenedPayments);
+
         const pmtMap = new Map<string, { count: number; total: number }>();
-        allPayments.flat().forEach((p: any) => {
+        flattenedPayments.forEach((p: any) => {
           const existing = pmtMap.get(p.method) || { count: 0, total: 0 };
           pmtMap.set(p.method, { count: existing.count + p.count, total: existing.total + p.total });
         });
@@ -114,6 +120,7 @@ export function ReportsContent() {
         });
         setServerStaff(Array.from(staffMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue));
       } else {
+        setServerDailyPayments(payments as any[]);
         setServerPayments(payments as PaymentData[]);
         setServerTopItems((topItems as TopItemData[]).slice(0, 10));
         setServerStaff(staff as StaffData[]);
@@ -289,6 +296,81 @@ export function ReportsContent() {
     return Array.from(itemMap.values());
   }, [filteredOrders, useServer, serverItemDetails]);
 
+  const cashUpiStats = useMemo(() => {
+    let totalCash = 0;
+    let totalUPI = 0;
+    const dailyMap = new Map<string, { cash: number; upi: number; dateValue: number }>();
+
+    if (useServer) {
+      serverDailyPayments.forEach((p) => {
+        const dateObj = new Date(p.saleDate);
+        const d = format(dateObj, "MMM dd");
+        const existing = dailyMap.get(d) || { cash: 0, upi: 0, dateValue: dateObj.getTime() };
+        if (p.method === "cash") {
+          existing.cash += p.total;
+          totalCash += p.total;
+        } else if (p.method === "upi") {
+          existing.upi += p.total;
+          totalUPI += p.total;
+        }
+        dailyMap.set(d, existing);
+      });
+    } else {
+      filteredOrders.forEach((o) => {
+        const processPayment = (payment: any, maxAmount: number, dateStr: string, dateVal: number) => {
+          if (!payment) return;
+          const existing = dailyMap.get(dateStr) || { cash: 0, upi: 0, dateValue: dateVal };
+          if (payment.method === "cash") {
+            existing.cash += maxAmount;
+            totalCash += maxAmount;
+          } else if (payment.method === "upi") {
+            existing.upi += maxAmount;
+            totalUPI += maxAmount;
+          } else if (payment.method === "split" && payment.splitDetails) {
+            const splitTotal = (payment.splitDetails.cash || 0) + (payment.splitDetails.upi || 0) + (payment.splitDetails.card || 0);
+            if (splitTotal > 0) {
+              const ratio = maxAmount / splitTotal;
+              existing.cash += (payment.splitDetails.cash || 0) * ratio;
+              existing.upi += (payment.splitDetails.upi || 0) * ratio;
+              totalCash += (payment.splitDetails.cash || 0) * ratio;
+              totalUPI += (payment.splitDetails.upi || 0) * ratio;
+            }
+          }
+          dailyMap.set(dateStr, existing);
+        };
+
+        const dateObj = new Date(o.createdAt);
+        const dateStr = format(dateObj, "MMM dd");
+        const refundAmount = o.refund?.amount ?? 0;
+        const orderMainPaymentAmount = o.payment?.amount || (o.grandTotal ?? o.total);
+        const effectiveMainAmount = Math.max(0, orderMainPaymentAmount - refundAmount);
+        
+        if (o.payment) {
+          processPayment(o.payment, effectiveMainAmount, dateStr, dateObj.getTime());
+        }
+
+        if (o.supplementaryBills) {
+          o.supplementaryBills.forEach((sb) => {
+            if (sb.payment && sb.paidAt) {
+              const sbDateObj = new Date(sb.paidAt);
+              processPayment(sb.payment, sb.payment.amount || sb.total, format(sbDateObj, "MMM dd"), sbDateObj.getTime());
+            }
+          });
+        }
+      });
+    }
+
+    const trend = Array.from(dailyMap.entries())
+      .sort((a, b) => a[1].dateValue - b[1].dateValue)
+      .map(([date, stats]) => ({
+        date,
+        cash: stats.cash,
+        upi: stats.upi,
+      }));
+
+    return { trend, totalCash, totalUPI };
+  }, [filteredOrders, useServer, serverDailyPayments]);
+
   const downloadCSV = useCallback(() => {
     const BOM = "\uFEFF";
     const h = (v: unknown): string => {
@@ -417,9 +499,9 @@ export function ReportsContent() {
     document.body.removeChild(link);
   }, [activeTab, hourlyRevenue, itemDetails, filteredOrders, staffPerformance, tables]);
 
-  const overviewProps = { totalRevenue, totalOrders, avgOrderValue, avgPrepTime, hourlyRevenue, paymentBreakdown, topItems, staffPerformance };
+  const overviewProps = { totalRevenue, totalOrders, avgOrderValue, avgPrepTime, hourlyRevenue, paymentBreakdown, topItems, staffPerformance, cashUpiStats };
   const itemsTabProps = { itemDetails, totalRevenue, totalOrders };
-  const salesTabProps = { filteredOrders };
+  const salesTabProps = { filteredOrders, cashUpiStats, totalRevenue };
   const staffTabProps = { filteredOrders, shifts };
   const tablesTabProps = { filteredOrders, tables };
 
@@ -455,15 +537,49 @@ export function ReportsContent() {
             }}>30D</Button>
           </div>
 
-          <Popover>
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
             <PopoverTrigger asChild>
-              <Button id="date" variant={"outline"} className={cn("w-full sm:w-[260px] justify-start text-left font-normal bg-card h-9 border-border", !date && "text-muted-foreground")}>
+              <Button id="date" variant={"outline"} className={cn("w-full sm:w-[240px] justify-start text-left font-normal bg-card h-9 border-border", !date && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (date.to ? <>{format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}</> : format(date.from, "LLL dd, y")) : <span>Pick a date</span>}
+                {date?.from ? (
+                  date.to && date.from.toDateString() !== date.to.toDateString()
+                    ? <>{format(date.from, "MMM dd")} - {format(date.to, "MMM dd, yyyy")}</>
+                    : format(date.from, "MMM dd, yyyy")
+                ) : <span>Pick a day</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2} />
+              <Calendar 
+                initialFocus 
+                mode="single" 
+                defaultMonth={date?.from} 
+                selected={date?.from} 
+                onSelect={(d) => {
+                  if (d) {
+                    setDate({ from: startOfDay(d), to: endOfDay(d) });
+                    setCalendarOpen(false);
+                  }
+                }} 
+                numberOfMonths={1} 
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Popover open={rangeCalendarOpen} onOpenChange={setRangeCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-9 px-3 bg-card border-border" title="Select Date Range">
+                Range
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar 
+                initialFocus 
+                mode="range" 
+                defaultMonth={date?.from} 
+                selected={date} 
+                onSelect={setDate} 
+                numberOfMonths={2} 
+              />
             </PopoverContent>
           </Popover>
 

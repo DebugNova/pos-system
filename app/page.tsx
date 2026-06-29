@@ -9,6 +9,9 @@ import { KitchenDisplay } from "@/components/pos/kitchen-display";
 import { ReportsContent } from "@/components/pos/reports";
 import { Settings } from "@/components/pos/settings";
 import { Billing } from "@/components/pos/billing";
+import { Subscription } from "@/components/pos/subscription";
+import { SubscriptionLockModal } from "@/components/pos/subscription-lock-modal";
+import { SubscriptionExpiryWarningModal } from "@/components/pos/subscription-expiry-modal";
 import { OrderHistory } from "@/components/pos/order-history";
 import { Login } from "@/components/pos/login";
 import { TransitionOverlay } from "@/components/pos/transition-overlay";
@@ -19,9 +22,10 @@ import { OfflineBanner } from "@/components/pos/offline-banner";
 import { hydrateStoreFromSupabase, startBackgroundSync } from "@/lib/hydrate";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { bootstrapSession } from "@/lib/auth";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export default function POSApp() {
-  const { activeView, isLoggedIn, login, currentUser, setActiveView } = usePOSStore();
+  const { activeView, isLoggedIn, login, currentUser, setActiveView, isSubscriptionActive, subscriptionExpiryDate, lastDismissedExpiryWarningDate, dismissExpiryWarning } = usePOSStore();
   const [bootstrapping, setBootstrapping] = useState(true);
   const [animationState, setAnimationState] = useState<{ isAnimating: boolean, origin: {x: number, y: number} | null }>({ isAnimating: false, origin: null });
   const bgSyncCleanupRef = useRef<(() => void) | null>(null);
@@ -120,26 +124,90 @@ export default function POSApp() {
     return <Login onLogin={handleLogin} />;
   }
 
+  // Calculate days remaining if subscription is active and we have an expiry date
+  let daysRemaining = -1;
+  let showExpiryWarning = false;
+  
+  if (isSubscriptionActive && subscriptionExpiryDate) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const hasDismissedToday = lastDismissedExpiryWarningDate === todayStr;
+    
+    if (!hasDismissedToday) {
+      const expiryDate = new Date(subscriptionExpiryDate);
+      const today = new Date();
+      const diffTime = expiryDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 3 && diffDays >= 0) {
+        daysRemaining = diffDays;
+        showExpiryWarning = true;
+      }
+    }
+  } else if (isSubscriptionActive === false) {
+    // Grace period warning for July 1st cutoff
+    const todayStr = new Date().toISOString().split('T')[0];
+    const hasDismissedToday = lastDismissedExpiryWarningDate === todayStr;
+    
+    if (!hasDismissedToday) {
+      const expiryDate = new Date("2026-07-01T00:00:00Z");
+      const today = new Date();
+      const diffTime = expiryDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 3 && diffDays > 0) {
+        daysRemaining = diffDays;
+        showExpiryWarning = true;
+      }
+    }
+  }
+
   return (
-    <div className="relative flex h-screen bg-background overflow-hidden w-full">
-      {isLoggedIn && (
-        <div className="flex w-full h-full flex-col">
-          <OfflineBanner />
-          <div className="flex w-full h-full overflow-hidden">
-            <POSSidebar />
-            <main className="flex-1 overflow-auto pb-14 md:pb-0">
-              {activeView === "dashboard" && <Dashboard />}
-            {activeView === "orders" && <NewOrder />}
-            {activeView === "tables" && <TableManagement />}
-            {activeView === "kitchen" && <KitchenDisplay />}
-            {activeView === "reports" && <ReportsContent />}
-            {activeView === "billing" && <Billing />}
-            {activeView === "history" && <OrderHistory />}
-            {activeView === "settings" && <Settings />}
-            </main>
-          </div>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <div className="relative flex h-[100dvh] bg-background overflow-hidden w-full">
+        {isLoggedIn && (
+          <div className="flex w-full h-full flex-col">
+            <OfflineBanner />
+            {isSubscriptionActive === false && activeView !== "subscription" && new Date() >= new Date("2026-07-01T00:00:00Z") ? (
+              <div className="flex w-full h-full overflow-hidden relative">
+                {/* Blurred POS Background */}
+                <div className="flex w-full h-full overflow-hidden blur-[8px] pointer-events-none opacity-50 scale-[0.98] transition-all">
+                  <POSSidebar />
+                  <main className="flex-1 overflow-auto pb-14 md:pb-0">
+                    <Dashboard />
+                  </main>
+                </div>
+                
+                {/* Lock Modal */}
+                <SubscriptionLockModal onViewPlans={() => setActiveView("subscription")} />
+              </div>
+            ) : isSubscriptionActive === false && activeView === "subscription" ? (
+              <div className="flex w-full h-full overflow-hidden">
+                <main className="flex-1 overflow-auto bg-background">
+                  <Subscription />
+                </main>
+              </div>
+            ) : (
+              <div className="flex w-full h-full overflow-hidden min-h-0">
+                <POSSidebar />
+                <main 
+                  className="flex-1 overflow-y-auto overflow-x-auto pb-14 md:pb-0 min-h-0 min-w-0 touch-pan-y relative" 
+                  style={{ WebkitOverflowScrolling: 'touch' }}
+                >
+                  {activeView === "dashboard" && <Dashboard />}
+                  {activeView === "orders" && <NewOrder />}
+                  {activeView === "tables" && <TableManagement />}
+                  {activeView === "kitchen" && <KitchenDisplay />}
+                  {activeView === "reports" && <ReportsContent />}
+                  {activeView === "billing" && <Billing />}
+                  {activeView === "subscription" && <Subscription />}
+                  {activeView === "history" && <OrderHistory />}
+                  {activeView === "settings" && <Settings />}
+                </main>
+              </div>
+            )}
         </div>
       )}
+      </div>
       
       <SWRegister />
       <TransitionOverlay
@@ -147,6 +215,16 @@ export default function POSApp() {
         origin={animationState.origin}
         onComplete={() => setAnimationState({ isAnimating: false, origin: null })}
       />
-    </div>
+      {showExpiryWarning && (
+        <SubscriptionExpiryWarningModal
+          daysRemaining={daysRemaining}
+          onViewPlans={() => {
+            dismissExpiryWarning();
+            setActiveView("subscription");
+          }}
+          onDismiss={dismissExpiryWarning}
+        />
+      )}
+    </ThemeProvider>
   );
 }

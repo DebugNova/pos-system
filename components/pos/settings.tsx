@@ -188,77 +188,82 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="general" className="flex-1 w-full flex flex-col">
-        <TabsList className="mb-6 bg-secondary/80 flex overflow-x-auto flex-nowrap w-full justify-start md:justify-start h-auto min-h-[60px] p-1.5 gap-2 snap-x snap-mandatory scrollbar-none rounded-2xl border border-border/40">
-          <TabsTrigger value="general" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+        <TabsList className="mb-8 bg-secondary/30 backdrop-blur-md flex overflow-x-auto flex-nowrap w-full justify-start h-auto min-h-[64px] p-2 gap-2 snap-x snap-mandatory hide-scrollbar rounded-3xl border border-border/50 shadow-sm">
+          <TabsTrigger value="general" className="flex items-center justify-center shrink-0 snap-start h-12 px-5 rounded-2xl data-[state=active]:bg-background data-[state=active]:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary font-bold tracking-tight gap-2.5">
             <Store className="h-5 w-5" />
+            <span className="hidden sm:inline-block">General</span>
           </TabsTrigger>
-          <TabsTrigger value="printers" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+          <TabsTrigger value="printers" className="flex items-center justify-center shrink-0 snap-start h-12 px-5 rounded-2xl data-[state=active]:bg-background data-[state=active]:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary font-bold tracking-tight gap-2.5">
             <Printer className="h-5 w-5" />
+            <span className="hidden sm:inline-block">Printers</span>
           </TabsTrigger>
           {currentUser?.role === "Owner" && (
-            <TabsTrigger value="staff" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+            <TabsTrigger value="staff" className="flex items-center justify-center shrink-0 snap-start h-12 px-5 rounded-2xl data-[state=active]:bg-background data-[state=active]:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary font-bold tracking-tight gap-2.5">
               <Users className="h-5 w-5" />
+              <span className="hidden sm:inline-block">Staff</span>
             </TabsTrigger>
           )}
           {currentUser?.role === "Owner" && (
-            <TabsTrigger value="payments" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+            <TabsTrigger value="payments" className="flex items-center justify-center shrink-0 snap-start h-12 px-5 rounded-2xl data-[state=active]:bg-background data-[state=active]:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary font-bold tracking-tight gap-2.5">
               <CreditCard className="h-5 w-5" />
+              <span className="hidden sm:inline-block">Payments</span>
             </TabsTrigger>
           )}
           {permissions.canManageStaff && (
-            <TabsTrigger value="audit" className="flex items-center justify-center shrink-0 snap-start h-12 w-14 sm:w-16 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary">
+            <TabsTrigger value="audit" className="flex items-center justify-center shrink-0 snap-start h-12 px-5 rounded-2xl data-[state=active]:bg-background data-[state=active]:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary/50 text-foreground/70 data-[state=active]:text-primary font-bold tracking-tight gap-2.5">
               <ShieldAlert className="h-5 w-5" />
+              <span className="hidden sm:inline-block">Audit Log</span>
             </TabsTrigger>
           )}
         </TabsList>
 
         {/* General Settings */}
         <TabsContent value="general" className="space-y-6 outline-none focus-visible:ring-0 mt-0 pb-10">
-          <Card className="bg-card border-border overflow-hidden">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold tracking-tight">Cafe Information</CardTitle>
-              <CardDescription className="text-sm">
+          <Card className="bg-card/60 backdrop-blur-md border border-border/40 shadow-sm rounded-[2rem] overflow-hidden">
+            <CardHeader className="pb-5 p-6 sm:p-8 bg-secondary/10 border-b border-border/40">
+              <CardTitle className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Cafe Information</CardTitle>
+              <CardDescription className="text-sm font-medium mt-1">
                 Basic details about your cafe
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-5 md:grid-cols-2">
-                <div className="space-y-2.5 flex flex-col items-start w-full">
-                  <Label htmlFor="cafeName" className="text-sm font-medium w-full text-left">Cafe Name</Label>
+            <CardContent className="space-y-6 p-6 sm:p-8">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2 flex flex-col items-start w-full">
+                  <Label htmlFor="cafeName" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Cafe Name</Label>
                   <Input
                     id="cafeName"
                     value={settings.cafeName}
                     onChange={(e) => updateSettings({ cafeName: e.target.value })}
-                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
+                    className="bg-secondary/40 border-border/50 h-14 w-full px-5 rounded-2xl focus-visible:ring-2 focus-visible:ring-primary/30 text-base font-medium shadow-inner transition-shadow"
                   />
                 </div>
-                <div className="space-y-2.5 flex flex-col items-start w-full">
-                  <Label htmlFor="gst" className="text-sm font-medium w-full text-left">GST Number</Label>
+                <div className="space-y-2 flex flex-col items-start w-full">
+                  <Label htmlFor="gst" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">GST Number</Label>
                   <Input
                     id="gst"
                     value={settings.gstNumber}
                     onChange={(e) => updateSettings({ gstNumber: e.target.value })}
-                    className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
+                    className="bg-secondary/40 border-border/50 h-14 w-full px-5 rounded-2xl focus-visible:ring-2 focus-visible:ring-primary/30 text-base font-medium shadow-inner transition-shadow"
                   />
                 </div>
               </div>
-              <div className="space-y-2.5 flex flex-col items-start w-full">
-                <Label htmlFor="address" className="text-sm font-medium w-full text-left">Address</Label>
+              <div className="space-y-2 flex flex-col items-start w-full">
+                <Label htmlFor="address" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Address</Label>
                 <Input
                   id="address"
                   placeholder="Enter cafe address"
                   value={settings.address}
                   onChange={(e) => updateSettings({ address: e.target.value })}
-                  className="bg-secondary/70 border-border/60 h-12 w-full px-4 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 text-base sm:text-sm"
+                  className="bg-secondary/40 border-border/50 h-14 w-full px-5 rounded-2xl focus-visible:ring-2 focus-visible:ring-primary/30 text-base font-medium shadow-inner transition-shadow"
                 />
               </div>
 
               {/* Install App Settings */}
-              <div className="pt-6 border-t border-border/60">
-                <div className="flex flex-row items-center justify-between gap-4 w-full">
+              <div className="pt-6 border-t border-border/40 mt-6">
+                <div className="flex flex-row items-center justify-between gap-4 w-full bg-secondary/20 p-4 rounded-2xl border border-border/30">
                   <div className="space-y-1.5 flex-1 min-w-0 pr-2 text-left">
-                    <h3 className="font-medium text-foreground text-sm sm:text-base tracking-tight truncate">App Installation</h3>
-                    <p className="text-sm text-muted-foreground leading-snug break-words">Show prompt to install POS on your device.</p>
+                    <h3 className="font-bold text-foreground text-sm sm:text-base tracking-tight truncate">App Installation</h3>
+                    <p className="text-[13px] text-muted-foreground leading-snug break-words">Show prompt to install POS on your device.</p>
                   </div>
                   <Button onClick={() => updateSettings({ installPromptDismissed: false })} variant="outline" className="gap-2 shrink-0 h-11 px-4 sm:px-5 rounded-xl border-border/60 shadow-sm whitespace-nowrap">
                     <Download className="h-4 w-4" />
@@ -269,11 +274,11 @@ export function Settings() {
 
               {/* Sync settings if admin */}
               {permissions.canManageStaff && (
-                <div className="pt-6 border-t border-border/60">
-                  <div className="flex flex-row items-center justify-between gap-4 w-full">
+                <div className="pt-4">
+                  <div className="flex flex-row items-center justify-between gap-4 w-full bg-secondary/20 p-4 rounded-2xl border border-border/30">
                     <div className="space-y-1.5 flex-1 min-w-0 pr-2 text-left">
-                      <h3 className="font-medium text-foreground text-sm sm:text-base tracking-tight truncate">Advanced Data Sync</h3>
-                      <p className="text-sm text-muted-foreground leading-snug break-words">Force retry synchronization for pending actions.</p>
+                      <h3 className="font-bold text-foreground text-sm sm:text-base tracking-tight truncate">Advanced Data Sync</h3>
+                      <p className="text-[13px] text-muted-foreground leading-snug break-words">Force retry synchronization for pending actions.</p>
                     </div>
                     <Button onClick={() => syncPendingMutations()} variant="outline" className="gap-2 shrink-0 h-11 px-4 sm:px-5 rounded-xl border-border/60 shadow-sm whitespace-nowrap">
                       <RefreshCw className="h-4 w-4" />
@@ -285,14 +290,14 @@ export function Settings() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base">Tax Settings</CardTitle>
-              <CardDescription>
+          <Card className="bg-card/60 backdrop-blur-md border border-border/40 shadow-sm rounded-[2rem] overflow-hidden">
+            <CardHeader className="pb-5 p-6 sm:p-8 bg-secondary/10 border-b border-border/40">
+              <CardTitle className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Tax Settings</CardTitle>
+              <CardDescription className="text-sm font-medium mt-1">
                 Configure tax rates for billing
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 p-6 sm:p-8">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-base">Enable GST</Label>
@@ -355,14 +360,14 @@ export function Settings() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base">Notifications</CardTitle>
-              <CardDescription>
+          <Card className="bg-card/60 backdrop-blur-md border border-border/40 shadow-sm rounded-[2rem] overflow-hidden">
+            <CardHeader className="pb-5 p-6 sm:p-8 bg-secondary/10 border-b border-border/40">
+              <CardTitle className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Notifications</CardTitle>
+              <CardDescription className="text-sm font-medium mt-1">
                 Configure alert preferences
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6 sm:p-8">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Bell className="h-5 w-5 text-muted-foreground" />
@@ -399,22 +404,22 @@ export function Settings() {
 
         {/* Printer Settings */}
         <TabsContent value="printers" className="space-y-4 outline-none focus-visible:ring-0 mt-0 pb-10">
-          <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="bg-card/60 backdrop-blur-md border border-border/40 shadow-sm rounded-[2rem] overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between pb-5 p-6 sm:p-8 bg-secondary/10 border-b border-border/40">
               <div>
-                <CardTitle className="text-base">Connected Printers</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Connected Printers</CardTitle>
+                <CardDescription className="text-sm font-medium mt-1">
                   Manage receipt and kitchen printers
                 </CardDescription>
               </div>
               {currentUser?.role === "Owner" && (
-                <Button size="sm" className="gap-1.5" onClick={openAddPrinterDialog}>
+                <Button size="default" className="gap-2 rounded-xl font-bold shadow-sm" onClick={openAddPrinterDialog}>
                   <Plus className="h-4 w-4" />
                   Add Printer
                 </Button>
               )}
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 p-6 sm:p-8">
               {settings.printers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/80 mb-3">
@@ -689,11 +694,11 @@ export function Settings() {
             </DialogContent>
           </Dialog>
 
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base">Print Settings</CardTitle>
+          <Card className="bg-card/60 backdrop-blur-md border border-border/40 shadow-sm rounded-[2rem] overflow-hidden">
+            <CardHeader className="pb-5 p-6 sm:p-8 bg-secondary/10 border-b border-border/40">
+              <CardTitle className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Print Settings</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6 sm:p-8">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Auto-print KOT</Label>
@@ -734,12 +739,12 @@ export function Settings() {
 
         {/* Staff Settings */}
         {currentUser?.role === "Owner" && (
-          <TabsContent value="staff" className="space-y-4">
-            <Card className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between">
+          <TabsContent value="staff" className="space-y-4 outline-none focus-visible:ring-0 mt-0 pb-10">
+            <Card className="bg-card/60 backdrop-blur-md border border-border/40 shadow-sm rounded-[2rem] overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between pb-5 p-6 sm:p-8 bg-secondary/10 border-b border-border/40">
               <div>
-                <CardTitle className="text-base">Staff Members</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Staff Members</CardTitle>
+                <CardDescription className="text-sm font-medium mt-1">
                   Manage staff accounts and permissions
                 </CardDescription>
               </div>
@@ -931,15 +936,15 @@ export function Settings() {
 
         {/* Payment Settings — Owner Only */}
         {currentUser?.role === "Owner" && (
-        <TabsContent value="payments" className="space-y-4">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base">Payment Methods</CardTitle>
-              <CardDescription>
+        <TabsContent value="payments" className="space-y-4 outline-none focus-visible:ring-0 mt-0 pb-10">
+          <Card className="bg-card/60 backdrop-blur-md border border-border/40 shadow-sm rounded-[2rem] overflow-hidden">
+            <CardHeader className="pb-5 p-6 sm:p-8 bg-secondary/10 border-b border-border/40">
+              <CardTitle className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Payment Methods</CardTitle>
+              <CardDescription className="text-sm font-medium mt-1">
                 Configure accepted payment methods
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6 sm:p-8">
               {/* Cash */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -1112,18 +1117,18 @@ export function Settings() {
 
         {/* Audit Log (Admin Only) */}
         {permissions.canManageStaff && (
-          <TabsContent value="audit" className="space-y-4">
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ShieldAlert className="h-5 w-5 text-primary" />
+          <TabsContent value="audit" className="space-y-4 outline-none focus-visible:ring-0 mt-0 pb-10">
+            <Card className="bg-card/60 backdrop-blur-md border border-border/40 shadow-sm rounded-[2rem] overflow-hidden">
+              <CardHeader className="pb-5 p-6 sm:p-8 bg-secondary/10 border-b border-border/40">
+                <CardTitle className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
+                  <ShieldAlert className="h-6 w-6 text-primary" />
                   System Audit Log
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm font-medium mt-1">
                   Track all critical actions performed in the system
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6 sm:p-8">
                 <div className="rounded-md border border-border overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <div className="min-w-[600px]">
                     <div className="flex bg-secondary p-3 text-sm font-medium text-muted-foreground border-b border-border">

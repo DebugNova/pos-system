@@ -110,14 +110,14 @@ export function Login({ onLogin }: LoginProps) {
   const currentDate = new Date();
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center bg-background p-4 sm:p-6 pb-12 sm:pb-8">
+    <div className="relative flex h-full w-full flex-1 flex-col items-center overflow-y-auto bg-background p-4 sm:p-6 py-12">
       {/* Beautiful Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[100px] rounded-full mix-blend-multiply opacity-70" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[100px] rounded-full mix-blend-multiply opacity-70" />
       </div>
 
-      <div className="w-full max-w-[400px] sm:max-w-[480px] lg:max-w-[540px] relative z-10 flex flex-col items-center flex-1 justify-center">
+      <div className="w-full max-w-[400px] sm:max-w-[480px] lg:max-w-[540px] relative z-10 flex flex-col items-center flex-1 my-auto justify-center">
         {/* Logo and Header */}
         <div className="mb-4 sm:mb-6 text-center flex flex-col items-center">
           <div className="mb-2 sm:mb-3 relative group">

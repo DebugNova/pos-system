@@ -260,7 +260,9 @@ export function NewOrder() {
     const menuItem = menuItems.find((m) => m.id === item.menuItemId);
     if (!menuItem) {
       // Fallback: if no menu item found, just open notes editor
-      handleEditItemNotes(tempId);
+      setEditingCartItemId(tempId);
+      setItemNotes(item.notes || "");
+      setShowModifierDialog(true);
       return;
     }
 
@@ -308,10 +310,9 @@ export function NewOrder() {
   // Keyboard Shortcuts (UX Plan §11.2)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape — close modals / clear search
       if (e.key === 'Escape') {
         setShowModifierDialog(false);
-        setEditingItem(null);
+        setEditingCartItemId(null);
         setSearchQuery("");
       }
 
@@ -348,167 +349,173 @@ export function NewOrder() {
     <div className="flex h-full flex-row overflow-x-hidden">
       {/* Menu Section */}
       <div className="flex flex-1 flex-col min-h-0 min-w-0 border-r border-border bg-background">
-        {/* Order Type Selection */}
-        <div className="grid grid-cols-4 gap-1 sm:gap-2 border-b border-border p-1.5 sm:p-3 shrink-0 bg-background">
-          {orderTypes.map((type) => {
-            const Icon = type.icon;
-            const isActive = orderType === type.id;
-            return (
-              <Button
-                key={type.id}
-                variant={isActive ? "default" : "secondary"}
-                className={cn(
-                  "flex-col sm:flex-row gap-0.5 sm:gap-1 h-auto py-1.5 sm:py-2 sm:h-11 px-0.5 sm:px-3 text-[9px] sm:text-xs lg:h-14 lg:gap-2 lg:py-0 lg:text-sm",
-                  isActive && "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
-                )}
-                onClick={() => setOrderType(type.id as typeof orderType)}
-              >
-                <Icon className="h-4 w-4 shrink-0 lg:h-5 lg:w-5" />
-                <span className="truncate">{type.label}</span>
-              </Button>
-            );
-          })}
-        </div>
-
-        {/* Table Selection for Dine-in */}
-        {orderType === "dine-in" && (
-          <div className="flex flex-col gap-1.5 border-b border-border p-2 md:gap-2 md:p-3 lg:gap-3 lg:p-4 bg-card/50">
-            <span className="flex items-center text-xs font-semibold text-foreground lg:text-sm">
-              Select Table
-            </span>
-            {tables.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 md:gap-2 lg:gap-3">
-                {tables.map((table) => {
-                  const isSelected = selectedTable === table.id;
-                  const tableOrders = activeOrdersByTable(table.id);
-                  const hasActiveOrders = tableOrders.length > 0;
-                  const statusColor = table.status === "available"
-                    ? "bg-success" 
-                    : table.status === "waiting-payment" 
-                      ? "bg-destructive" 
-                      : "bg-warning";
-                  return (
-                    <button
-                      key={table.id}
-                      onClick={() => setSelectedTable(isSelected ? null : table.id)}
-                      className={cn(
-                        "flex flex-col items-center justify-center rounded-xl border p-1.5 md:p-2 transition-all min-w-[56px] md:min-w-[64px] lg:min-w-[72px] relative",
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground shadow-md"
-                          : hasActiveOrders
-                            ? "border-warning/50 bg-warning/10 text-foreground hover:border-primary/50"
-                            : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5"
-                      )}
-                    >
-                      <span className="text-xs font-bold md:text-sm lg:text-base">T{table.number}</span>
-                      {hasActiveOrders ? (
-                        <span className="text-[10px] sm:text-xs opacity-80">{tableOrders.length} order{tableOrders.length > 1 ? 's' : ''}</span>
-                      ) : (
-                        <span className="text-[10px] sm:text-xs opacity-80">Open</span>
-                      )}
-                      <div className="mt-0.5 md:mt-1 flex gap-0.5">
-                        <div className={cn("h-1.5 w-1.5 md:h-2 md:w-2 rounded-full", isSelected ? "bg-primary-foreground" : statusColor)} />
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            ) : (
-              <span className="text-xs text-muted-foreground lg:text-sm">
-                No tables configured
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Customer Info (Always visible, mandatory) */}
-        <div className="border-b border-border p-2 md:p-3 lg:p-4">
-          <div className="flex flex-col gap-2 lg:gap-3">
-            <div className="flex flex-col sm:flex-row gap-2 lg:gap-4">
-              <div className="flex flex-1 items-center gap-2">
-                <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <Input
-                  placeholder="Customer name *"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className={cn("flex-1 h-9 bg-card border text-sm lg:h-10", !customerName.trim() && cart.length > 0 ? "border-destructive/50 focus-visible:ring-destructive" : "border-border")}
-                />
-              </div>
-              <div className="flex flex-1 items-center gap-2">
-                <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <Input
-                  type="tel"
-                  placeholder="Phone number (optional)"
-                  value={customerPhone}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (/^\d*$/.test(value)) {
-                      setCustomerPhone(value);
-                    }
-                  }}
-                  className="flex-1 h-9 bg-card border text-sm lg:h-10 border-border"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Edit3 className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <Input
-                placeholder="Order note (optional)"
-                value={orderNotes}
-                onChange={(e) => setOrderNotes(e.target.value)}
-                className="flex-1 h-9 bg-card border-border border text-sm lg:h-10"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Category Tabs */}
-        <div className="flex gap-1.5 md:gap-2 md:flex-wrap border-b border-border p-1.5 sm:p-3 sticky top-0 z-10 bg-background/95 backdrop-blur overflow-x-hidden md:overflow-x-visible">
-          <button
-            onClick={() => setActiveCategory("all")}
-            className={cn(
-              "flex items-center justify-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 font-semibold text-[11px] sm:text-sm transition-all",
-              activeCategory === "all"
-                ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary ring-offset-1 ring-offset-background"
-                : "bg-secondary/70 text-secondary-foreground hover:bg-secondary border border-border/40"
-            )}
-          >
-            <UtensilsCrossed className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-            <span>All</span>
-            <span className={cn(
-              "flex items-center justify-center rounded-full text-[9px] sm:text-[11px] font-bold px-1 sm:px-1.5 min-w-[16px] sm:min-w-[18px] h-3.5 sm:h-4 transition-colors",
-              activeCategory === "all" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background shadow-sm text-muted-foreground"
-            )}>
-              {menuItems.length}
-            </span>
-          </button>
+        {/* Top Header Controls */}
+        <div className="flex flex-col border-b border-border bg-background shadow-sm z-10 sticky top-0 md:static">
           
-          {menuCategories.map((cat) => {
-            const Icon = categoryIcons[cat.id];
-            const catCount = menuItems.filter(m => m.category === cat.id && m.available).length;
-            const isActive = activeCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={cn(
-                  "flex items-center justify-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 font-semibold text-[11px] sm:text-sm transition-all",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary ring-offset-1 ring-offset-background"
-                    : "bg-secondary/70 text-secondary-foreground hover:bg-secondary border border-border/40"
+          {/* Order Type Selection (Segmented Control) */}
+          <div className="p-2 sm:p-3 border-b border-border/50 bg-background/50">
+            <div className="flex bg-secondary/50 p-1 rounded-xl max-w-lg mx-auto">
+              {orderTypes.map((type) => {
+                const Icon = type.icon;
+                const isActive = orderType === type.id;
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => setOrderType(type.id as typeof orderType)}
+                    className={cn(
+                      "flex flex-1 items-center justify-center gap-1.5 py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg text-[11px] sm:text-[13px] font-bold transition-all duration-200",
+                      isActive
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-border/50 scale-100"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/80 scale-95"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{type.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Table Selection for Dine-in */}
+          {orderType === "dine-in" && (
+            <div className="flex flex-col gap-2 border-b border-border/40 p-3 md:p-4 lg:p-5 bg-gradient-to-r from-orange-50/80 via-amber-50/40 to-rose-50/80 dark:from-orange-950/20 dark:via-amber-950/10 dark:to-rose-950/20 backdrop-blur-sm relative overflow-hidden">
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+              <span className="flex items-center text-xs font-bold text-foreground/80 uppercase tracking-widest relative z-10">
+                Select Table
+              </span>
+              <div className="flex items-center gap-2.5 overflow-x-auto hide-scrollbar snap-x pb-2 pt-1 relative z-10">
+                {tables.length > 0 ? (
+                  tables.map((table) => {
+                    const isSelected = selectedTable === table.id;
+                    const tableOrders = activeOrdersByTable(table.id);
+                    const hasActiveOrders = tableOrders.length > 0;
+                    const statusColor = table.status === "available"
+                      ? "bg-emerald-500" 
+                      : table.status === "waiting-payment" 
+                        ? "bg-rose-500" 
+                        : "bg-amber-500";
+                    return (
+                      <button
+                        key={table.id}
+                        onClick={() => setSelectedTable(isSelected ? null : table.id)}
+                        className={cn(
+                          "snap-start shrink-0 flex items-center gap-2 rounded-full px-4 sm:px-5 py-2 sm:py-2.5 transition-all duration-300",
+                          isSelected
+                            ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-[0_4px_20px_-4px_rgba(249,115,22,0.5)] border-transparent scale-105"
+                            : hasActiveOrders
+                              ? "bg-white/80 dark:bg-black/60 border border-amber-500/30 text-foreground hover:border-amber-500/60 shadow-sm"
+                              : "bg-white/60 dark:bg-black/40 border border-white/60 dark:border-white/10 text-foreground hover:bg-white dark:hover:bg-black hover:shadow-md shadow-sm backdrop-blur-md"
+                        )}
+                      >
+                        <div className={cn("h-2.5 w-2.5 rounded-full shadow-inner", isSelected ? "bg-white" : statusColor)} />
+                        <span className="text-[14px] sm:text-[15px] font-black tracking-tight">T{table.number}</span>
+                        {hasActiveOrders && (
+                          <span className={cn("ml-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm", isSelected ? "bg-white/20 text-white" : "bg-secondary text-secondary-foreground")}>
+                            {tableOrders.length}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })
+                ) : (
+                  <span className="text-xs text-muted-foreground relative z-10">No tables configured</span>
                 )}
-              >
-                {Icon && <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
-                <span className="capitalize">{cat.name}</span>
-                <span className={cn(
-                  "flex items-center justify-center rounded-full text-[9px] sm:text-[11px] font-bold px-1 sm:px-1.5 min-w-[16px] sm:min-w-[18px] h-3.5 sm:h-4 transition-colors",
-                  isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background shadow-sm text-muted-foreground"
-                )}>
-                  {catCount}
-                </span>
-              </button>
-            );
-          })}
+              </div>
+            </div>
+          )}
+
+          {/* Customer Info (Restored to stacked layout with better styling) */}
+          <div className="border-b border-border/40 p-3 md:p-4 lg:p-5 bg-gradient-to-br from-amber-50/30 to-orange-50/50 dark:from-amber-950/10 dark:to-orange-950/20 backdrop-blur-sm">
+            <div className="flex flex-col gap-3 lg:gap-4 max-w-4xl">
+              <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
+                <div className="flex flex-1 items-center gap-3 bg-white/60 dark:bg-black/40 border border-white/60 dark:border-white/10 rounded-2xl px-4 py-1.5 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] focus-within:ring-2 focus-within:ring-orange-400/50 focus-within:border-orange-400 focus-within:bg-white dark:focus-within:bg-black transition-all">
+                  <User className="h-4 w-4 shrink-0 text-orange-500/70" />
+                  <Input
+                    placeholder="Customer name *"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className={cn("flex-1 h-10 bg-transparent border-0 shadow-none text-[14px] font-medium focus-visible:ring-0 px-0", !customerName.trim() && cart.length > 0 ? "placeholder:text-rose-400/70" : "placeholder:text-muted-foreground/60")}
+                  />
+                </div>
+                <div className="flex flex-1 items-center gap-3 bg-white/60 dark:bg-black/40 border border-white/60 dark:border-white/10 rounded-2xl px-4 py-1.5 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] focus-within:ring-2 focus-within:ring-orange-400/50 focus-within:border-orange-400 focus-within:bg-white dark:focus-within:bg-black transition-all">
+                  <Phone className="h-4 w-4 shrink-0 text-orange-500/70" />
+                  <Input
+                    type="tel"
+                    placeholder="Phone number (optional)"
+                    value={customerPhone}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (/^\d*$/.test(value)) {
+                        setCustomerPhone(value);
+                      }
+                    }}
+                    className="flex-1 h-10 bg-transparent border-0 shadow-none text-[14px] font-medium focus-visible:ring-0 px-0 placeholder:text-muted-foreground/60"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-white/60 dark:bg-black/40 border border-white/60 dark:border-white/10 rounded-2xl px-4 py-1.5 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] focus-within:ring-2 focus-within:ring-orange-400/50 focus-within:border-orange-400 focus-within:bg-white dark:focus-within:bg-black transition-all">
+                <Edit3 className="h-4 w-4 shrink-0 text-orange-500/70" />
+                <Input
+                  placeholder="Order note (optional)"
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  className="flex-1 h-10 bg-transparent border-0 shadow-none text-[14px] font-medium focus-visible:ring-0 px-0 placeholder:text-muted-foreground/60"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Category Tabs (Sticky Scrolling Row) */}
+          <div className="flex gap-2 px-3 py-2.5 overflow-x-auto hide-scrollbar bg-card/50 backdrop-blur">
+            <button
+              onClick={() => setActiveCategory("all")}
+              className={cn(
+                "shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 font-bold text-[13px] transition-all",
+                activeCategory === "all"
+                  ? "bg-foreground text-background shadow-md"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border/40"
+              )}
+            >
+              <UtensilsCrossed className="h-3.5 w-3.5" />
+              <span>All Menu</span>
+              <span className={cn(
+                "flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 min-w-[18px] h-4",
+                activeCategory === "all" ? "bg-background/20 text-background" : "bg-background text-muted-foreground shadow-sm"
+              )}>
+                {menuItems.length}
+              </span>
+            </button>
+            
+            {menuCategories.map((cat) => {
+              const Icon = categoryIcons[cat.id];
+              const catCount = menuItems.filter(m => m.category === cat.id && m.available).length;
+              const isActive = activeCategory === cat.id;
+              const catEmoji = cat.id === 'coffee' ? '☕' : cat.id === 'tea' ? '🍵' : cat.id === 'drinks' ? '🥤' : cat.id === 'pastry' ? '🥐' : cat.id === 'food' ? '🍔' : '🍽️';
+
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={cn(
+                    "shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 font-bold text-[13px] transition-all",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border/40"
+                  )}
+                >
+                  <span className="text-base leading-none mr-0.5">{catEmoji}</span>
+                  <span className="capitalize">{cat.name}</span>
+                  <span className={cn(
+                    "flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 min-w-[18px] h-4",
+                    isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background text-muted-foreground shadow-sm"
+                  )}>
+                    {catCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Menu Grid */}
@@ -521,7 +528,7 @@ export function NewOrder() {
 
               return (
                 <motion.div
-                  whileTap={{ scale: 0.96 }}
+                  whileTap={{ scale: 0.98 }}
                   key={item.id}
                   onClick={() => handleAddItem(item)}
                   role="button"
@@ -532,112 +539,61 @@ export function NewOrder() {
                       handleAddItem(item);
                     }
                   }}
-                  className="group cursor-pointer relative flex flex-col items-start overflow-hidden rounded-2xl bg-card shadow-sm border border-border/40 text-left transition-all duration-200 hover:shadow-md active:shadow-sm hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  className="group cursor-pointer relative flex flex-col overflow-hidden rounded-[20px] bg-card shadow-sm border border-border/40 text-left transition-all duration-300 hover:shadow-xl hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 >
-                  {/* Desktop Image - Only visible on md and up */}
-                  <div className="hidden md:block relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                  {/* Image full width edge-to-edge */}
+                  <div className="relative w-full aspect-[4/3] sm:aspect-square overflow-hidden bg-muted">
                     {item.image_url ? (
                       <img
                         src={item.image_url}
                         alt={item.name}
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         loading="lazy"
                         onError={(e) => e.currentTarget.src = '/menu/_fallback.png'}
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-4xl opacity-50">{emoji}</div>
+                      <div className="flex h-full items-center justify-center text-4xl opacity-50 bg-secondary/30">{emoji}</div>
                     )}
+                    
+                    {/* Dark gradient overlay for bottom text */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
 
                     {/* Ribbons */}
-                    {item.bestseller && (
-                      <div className="absolute top-0 left-0 bg-primary/95 text-primary-foreground text-[10px] md:text-xs uppercase font-bold px-2 py-1 rounded-br-lg shadow-sm backdrop-blur-sm z-10">
-                        Bestseller
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Desktop Content - Only visible on md and up */}
-                  <div className="hidden md:flex flex-1 w-full flex-col p-4">
-                    <span className="text-base font-semibold text-foreground leading-tight">
-                      {item.name}
-                    </span>
-
-                    <div className="mt-auto pt-3 flex items-center justify-between w-full">
-                      <span className="text-base font-bold text-primary">
-                        {item.price.toLocaleString("en-IN", {
-                          style: "currency",
-                          currency: "INR",
-                          minimumFractionDigits: 0,
-                        })}
-                      </span>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="h-7 text-xs transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
-                      >
-                        Customize
-                      </Button>
+                    <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                      {item.bestseller && (
+                        <div className="bg-[#EA7531] text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm uppercase tracking-wide w-fit">
+                          Bestseller
+                        </div>
+                      )}
+                      {item.variants && item.variants.length > 0 && (
+                        <div className="bg-black/60 backdrop-blur-md text-white/90 text-[9px] font-bold px-2 py-1 rounded-md shadow-sm uppercase tracking-wide border border-white/10 w-fit">
+                          Customize
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Mobile Content - Hidden on md and up */}
-                  <div className="flex flex-col w-full md:hidden p-2.5 sm:p-3 gap-2">
-                    <div className="flex gap-2.5 sm:gap-3 items-start w-full">
-                      <div className="flex-1 flex flex-col justify-start min-w-0">
-                        <span className="text-[14px] font-bold text-foreground leading-tight truncate">
-                          {item.name}
-                        </span>
-                        
-                        <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug pr-2">
-                          {(item as any).description || "Fresh and delicious"}
-                        </span>
-                        
-                        <div className="mt-2 flex flex-wrap items-center justify-start gap-2">
-                          <span className="text-[13px] font-bold text-foreground">
+                    {/* Content over image at the bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-3 z-10">
+                      <div className="flex justify-between items-end gap-2">
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                          <h3 className="text-white font-bold text-[13px] sm:text-[14px] leading-tight line-clamp-2 drop-shadow-md">
+                            {item.name}
+                          </h3>
+                          <span className="text-white/90 font-bold text-[12px] sm:text-[13px] drop-shadow-md">
                             {item.price.toLocaleString("en-IN", {
                               style: "currency",
                               currency: "INR",
                               minimumFractionDigits: 0,
                             })}
                           </span>
-                          
-                          <button
-                            className="text-[10px] font-bold text-muted-foreground uppercase opacity-80 hover:opacity-100 active:scale-95 transition-all flex items-center ml-1"
-                            onClick={(e) => { e.stopPropagation(); openModifierDialog(item); }}
-                          >
-                            Customize
-                          </button>
-                      
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col items-center shrink-0 mt-0.5">
-                        <div className="w-[84px] h-[84px] rounded-xl overflow-hidden shadow-sm border border-border/40 relative bg-muted/30">
-                          {item.image_url ? (
-                            <img
-                              src={item.image_url}
-                              alt={item.name}
-                              className="absolute inset-0 w-full h-full object-cover"
-                              loading="lazy"
-                              onError={(e) => e.currentTarget.src = '/menu/_fallback.png'}
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-3xl opacity-50">{emoji}</div>
-                          )}
-                          {item.bestseller && (
-                            <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[8px] uppercase font-bold px-1.5 py-0.5 rounded-bl-lg shadow-sm z-10">
-                              Best
-                            </div>
-                          )}
                         </div>
                         
                         <Button 
-                          size="sm" 
-                          className="h-8 -mt-3.5 z-10 w-[72px] px-0 rounded-lg font-bold text-[11px] bg-[#EA7531] text-white shadow-md uppercase tracking-wider border-2 border-background hover:bg-[#D56525] transition-all flex items-center justify-center gap-1"
+                          size="icon" 
+                          className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-transform active:scale-95 shrink-0"
                           onClick={(e) => { e.stopPropagation(); item.variants?.length ? openModifierDialog(item) : handleAddItem(item); }}
                         >
-                          ADD <Plus className="h-3 w-3" strokeWidth={3} />
+                          <Plus className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} />
                         </Button>
                       </div>
                     </div>
@@ -691,15 +647,15 @@ export function NewOrder() {
 
       {/* Cart Section */}
       <div className={cn(
-        "flex shrink-0 flex-col overflow-hidden bg-card z-40 md:border-l border-border/50",
-        "md:relative md:w-72 sm:w-80 lg:w-80 xl:w-96 md:transform-none md:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] md:flex md:overflow-visible",
+        "flex shrink-0 flex-col overflow-hidden bg-[#FDFBF7] dark:bg-[#1A1A1A] z-40 md:border-l border-border/50",
+        "md:relative md:w-72 sm:w-80 lg:w-80 xl:w-96 md:transform-none md:shadow-[-10px_0_30px_rgba(0,0,0,0.03)] md:flex md:overflow-visible",
         "fixed inset-x-0 bottom-14 md:bottom-0 max-h-[75vh] md:max-h-none md:h-auto rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-300",
         showMobileCart ? "translate-y-0 flex" : "translate-y-full md:translate-y-0"
       )}>
-        <div className="md:hidden flex justify-center pt-2 pb-1">
+        <div className="md:hidden flex justify-center pt-2 pb-1 bg-transparent">
           <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
         </div>
-        <CardHeader className="flex flex-col justify-center border-b border-border h-20 lg:h-24 px-5 py-3 pt-2 sm:pt-3 shrink-0 bg-background/50 backdrop-blur-sm space-y-1">
+        <CardHeader className="flex flex-col justify-center border-b border-dashed border-border/80 h-20 lg:h-24 px-5 py-3 pt-2 sm:pt-3 shrink-0 bg-transparent space-y-1">
           {isEditing && (
             <div className={cn("mb-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 shadow-sm", editMode === "supplementary" ? "bg-warning/10" : "bg-primary/10")}>
               {editMode === "supplementary" ? <Lock className="h-3.5 w-3.5 text-warning" /> : <Pencil className="h-3.5 w-3.5 text-primary" />}
@@ -724,13 +680,15 @@ export function NewOrder() {
             </div>
           )}
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-bold tracking-tight lg:text-xl text-foreground flex items-center gap-2">
+            <CardTitle className="text-xl font-black tracking-tight lg:text-2xl text-foreground flex items-center gap-2">
               <span className="md:hidden">
                 <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => setShowMobileCart(false)}>
                   <ChevronDown className="h-5 w-5" />
                 </Button>
               </span>
-              {isEditing ? "Edit Order" : "Current Order"}
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-rose-600 drop-shadow-sm">
+                {isEditing ? "Edit Order" : "Current Order"}
+              </span>
             </CardTitle>
             {cart.length > 0 && (
               <Button
@@ -782,17 +740,22 @@ export function NewOrder() {
           {/* Cart Items */}
           <div className="flex-1 overflow-y-auto min-h-0 p-4">
             {cart.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-6 text-center">
-                <div className="relative mb-6 h-32 w-32 opacity-80">
-                  <div className="absolute inset-0 animate-pulse bg-primary/10 rounded-full blur-xl" />
-                  {/* Using UtensilsCrossed as empty state fallback */}
-                  <UtensilsCrossed className="absolute inset-0 h-full w-full object-contain p-4 drop-shadow-sm text-primary/40" />
+              <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+                <div className="relative mb-8 h-40 w-40">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-rose-500/20 rounded-[40px] rotate-6 blur-xl animate-pulse" />
+                  <div className="relative h-full w-full bg-white/60 dark:bg-black/40 backdrop-blur-xl rounded-[40px] border border-white/50 dark:border-white/10 shadow-2xl flex items-center justify-center transform hover:scale-105 transition-transform duration-500">
+                    <UtensilsCrossed className="h-16 w-16 text-orange-500 drop-shadow-md" />
+                  </div>
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-foreground">Tap something delicious &rarr;</h3>
-                <p className="text-sm mb-4">Top sellers today:</p>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button variant="outline" size="sm" className="rounded-full bg-background border-border shadow-sm text-foreground hover:bg-secondary/80" onClick={() => handleAddItem(menuItems.find(m => m.id === "coffee-2")!)}>Cappuccino</Button>
-                  <Button variant="outline" size="sm" className="rounded-full bg-background border-border shadow-sm text-foreground hover:bg-secondary/80" onClick={() => handleAddItem(menuItems.find(m => m.id === "tea-4")!)}>Ginger Tea</Button>
+                <h3 className="mb-2 text-2xl font-black tracking-tight text-foreground">Your tray is empty</h3>
+                <p className="text-sm font-medium text-muted-foreground mb-8">Tap an item to start an order, or try a favorite:</p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[240px] sm:max-w-none mx-auto">
+                  <Button variant="outline" className="h-12 rounded-xl bg-orange-50/80 dark:bg-orange-950/30 border-orange-200/50 dark:border-orange-900/50 shadow-sm text-orange-900 dark:text-orange-100 hover:bg-orange-100 dark:hover:bg-orange-900/50 hover:scale-105 transition-all w-full sm:w-auto font-bold" onClick={() => handleAddItem(menuItems.find(m => m.id === "coffee-2")!)}>
+                    <span className="text-lg mr-2">☕</span> Cappuccino
+                  </Button>
+                  <Button variant="outline" className="h-12 rounded-xl bg-orange-50/80 dark:bg-orange-950/30 border-orange-200/50 dark:border-orange-900/50 shadow-sm text-orange-900 dark:text-orange-100 hover:bg-orange-100 dark:hover:bg-orange-900/50 hover:scale-105 transition-all w-full sm:w-auto font-bold" onClick={() => handleAddItem(menuItems.find(m => m.id === "tea-4")!)}>
+                    <span className="text-lg mr-2">🍵</span> Ginger Tea
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -950,9 +913,10 @@ export function NewOrder() {
           </div>
 
           {/* Cart Summary */}
-          <div className="border-t border-border p-4 shrink-0">
-            <div className="mb-4 space-y-2">
-              <div className="flex justify-between text-sm">
+          <div className="relative p-4 sm:p-5 shrink-0 bg-gradient-to-t from-orange-50/50 to-transparent dark:from-orange-950/20">
+            <div className="absolute top-0 inset-x-4 h-[1px] bg-gradient-to-r from-transparent via-orange-200 dark:via-orange-900/50 to-transparent" />
+            <div className="mb-5 space-y-2.5">
+              <div className="flex justify-between text-sm font-medium">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-foreground">
                   {getCartTotal().toLocaleString("en-IN", {
@@ -962,7 +926,7 @@ export function NewOrder() {
                   })}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm font-medium">
                 <span className="text-muted-foreground">Tax ({settings.gstEnabled ? `${settings.taxRate}%` : "disabled"})</span>
                 <span className="text-foreground">
                   {(getCartTotal() * (settings.gstEnabled ? settings.taxRate / 100 : 0)).toLocaleString("en-IN", {
@@ -972,9 +936,9 @@ export function NewOrder() {
                   })}
                 </span>
               </div>
-              <div className="flex justify-between text-lg font-bold">
-                <span className="text-foreground">Total</span>
-                <span className="text-primary">
+              <div className="flex justify-between items-end pt-3 mt-1 border-t border-dashed border-orange-200 dark:border-orange-900/50">
+                <span className="text-base font-bold text-foreground">Total</span>
+                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-rose-600 drop-shadow-sm">
                   {(getCartTotal() * (1 + (settings.gstEnabled ? settings.taxRate / 100 : 0))).toLocaleString("en-IN", {
                     style: "currency",
                     currency: "INR",
@@ -1022,17 +986,17 @@ export function NewOrder() {
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex gap-2 relative z-10">
                 <Button
                   size="lg"
                   className={cn(
-                    "flex-1 h-14 bg-primary text-primary-foreground hover:bg-primary/90 transition-all",
-                    cart.length > 0 && "shadow-[0_4px_14px_0_rgba(245,158,11,0.39)] animate-pulse-subtle"
+                    "flex-1 h-14 bg-gradient-to-r from-orange-500 to-rose-500 text-white hover:from-orange-600 hover:to-rose-600 border-0 transition-all font-bold text-[17px] rounded-[16px] shadow-[0_8px_30px_rgba(249,115,22,0.3)] hover:shadow-[0_8px_40px_rgba(249,115,22,0.4)] hover:scale-[1.02] active:scale-[0.98]",
+                    cart.length > 0 && "animate-pulse-subtle"
                   )}
                   disabled={cart.length === 0}
                   onClick={handleProceedToPayment}
                 >
-                  <UtensilsCrossed className="mr-2 h-4 w-4" />
+                  <UtensilsCrossed className="mr-2 h-5 w-5" />
                   Place Order
                 </Button>
               </div>

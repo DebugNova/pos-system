@@ -942,3 +942,50 @@ function mapLocalSettingsToDb(settings: any) {
   if (settings.menuCategories !== undefined) mapped.menu_categories = settings.menuCategories;
   return mapped;
 }
+
+// ============================================================
+// SUBSCRIPTIONS
+// ============================================================
+
+export async function fetchSubscriptionStatus(): Promise<boolean> {
+  try {
+    const supabase = getSupabase();
+    // In this single-tenant app, we just check if there's ANY active subscription
+    const { data, error } = await supabase
+      .from("subscriptions" as any)
+      .select("status")
+      .eq("status", "active")
+      .limit(1);
+      
+    if (error) {
+      console.error("Error fetching subscription status:", error);
+      return false;
+    }
+    
+    return data && data.length > 0;
+  } catch (err) {
+    console.error("Error checking subscription:", err);
+    return false;
+  }
+}
+
+export async function fetchActiveSubscriptionDetails(): Promise<{ planType: string, currentPeriodEnd: string } | null> {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("subscriptions" as any)
+      .select("plan_type, current_period_end")
+      .eq("status", "active")
+      .order("current_period_end", { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) return null;
+    return {
+      planType: (data[0] as any).plan_type,
+      currentPeriodEnd: (data[0] as any).current_period_end
+    };
+  } catch (err) {
+    console.error("Error fetching subscription details:", err);
+    return null;
+  }
+}

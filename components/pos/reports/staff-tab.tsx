@@ -38,7 +38,7 @@ export function StaffTab({ props }: any) {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto pt-2 space-y-4">
-      <Card className="bg-card border-border shrink-0">
+      <Card className="bg-gradient-to-br from-blue-500/5 to-card border border-border/40 shadow-sm shrink-0 rounded-[24px] overflow-hidden">
         <CardHeader>
           <CardTitle className="text-base">Revenue per Staff</CardTitle>
         </CardHeader>
@@ -61,13 +61,13 @@ export function StaffTab({ props }: any) {
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border flex-1 flex flex-col min-h-[300px]">
+      <Card className="bg-gradient-to-br from-orange-500/5 to-card border border-border/40 shadow-sm flex-1 flex flex-col min-h-[300px] rounded-[24px] overflow-hidden">
         <CardHeader>
           <CardTitle className="text-base">Staff Details</CardTitle>
         </CardHeader>
         <CardContent className="p-0 flex-1 overflow-auto">
           <Table>
-            <TableHeader className="sticky top-0 bg-card z-10 shadow-sm border-b">
+            <TableHeader className="sticky top-0 bg-orange-50/80 dark:bg-orange-950/20 backdrop-blur-md z-10 shadow-sm border-b border-border/40">
               <TableRow className="hover:bg-transparent">
                 <TableHead>Staff Member</TableHead>
                 <TableHead className="text-right">Known Shifts</TableHead>

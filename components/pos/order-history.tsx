@@ -68,6 +68,14 @@ const typeFilters = [
   { id: "delivery", label: "Delivery" },
 ] as const;
 
+const paymentFilters = [
+  { id: "all", label: "All Payments" },
+  { id: "cash", label: "Cash" },
+  { id: "upi", label: "UPI" },
+  { id: "card", label: "Card" },
+  { id: "split", label: "Split" },
+] as const;
+
 const orderTypeIcons = {
   "dine-in": UtensilsCrossed,
   takeaway: ShoppingBag,
@@ -75,17 +83,27 @@ const orderTypeIcons = {
 };
 
 export function OrderHistory() {
-  const { orders, updateOrder, updateOrderStatus, updateTableStatus, currentUser, settings, cancelPlacedOrder } = usePOSStore();
+  const { orders, updateOrder, updateOrderStatus, updateTableStatus, currentUser, settings, cancelPlacedOrder, deleteOrder } = usePOSStore();
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [paymentFilter, setPaymentFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [refundReason, setRefundReason] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
+
+  // Temporary cleanup for the specific test order stuck in local storage
+  useEffect(() => {
+    const testOrderId = "ord-1782677224608";
+    if (orders.some(o => o.id === testOrderId || o.id === testOrderId.toUpperCase())) {
+      deleteOrder(testOrderId);
+      deleteOrder(testOrderId.toUpperCase());
+    }
+  }, [orders, deleteOrder]);
 
   // ── Live-update: poll on mount + periodic tick ──
   // Immediately fetches active + recently-completed orders from the server
@@ -109,8 +127,9 @@ export function OrderHistory() {
       order.customerPhone?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     const matchesType = typeFilter === "all" || order.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
-  });
+    const matchesPayment = paymentFilter === "all" || (order.payment?.method || "").toLowerCase() === paymentFilter;
+    return matchesSearch && matchesStatus && matchesType && matchesPayment;
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const order = selectedOrder ? orders.find((o) => o.id === selectedOrder) : null;
 
@@ -162,76 +181,125 @@ export function OrderHistory() {
   };
 
   return (
-    <div className="flex h-full flex-col p-3 sm:p-4 lg:p-6">
+    <div className="flex h-full flex-col p-3 sm:p-4 lg:p-6 bg-background">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Order History</h1>
-          <p className="text-sm text-muted-foreground">
-            View and manage all orders
+          <h1 className="text-3xl font-black text-foreground tracking-tight">Order History</h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">
+            View and manage all past and active orders
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="secondary">{filteredOrders.length} orders</Badge>
+          <Badge variant="secondary" className="px-3 py-1.5 text-sm font-bold bg-secondary/80 shadow-sm border border-border/50 rounded-xl">
+            {filteredOrders.length} orders found
+          </Badge>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by order ID or customer..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-secondary border-none"
-          />
+      {/* Premium Control Center */}
+      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-border/50 bg-card/60 p-4 sm:p-5 shadow-sm backdrop-blur-md">
+        {/* Top Row: Search & Type Filter */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by Order ID, Customer, or Phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-background/50 border-border/50 h-11 rounded-xl shadow-inner focus-visible:ring-1 focus-visible:ring-primary/30 font-medium"
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full sm:w-[180px] bg-background/50 border-border/50 h-11 rounded-xl font-medium">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              {typeFilters.map((filter) => (
+                <SelectItem key={filter.id} value={filter.id} className="font-medium">
+                  {filter.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[160px] bg-secondary border-none">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusFilters.map((filter) => (
-              <SelectItem key={filter.id} value={filter.id}>
-                {filter.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Divider */}
+        <div className="h-px w-full bg-border/40 my-1"></div>
 
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-none">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            {typeFilters.map((filter) => (
-              <SelectItem key={filter.id} value={filter.id}>
+        {/* Status Filter Chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-16 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Status</span>
+          <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block"></div>
+          {statusFilters.map((filter) => {
+            const Icon = filter.icon;
+            return (
+              <Button
+                key={filter.id}
+                variant="outline"
+                size="sm"
+                onClick={() => setStatusFilter(filter.id)}
+                className={cn(
+                  "gap-1.5 rounded-full px-4 transition-all duration-300",
+                  statusFilter === filter.id
+                    ? filter.id === "new"
+                      ? "border-blue-500 bg-blue-500 text-white shadow-md shadow-blue-500/25 hover:bg-blue-600 hover:text-white"
+                      : filter.id === "preparing"
+                      ? "border-amber-500 bg-amber-500 text-white shadow-md shadow-amber-500/25 hover:bg-amber-600 hover:text-white"
+                      : filter.id === "ready"
+                      ? "border-emerald-400 bg-emerald-400 text-white shadow-md shadow-emerald-400/25 hover:bg-emerald-500 hover:text-white"
+                      : filter.id === "completed"
+                      ? "border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-600/25 hover:bg-emerald-700 hover:text-white"
+                      : filter.id === "cancelled"
+                      ? "border-rose-500 bg-rose-500 text-white shadow-md shadow-rose-500/25 hover:bg-rose-600 hover:text-white"
+                      : "bg-primary text-primary-foreground shadow-md shadow-primary/25 hover:bg-primary/90"
+                    : filter.id === "new"
+                    ? "border-border text-blue-600 hover:border-blue-500/50 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10"
+                    : filter.id === "preparing"
+                    ? "border-border text-amber-600 hover:border-amber-500/50 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                    : filter.id === "ready" || filter.id === "completed"
+                    ? "border-border text-emerald-600 hover:border-emerald-500/50 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                    : filter.id === "cancelled"
+                    ? "border-border text-rose-600 hover:border-rose-500/50 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                    : "border-border text-muted-foreground hover:border-primary/50 hover:bg-secondary"
+                )}
+              >
+                {Icon && <Icon className="h-3.5 w-3.5" />}
                 {filter.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+              </Button>
+            );
+          })}
+        </div>
 
-      {/* Status Filter Chips */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {statusFilters.map((filter) => {
-          const Icon = filter.icon;
-          return (
+        {/* Payment Filter Chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-16 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Payment</span>
+          <div className="mx-1 hidden h-5 w-px bg-border/50 sm:block"></div>
+          {paymentFilters.map((filter) => (
             <Button
               key={filter.id}
-              variant={statusFilter === filter.id ? "default" : "outline"}
+              variant="outline"
               size="sm"
-              onClick={() => setStatusFilter(filter.id)}
-              className="gap-1.5"
+              onClick={() => setPaymentFilter(filter.id)}
+              className={cn(
+                "gap-1.5 rounded-full px-4 transition-all duration-300",
+                paymentFilter === filter.id
+                  ? filter.id === "cash"
+                    ? "border-emerald-500 bg-emerald-500 text-white shadow-md shadow-emerald-500/25 hover:bg-emerald-600 hover:text-white"
+                    : filter.id === "upi"
+                    ? "border-violet-500 bg-violet-500 text-white shadow-md shadow-violet-500/25 hover:bg-violet-600 hover:text-white"
+                    : "bg-primary text-primary-foreground shadow-md shadow-primary/25 hover:bg-primary/90"
+                  : filter.id === "cash"
+                  ? "border-border text-emerald-600 hover:border-emerald-500/50 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                  : filter.id === "upi"
+                  ? "border-border text-violet-600 hover:border-violet-500/50 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-500/10"
+                  : "border-border text-muted-foreground hover:border-primary/50 hover:bg-secondary"
+              )}
             >
-              {Icon && <Icon className="h-3 w-3" />}
               {filter.label}
             </Button>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
       {/* Orders List */}
@@ -242,68 +310,81 @@ export function OrderHistory() {
             return (
               <Card
                 key={o.id}
-                className="cursor-pointer bg-card border-border transition-all hover:bg-secondary/30"
+                className="cursor-pointer bg-card/60 border-border/40 transition-all hover:bg-card hover:shadow-md hover:border-primary/20 hover:-translate-y-0.5 rounded-2xl"
                 onClick={() => setSelectedOrder(o.id)}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                      <div className="flex shrink-0 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-secondary mt-1 sm:mt-0">
-                        <TypeIcon className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                      {/* Avatar */}
+                      <div className="flex shrink-0 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-lg sm:text-xl border border-primary/20 shadow-sm mt-1 sm:mt-0">
+                        {o.customerName ? o.customerName.charAt(0).toUpperCase() : <TypeIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className="font-bold text-foreground text-base truncate block max-w-full">
+                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                          <span className="font-black text-foreground text-lg sm:text-xl truncate block max-w-full tracking-tight">
                             {o.customerName || "Guest"}
                           </span>
                           {o.tableId && (
-                            <Badge variant="secondary" className="shrink-0 px-1.5 py-0 h-5 text-[10px] sm:text-[11px]">
+                            <Badge variant="secondary" className="shrink-0 px-2 py-0.5 h-6 text-xs font-bold bg-secondary/80 border-border/50 shadow-sm rounded-md">
                               Table {o.tableId.replace("t", "")}
                             </Badge>
                           )}
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground w-full">
-                          <span className="shrink-0 whitespace-nowrap font-mono">{o.id.toUpperCase()}</span>
-                          <span className="shrink-0 text-muted-foreground/50">&bull;</span>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:text-xs text-muted-foreground w-full font-medium">
+                          <span className="shrink-0 whitespace-nowrap bg-secondary px-1.5 py-0.5 rounded-md font-mono text-foreground/80">{o.id.toUpperCase()}</span>
+                          <span className="shrink-0 text-muted-foreground/30">•</span>
                           <span className="shrink-0 whitespace-nowrap">{o.items.length} items</span>
-                          <span className="shrink-0 text-muted-foreground/50">&bull;</span>
-                          <span suppressHydrationWarning className="shrink-0 whitespace-nowrap">
+                          <span className="shrink-0 text-muted-foreground/30">•</span>
+                          <span suppressHydrationWarning className="shrink-0 whitespace-nowrap flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
                             {formatDistanceToNow(o.createdAt, { addSuffix: true })}
                           </span>
                           {o.customerPhone && (
                             <>
-                              <span className="shrink-0 text-muted-foreground/50">&bull;</span>
+                              <span className="shrink-0 text-muted-foreground/30">•</span>
                               <span className="shrink-0 whitespace-nowrap">📞 {o.customerPhone}</span>
                             </>
                           )}
                           {o.createdBy && (
                             <>
-                              <span className="shrink-0 text-muted-foreground/50">&bull;</span>
+                              <span className="shrink-0 text-muted-foreground/30">•</span>
                               <span className="truncate max-w-[80px] sm:max-w-[100px] shrink block">by {o.createdBy}</span>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Right Side Actions / Totals */}
                     <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t border-border/40 sm:border-0 shrink-0">
-                      <Badge variant="outline" className={getStatusColor(o.status)}>
-                        {o.status}
-                      </Badge>
-                      {o.refund && (
-                        <Badge variant="outline" className="border-destructive/30 text-destructive bg-destructive/10 hidden sm:inline-flex">
-                          Refunded
+                      <div className="flex items-center gap-2">
+                        {o.payment?.method && (
+                          <Badge variant="outline" className="capitalize font-bold border-border/50 bg-card">
+                            {o.payment.method}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className={cn("font-bold px-2.5 py-0.5 shadow-sm", getStatusColor(o.status))}>
+                          {o.status}
                         </Badge>
-                      )}
-                      <span className={cn("text-lg font-bold text-foreground", o.status === "cancelled" && "line-through opacity-50")}>
-                        {(o.grandTotal ?? o.total).toLocaleString("en-IN", {
-                          style: "currency",
-                          currency: "INR",
-                          minimumFractionDigits: 0,
-                        })}
-                      </span>
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                        {o.refund && (
+                          <Badge variant="outline" className="border-destructive/30 text-destructive bg-destructive/10 hidden sm:inline-flex font-bold">
+                            Refunded
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 pl-2 sm:pl-4 sm:border-l border-border/50">
+                        <span className={cn("text-xl sm:text-2xl font-black text-foreground tracking-tight tabular-nums", o.status === "cancelled" && "line-through opacity-50")}>
+                          {(o.grandTotal ?? o.total).toLocaleString("en-IN", {
+                            style: "currency",
+                            currency: "INR",
+                            minimumFractionDigits: 0,
+                          })}
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-secondary/50 hover:bg-primary hover:text-primary-foreground transition-colors shrink-0">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -320,250 +401,234 @@ export function OrderHistory() {
 
       {/* Order Detail Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{order?.customerName || "Guest"}</DialogTitle>
-            <DialogDescription>
-              {order?.id.toUpperCase()} — Order details and actions
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:max-w-xl p-0 gap-0 border-border/40 shadow-2xl sm:rounded-[2rem] print:hidden hide-scrollbar">
           {order && (
-            <div className="space-y-4 pt-4">
-              {/* Order Info */}
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className={getStatusColor(order.status)}>
-                  {order.status}
-                </Badge>
-                <Badge variant="secondary">{order.type}</Badge>
-                {order.tableId && (
-                  <Badge variant="secondary">Table {order.tableId.replace("t", "")}</Badge>
-                )}
+            <>
+              {/* Premium Header */}
+              <div className="bg-secondary/40 p-6 pb-5 border-b border-border/50 relative overflow-hidden">
+                {/* Decorative background element */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                
+                <DialogHeader className="relative z-10">
+                  <DialogTitle className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
+                    {order.customerName || "Guest"}
+                    {order.tableId && (
+                      <Badge variant="secondary" className="text-xs font-bold bg-background shadow-sm px-2 py-0.5 rounded-md border-border/50">
+                        Table {order.tableId.replace("t", "")}
+                      </Badge>
+                    )}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm font-medium mt-1.5 flex items-center gap-2">
+                    <span className="font-mono bg-background/60 px-1.5 py-0.5 rounded-md text-foreground/80 shadow-sm">{order.id.toUpperCase()}</span>
+                    <span>Order details and actions</span>
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="flex flex-wrap gap-2.5 mt-5 relative z-10">
+                  <Badge variant="outline" className={cn("font-bold px-3 py-1 shadow-sm border-border/50", getStatusColor(order.status))}>
+                    {order.status.toUpperCase()}
+                  </Badge>
+                  <Badge variant="outline" className="font-bold px-3 py-1 shadow-sm uppercase bg-card border-border/50">
+                    {order.type}
+                  </Badge>
+                  {order.payment?.method && (
+                    <Badge variant="outline" className="font-bold px-3 py-1 shadow-sm uppercase bg-card border-border/50">
+                      {order.payment.method}
+                    </Badge>
+                  )}
+                </div>
               </div>
 
-              {/* Customer and Staff Info */}
-              {(order.customerPhone || order.createdBy) && (
-                <div className="rounded-lg bg-secondary/50 p-3 flex justify-between">
-                  {order.customerPhone && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
-                      <p className="font-medium text-foreground">📞 {order.customerPhone}</p>
-                    </div>
-                  )}
-                  {order.createdBy && (
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Created By</p>
-                      <p className="font-medium text-foreground">{order.createdBy}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Order Notes */}
-              {order.orderNotes && (
-                <div className="rounded-lg bg-primary/10 border border-primary/20 p-3">
-                  <p className="text-sm text-muted-foreground">Order Note</p>
-                  <p className="font-medium text-primary">{order.orderNotes}</p>
-                </div>
-              )}
-
-              {/* Order Items */}
-              <div className="rounded-lg bg-secondary/50 p-3">
-                <p className="mb-2 text-sm text-muted-foreground">Items</p>
-                <ul className="space-y-3">
-                  {order.items.map((item) => {
-                    const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
-                    return (
-                    <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                      <div className="flex justify-between">
-                        <span className={cn("text-foreground font-medium", order.status === "cancelled" && "line-through opacity-60")}>{item.quantity}x {item.name}</span>
-                        <span className="text-muted-foreground">
-                          {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                        </span>
+              {/* Body */}
+              <div className="p-6 space-y-6 bg-background/50">
+                {/* Customer and Staff Info */}
+                {(order.customerPhone || order.createdBy) && (
+                  <div className="rounded-2xl bg-secondary/30 border border-border/40 p-4 flex justify-between shadow-sm backdrop-blur-sm">
+                    {order.customerPhone && (
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Customer Phone</p>
+                        <p className="font-bold text-foreground flex items-center gap-1.5 text-[15px]">
+                          <span className="text-lg">📞</span> {order.customerPhone}
+                        </p>
                       </div>
-                      {item.variant && <span className="text-xs text-muted-foreground ml-4 mt-0.5">({item.variant})</span>}
-                      {item.modifiers && item.modifiers.length > 0 && (
-                        <span className="text-xs text-muted-foreground ml-4 mt-0.5">
-                          + {item.modifiers.map(m => m.name).join(", ")}
-                        </span>
-                      )}
-                      {item.notes && (
-                        <span className="block text-xs text-muted-foreground mt-0.5 ml-4">
-                          Note: {item.notes}
-                        </span>
-                      )}
-                    </li>
-                  )})}
-                </ul>
+                    )}
+                    {order.createdBy && (
+                      <div className="text-right">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Served By</p>
+                        <p className="font-bold text-foreground text-[15px]">{order.createdBy}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                {order.supplementaryBills?.map((bill, index) => (
-                  <div key={bill.id} className="mt-4 border-t border-border pt-3">
-                    <div className="flex justify-between items-center mb-2">
-                       <p className="text-sm font-medium text-foreground">Supplementary #{index + 1}</p>
-                       <Badge variant="outline" className={cn("text-[11px] sm:text-xs h-5", bill.payment ? "bg-success/10 text-success border-success/30" : "bg-warning/10 text-warning border-warning/30")}>
-                         {bill.payment ? "Paid" : "Unpaid"}
-                       </Badge>
-                    </div>
-                    <ul className="space-y-3">
-                      {bill.items.map((item) => {
+                {/* Order Notes */}
+                {order.orderNotes && (
+                  <div className="rounded-2xl bg-primary/10 border border-primary/20 p-4 shadow-sm">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-primary/70 mb-1">Order Note</p>
+                    <p className="font-bold text-primary text-[15px]">{order.orderNotes}</p>
+                  </div>
+                )}
+
+                {/* Order Items & Totals */}
+                <div className="rounded-2xl bg-secondary/30 border border-border/40 p-1 shadow-sm backdrop-blur-sm">
+                  <div className="p-3 pb-2 border-b border-border/40">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Order Items</p>
+                  </div>
+                  <div className="p-3">
+                    <ul className="space-y-3.5">
+                      {order.items.map((item) => {
                         const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
                         return (
-                        <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                          <div className="flex justify-between">
-                            <span className={cn("text-foreground font-medium", order.status === "cancelled" && "line-through opacity-60")}>{item.quantity}x {item.name}</span>
-                            <span className="text-muted-foreground">
+                        <li key={item.id} className="flex flex-col text-sm border-b border-border/30 pb-3.5 last:border-0 last:pb-0">
+                          <div className="flex justify-between items-start gap-4">
+                            <span className={cn("text-foreground font-semibold flex items-start gap-2", order.status === "cancelled" && "line-through opacity-50")}>
+                              <span className="font-black text-primary min-w-[20px]">{item.quantity}x</span>
+                              <span>{item.name}</span>
+                            </span>
+                            <span className="text-foreground font-bold tabular-nums shrink-0">
                               {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
                             </span>
                           </div>
-                          {item.variant && <span className="text-xs text-muted-foreground ml-4 mt-0.5">({item.variant})</span>}
+                          {item.variant && <span className="text-[11px] font-bold text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded w-fit ml-[28px] mt-1.5 block">({item.variant})</span>}
                           {item.modifiers && item.modifiers.length > 0 && (
-                            <span className="text-xs text-muted-foreground ml-4 mt-0.5">
+                            <span className="text-xs font-medium text-muted-foreground ml-[28px] mt-1.5 block">
                               + {item.modifiers.map(m => m.name).join(", ")}
                             </span>
                           )}
                           {item.notes && (
-                            <span className="block text-xs text-muted-foreground mt-0.5 ml-4">
+                            <span className="block text-xs italic text-muted-foreground mt-1 ml-[28px]">
                               Note: {item.notes}
                             </span>
                           )}
                         </li>
                       )})}
                     </ul>
-                  </div>
-                ))}
 
-                {(!order.supplementaryBills || order.supplementaryBills.length === 0) ? (
-                  <div className="mt-3 flex justify-between border-t border-border pt-2">
-                    <span className="font-medium text-foreground">Total</span>
-                    <span className="font-bold text-primary">
-                      {order.total.toLocaleString("en-IN", {
-                        style: "currency",
-                        currency: "INR",
-                        minimumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="mt-4 border-t border-border pt-3 text-sm">
-                    <div className="flex justify-between text-muted-foreground mb-1">
-                      <span>Original Total</span>
-                      <span>{order.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
-                    </div>
-                    {order.supplementaryBills.map((bill, i) => (
-                      <div key={bill.id} className="flex justify-between text-muted-foreground mb-1">
-                        <span>Added Items #{i + 1}</span>
-                        <span>{bill.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                    {order.supplementaryBills?.map((bill, index) => (
+                      <div key={bill.id} className="mt-5 border-t border-border/40 pt-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <p className="text-xs font-bold text-foreground">Supplementary #{index + 1}</p>
+                          <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wider font-bold h-5 px-1.5", bill.payment ? "bg-success/10 text-success border-success/30" : "bg-warning/10 text-warning border-warning/30")}>
+                            {bill.payment ? "Paid" : "Unpaid"}
+                          </Badge>
+                        </div>
+                        <ul className="space-y-3.5">
+                          {bill.items.map((item) => {
+                            const modsTotal = item.modifiers?.reduce((s, m) => s + m.price, 0) || 0;
+                            return (
+                            <li key={item.id} className="flex flex-col text-sm border-b border-border/30 pb-3 last:border-0 last:pb-0">
+                              <div className="flex justify-between items-start gap-4">
+                                <span className={cn("text-foreground font-semibold flex items-start gap-2", order.status === "cancelled" && "line-through opacity-50")}>
+                                  <span className="font-black text-primary min-w-[20px]">{item.quantity}x</span>
+                                  <span>{item.name}</span>
+                                </span>
+                                <span className="text-foreground font-bold tabular-nums shrink-0">
+                                  {((item.price + modsTotal) * item.quantity).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                                </span>
+                              </div>
+                              {item.variant && <span className="text-[11px] font-bold text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded w-fit ml-[28px] mt-1.5 block">({item.variant})</span>}
+                              {item.modifiers && item.modifiers.length > 0 && (
+                                <span className="text-xs font-medium text-muted-foreground ml-[28px] mt-1.5 block">
+                                  + {item.modifiers.map(m => m.name).join(", ")}
+                                </span>
+                              )}
+                              {item.notes && (
+                                <span className="block text-xs italic text-muted-foreground mt-1 ml-[28px]">
+                                  Note: {item.notes}
+                                </span>
+                              )}
+                            </li>
+                          )})}
+                        </ul>
                       </div>
                     ))}
-                    <div className="flex justify-between font-bold text-primary border-t border-border mt-2 pt-2 text-base">
-                      <span>Grand Total</span>
-                      <span>{(order.grandTotal ?? order.total).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
-                    </div>
                   </div>
-                )}
-              </div>
 
-              {/* Payment Details */}
-              {order.payment && (
-                <div className="rounded-lg bg-secondary/50 p-3">
-                  <p className="mb-2 text-sm text-muted-foreground">Payment Details</p>
-                  <div className="text-sm space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Method</span>
-                      <span className="text-foreground capitalize">{order.payment.method}</span>
-                    </div>
-                    {order.payment.transactionId && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Txn ID</span>
-                        <span className="text-foreground">{order.payment.transactionId}</span>
+                  {/* Totals Block */}
+                  <div className="bg-background/80 p-4 border-t border-border/40 rounded-b-2xl">
+                    {(!order.supplementaryBills || order.supplementaryBills.length === 0) ? (
+                      <div className="flex justify-between items-end">
+                        <span className="font-bold text-foreground">Grand Total</span>
+                        <span className="font-black text-2xl text-primary tabular-nums tracking-tight">
+                          {order.total.toLocaleString("en-IN", {
+                            style: "currency",
+                            currency: "INR",
+                            minimumFractionDigits: 0,
+                          })}
+                        </span>
                       </div>
-                    )}
-                    {order.payment.method === "cash" && order.payment.cashReceived && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Given</span>
-                          <span className="text-foreground">
-                            {order.payment.cashReceived.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                          </span>
+                    ) : (
+                      <div className="space-y-1.5 text-sm font-medium">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Original Total</span>
+                          <span>{order.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Change</span>
-                          <span className="text-foreground">
-                            {order.payment.change?.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
-                          </span>
+                        {order.supplementaryBills.map((bill, i) => (
+                          <div key={bill.id} className="flex justify-between text-muted-foreground">
+                            <span>Added Items #{i + 1}</span>
+                            <span>{bill.total.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between font-black text-primary border-t border-border/50 mt-3 pt-3 text-2xl tracking-tight">
+                          <span>Grand Total</span>
+                          <span>{(order.grandTotal ?? order.total).toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
                         </div>
-                      </>
-                    )}
-                    {order.payment.method === "split" && order.payment.splitDetails && (
-                      <div className="pt-1 mt-1 border-t border-border">
-                        {order.payment.splitDetails.cash > 0 && (
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Cash</span>
-                            <span className="text-foreground">{order.payment.splitDetails.cash.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
-                          </div>
-                        )}
-                        {order.payment.splitDetails.upi > 0 && (
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">UPI</span>
-                            <span className="text-foreground">{order.payment.splitDetails.upi.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
-                          </div>
-                        )}
-                        {order.payment.splitDetails.card > 0 && (
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Card</span>
-                            <span className="text-foreground">{order.payment.splitDetails.card.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
                 </div>
-              )}
 
-              {/* Timeline */}
-              <div className="rounded-lg bg-secondary/50 p-3">
-                <p className="mb-2 text-sm text-muted-foreground">Timeline</p>
-                <div className="text-sm space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Created</span>
-                    <span className="text-foreground">
-                      {format(order.createdAt, "dd MMM yyyy, hh:mm a")}
-                    </span>
-                  </div>
-                  {order.refund && (
-                    <div className="flex justify-between border-t border-border/50 pt-2 text-destructive">
-                      <span>Refunded {order.refund.amount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}</span>
-                      <span>
-                        {format(order.refund.refundedAt, "dd MMM yyyy, hh:mm a")}
-                        {order.refund.reason && <span className="block text-xs mt-0.5 opacity-80 text-right">Reason: {order.refund.reason}</span>}
+                {/* Timeline */}
+                <div className="rounded-2xl bg-secondary/30 border border-border/40 p-4 shadow-sm backdrop-blur-sm">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Timeline</p>
+                  <div className="space-y-3 font-medium text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Clock className="h-4 w-4" /> Created
+                      </span>
+                      <span className="text-foreground">
+                        {format(order.createdAt, "dd MMM yyyy, hh:mm a")}
                       </span>
                     </div>
-                  )}
+                    {order.refund && (
+                      <div className="flex items-center justify-between border-t border-border/50 pt-3 text-destructive">
+                        <span className="flex items-center gap-2">
+                          <RotateCcw className="h-4 w-4" />
+                          Refunded {order.refund.amount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+                        </span>
+                        <span className="text-right">
+                          <span className="block">{format(order.refund.refundedAt, "dd MMM yyyy, hh:mm a")}</span>
+                          {order.refund.reason && <span className="block text-xs mt-0.5 opacity-80 font-normal">Reason: {order.refund.reason}</span>}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 gap-2" onClick={() => window.print()}>
-                    <Printer className="h-4 w-4" />
-                    Print
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Button variant="default" className="flex-1 h-12 gap-2 text-[15px] font-bold shadow-md hover:-translate-y-0.5 transition-transform" onClick={() => window.print()}>
+                    <Printer className="h-5 w-5" />
+                    Print Receipt
                   </Button>
                   {(order.status === "new" || order.status === "preparing" || order.status === "ready") && (
-                    <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowCancelDialog(true)}>
-                      <XCircle className="h-4 w-4" />
+                    <Button variant="outline" className="flex-1 h-12 gap-2 text-[15px] font-bold text-destructive hover:text-destructive hover:bg-destructive/10 border-border/50 shadow-sm hover:-translate-y-0.5 transition-transform" onClick={() => setShowCancelDialog(true)}>
+                      <XCircle className="h-5 w-5" />
                       Cancel Order
                     </Button>
                   )}
                   {!order.refund && order.status === "completed" && (
-                    <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowRefundDialog(true)}>
-                      <RotateCcw className="h-4 w-4" />
+                    <Button variant="outline" className="flex-1 h-12 gap-2 text-[15px] font-bold text-destructive hover:text-destructive hover:bg-destructive/10 border-border/50 shadow-sm hover:-translate-y-0.5 transition-transform" onClick={() => setShowRefundDialog(true)}>
+                      <RotateCcw className="h-5 w-5" />
                       Refund
                     </Button>
                   )}
                 </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
         {/* Refund Dialog */}
         <AlertDialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>

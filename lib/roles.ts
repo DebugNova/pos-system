@@ -11,7 +11,8 @@ export type ViewId =
   | "reports"
   | "settings"
   | "billing"
-  | "history";
+  | "history"
+  | "subscription";
 
 export type SettingsTab =
   | "general"
@@ -31,6 +32,7 @@ export const roleViewAccess: Record<UserRole, ViewId[]> = {
     "settings",
     "billing",
     "history",
+    "subscription",
   ],
   // Manager = Owner minus dashboard & settings.
   // Reports is exposed directly because the dashboard entry point is hidden.
@@ -41,8 +43,9 @@ export const roleViewAccess: Record<UserRole, ViewId[]> = {
     "billing",
     "history",
     "reports",
+    "subscription",
   ],
-  Chef: ["kitchen"],
+  Chef: ["kitchen", "subscription"],
 };
 
 // Which settings tabs each role can see

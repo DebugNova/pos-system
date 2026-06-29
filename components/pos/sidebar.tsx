@@ -21,6 +21,7 @@ import {
   BarChart3,
   Sun,
   Moon,
+  Sparkles,
 } from "lucide-react";
 import { CatLogo } from "@/components/ui/cat-logo";
 import { EndShiftDialog } from "./end-shift-dialog";
@@ -36,6 +37,7 @@ const navItems = [
   { id: "billing" as ViewId, label: "Billing", icon: CreditCard },
   { id: "history" as ViewId, label: "History", icon: ClipboardList },
   { id: "settings" as ViewId, label: "Settings", icon: Settings },
+  { id: "subscription" as ViewId, label: "Subscription", icon: Sparkles },
 ] as const;
 
 let sharedAudioCtx: AudioContext | null = null;

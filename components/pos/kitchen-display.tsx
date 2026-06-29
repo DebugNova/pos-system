@@ -223,71 +223,78 @@ export function KitchenDisplay() {
           </div>
 
           {/* Stats summary */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0 lg:gap-4 snap-x snap-mandatory">
+          <div className="flex items-center gap-3 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0 lg:gap-4 snap-x snap-mandatory hide-scrollbar">
             {/* New */}
-            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4 snap-start">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Clock className="h-4 w-4" />
+            <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm px-4 py-2.5 shadow-sm transition-all hover:bg-card/80 snap-start relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-[20px] -mr-8 -mt-8 transition-all group-hover:bg-primary/20" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-primary/10 text-primary border border-primary/20">
+                <Clock className="h-5 w-5" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] sm:text-xs font-semibold tracking-wider text-muted-foreground uppercase">New</span>
-                <span className="text-base font-bold leading-none text-foreground">{newOrders.length}</span>
+              <div className="flex flex-col relative z-10">
+                <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-muted-foreground uppercase">New</span>
+                <span className="text-xl font-black leading-none text-foreground">{newOrders.length}</span>
               </div>
             </div>
 
             {/* Preparing */}
-            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4 snap-start">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
-                <ChefHat className="h-4 w-4" />
+            <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm px-4 py-2.5 shadow-sm transition-all hover:bg-card/80 snap-start relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-warning/10 rounded-full blur-[20px] -mr-8 -mt-8 transition-all group-hover:bg-warning/20" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-warning/10 text-warning border border-warning/20">
+                <ChefHat className="h-5 w-5" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] sm:text-xs font-semibold tracking-wider text-muted-foreground uppercase">Preparing</span>
-                <span className="text-base font-bold leading-none text-foreground">{preparingOrders.length}</span>
+              <div className="flex flex-col relative z-10">
+                <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-muted-foreground uppercase">Preparing</span>
+                <span className="text-xl font-black leading-none text-foreground">{preparingOrders.length}</span>
               </div>
             </div>
 
             {/* Ready */}
-            <div className="flex shrink-0 items-center gap-2.5 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 sm:px-4 snap-start">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success">
-                <CheckCircle2 className="h-4 w-4" />
+            <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm px-4 py-2.5 shadow-sm transition-all hover:bg-card/80 snap-start relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-success/10 rounded-full blur-[20px] -mr-8 -mt-8 transition-all group-hover:bg-success/20" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-success/10 text-success border border-success/20">
+                <CheckCircle2 className="h-5 w-5" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] sm:text-xs font-semibold tracking-wider text-muted-foreground uppercase">Ready</span>
-                <span className="text-base font-bold leading-none text-foreground">{readyOrders.length}</span>
+              <div className="flex flex-col relative z-10">
+                <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-muted-foreground uppercase">Ready</span>
+                <span className="text-xl font-black leading-none text-foreground">{readyOrders.length}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filter bar & sort toggle */}
-        <div className="flex items-center gap-2 overflow-x-auto snap-x snap-mandatory">
-          {filterTabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <Button
-                key={tab.id}
-                variant={filter === tab.id ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "shrink-0 gap-1.5 text-xs lg:text-sm snap-start",
-                  filter === tab.id && "bg-primary text-primary-foreground"
-                )}
-                onClick={() => setFilter(tab.id)}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {tab.label}
-              </Button>
-            );
-          })}
+        <div className="flex items-center gap-3 overflow-x-auto snap-x snap-mandatory pt-2">
+          <div className="flex bg-secondary/50 p-1 rounded-xl gap-1 shrink-0">
+            {filterTabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <Button
+                  key={tab.id}
+                  variant={filter === tab.id ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "shrink-0 gap-1.5 text-[13px] font-semibold rounded-lg h-9 px-3.5 transition-all",
+                    filter === tab.id 
+                      ? "bg-background text-foreground shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                  onClick={() => setFilter(tab.id)}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {tab.label}
+                </Button>
+              );
+            })}
+          </div>
 
           <div className="ml-auto flex items-center gap-1.5">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="gap-1.5 text-xs text-muted-foreground"
+              className="gap-2 text-[13px] font-semibold h-9 rounded-xl border-border/60 shadow-sm"
               onClick={() => setSort(sort === "oldest" ? "newest" : "oldest")}
             >
-              <ArrowUpDown className="h-3.5 w-3.5" />
+              <ArrowUpDown className="h-4 w-4" />
               {sort === "oldest" ? "Oldest first" : "Newest first"}
             </Button>
           </div>
@@ -320,25 +327,25 @@ export function KitchenDisplay() {
       </div>
 
       {/* Kanban Board */}
-      <div className="flex flex-1 flex-col gap-3 sm:gap-4 lg:gap-6 overflow-hidden p-3 sm:p-4 lg:p-6 md:flex-row">
+      <div className="flex flex-1 flex-col gap-4 lg:gap-6 overflow-hidden p-4 lg:p-6 md:flex-row bg-background">
         {/* New Orders Column */}
-        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-lg bg-secondary/30 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "new" ? "flex" : "hidden md:flex")}>
-          <div className={cn("mb-3 flex items-center gap-2 lg:mb-4 transition-colors duration-300", newOrderFlash && "bg-primary/15 rounded-lg px-2 py-1")}>
-            <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary lg:h-8 lg:w-8", newOrderFlash && "animate-bounce")}>
-              <Clock className="h-3.5 w-3.5 text-primary-foreground lg:h-4 lg:w-4" />
+        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-2xl bg-primary/[0.03] border border-primary/10 p-4 md:min-h-0 lg:p-5", mobileTab === "new" ? "flex" : "hidden md:flex")}>
+          <div className={cn("mb-4 flex items-center gap-3 transition-colors duration-300", newOrderFlash && "bg-primary/15 rounded-xl px-3 py-2")}>
+            <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm", newOrderFlash && "animate-bounce shadow-[0_0_15px_rgba(234,117,49,0.5)]")}>
+              <Clock className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-semibold truncate text-foreground lg:text-lg">New Orders</h2>
+            <h2 className="text-lg font-black truncate text-foreground tracking-tight">New Orders</h2>
             {newOrderFlash && (
-              <Badge className="animate-pulse bg-primary text-primary-foreground text-[11px] gap-1">
-                <BellRing className="h-3 w-3 shrink-0" />
+              <Badge className="animate-pulse bg-primary text-primary-foreground text-xs gap-1 shadow-sm">
+                <BellRing className="h-3.5 w-3.5 shrink-0" />
                 NEW!
               </Badge>
             )}
-            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
+            <div className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
               {newOrders.length}
-            </Badge>
+            </div>
           </div>
-          <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1 lg:space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1.5 hide-scrollbar">
             {newOrders.map((order) => (
               <KitchenOrderCard
                 key={order.id}
@@ -350,26 +357,26 @@ export function KitchenDisplay() {
               />
             ))}
             {newOrders.length === 0 && (
-              <div className="flex h-32 flex-col items-center justify-center gap-1 text-muted-foreground">
+              <div className="flex h-40 flex-col items-center justify-center gap-3 text-muted-foreground bg-card/50 rounded-2xl border border-dashed border-border/50">
                 <Clock className="h-8 w-8 opacity-20" />
-                <span className="text-sm">No new orders</span>
+                <span className="text-sm font-medium">No new orders</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Preparing Column */}
-        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-lg bg-warning/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "preparing" ? "flex" : "hidden md:flex")}>
-          <div className="mb-3 flex items-center gap-2 lg:mb-4">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-warning lg:h-8 lg:w-8">
-              <ChefHat className="h-3.5 w-3.5 text-warning-foreground lg:h-4 lg:w-4" />
+        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-2xl bg-warning/[0.03] border border-warning/10 p-4 md:min-h-0 lg:p-5", mobileTab === "preparing" ? "flex" : "hidden md:flex")}>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-warning text-warning-foreground shadow-sm">
+              <ChefHat className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-semibold truncate text-foreground lg:text-lg">Preparing</h2>
-            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
+            <h2 className="text-lg font-black truncate text-foreground tracking-tight">Preparing</h2>
+            <div className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-warning/20 text-xs font-bold text-warning-700 dark:text-warning-400">
               {preparingOrders.length}
-            </Badge>
+            </div>
           </div>
-          <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1 lg:space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1.5 hide-scrollbar">
             {preparingOrders.map((order) => (
               <KitchenOrderCard
                 key={order.id}
@@ -381,26 +388,26 @@ export function KitchenDisplay() {
               />
             ))}
             {preparingOrders.length === 0 && (
-              <div className="flex h-32 flex-col items-center justify-center gap-1 text-muted-foreground">
+              <div className="flex h-40 flex-col items-center justify-center gap-3 text-muted-foreground bg-card/50 rounded-2xl border border-dashed border-border/50">
                 <ChefHat className="h-8 w-8 opacity-20" />
-                <span className="text-sm">No orders preparing</span>
+                <span className="text-sm font-medium">No orders preparing</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Ready Column */}
-        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-lg bg-success/10 p-3 md:min-h-0 lg:rounded-xl lg:p-4", mobileTab === "ready" ? "flex" : "hidden md:flex")}>
-          <div className="mb-3 flex items-center gap-2 lg:mb-4">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-success lg:h-8 lg:w-8">
-              <CheckCircle2 className="h-3.5 w-3.5 text-success-foreground lg:h-4 lg:w-4" />
+        <div className={cn("min-h-[200px] flex-1 min-w-0 flex-col rounded-2xl bg-success/[0.03] border border-success/10 p-4 md:min-h-0 lg:p-5", mobileTab === "ready" ? "flex" : "hidden md:flex")}>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-success text-success-foreground shadow-sm">
+              <CheckCircle2 className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-semibold truncate text-foreground lg:text-lg">Ready</h2>
-            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
+            <h2 className="text-lg font-black truncate text-foreground tracking-tight">Ready</h2>
+            <div className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-success/20 text-xs font-bold text-success-700 dark:text-success-400">
               {readyOrders.length}
-            </Badge>
+            </div>
           </div>
-          <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1 lg:space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1.5 hide-scrollbar">
             {readyOrders.map((order) => (
               <KitchenOrderCard
                 key={order.id}
@@ -412,9 +419,9 @@ export function KitchenDisplay() {
               />
             ))}
             {readyOrders.length === 0 && (
-              <div className="flex h-32 flex-col items-center justify-center gap-1 text-muted-foreground">
+              <div className="flex h-40 flex-col items-center justify-center gap-3 text-muted-foreground bg-card/50 rounded-2xl border border-dashed border-border/50">
                 <CheckCircle2 className="h-8 w-8 opacity-20" />
-                <span className="text-sm">No orders ready</span>
+                <span className="text-sm font-medium">No orders ready</span>
               </div>
             )}
           </div>
@@ -476,77 +483,94 @@ function KitchenOrderCard({ order, column, onAction, onEdit, onCancel }: Kitchen
 
   const borderClass =
     column === "new"
-      ? "border-border"
+      ? "border-primary/20"
       : column === "preparing"
         ? "border-warning/30"
         : "border-success/30";
 
+  const glowClass = 
+    column === "new"
+      ? "bg-primary"
+      : column === "preparing"
+        ? "bg-warning"
+        : "bg-success";
+
   return (
     <Card
       className={cn(
-        "bg-card transition-all duration-300",
+        "bg-card/95 backdrop-blur-md transition-all duration-300 relative overflow-hidden group shadow-sm hover:shadow-md border",
         borderClass,
         styles.ring,
         styles.pulse && "animate-pulse-subtle"
       )}
     >
-      <CardHeader className="pb-3 border-b border-border/40 px-3 sm:px-4 pt-3 sm:pt-4">
-        <div className="flex flex-col gap-2.5 sm:gap-3">
-          {/* Row 1: Customer Name + Type + Payment */}
-          <div className="flex flex-wrap items-start justify-between gap-1.5 w-full">
-            <div className="flex items-center gap-1.5 min-w-0 max-w-full flex-1">
-              <TypeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <CardTitle className="text-sm font-bold text-foreground truncate" title={order.customerName || "Guest"}>
-                {order.customerName || "Guest"}
-              </CardTitle>
+      {/* Top glowing edge */}
+      <div className={cn(
+        "absolute top-0 left-0 w-full h-[3px]",
+        glowClass,
+        styles.pulse && "bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]"
+      )} />
+      <CardHeader className="pb-3 border-b border-border/40 px-4 pt-4 sm:pt-5">
+        <div className="flex flex-col gap-3">
+          {/* Row 1: Order/Table ID + Timer */}
+          <div className="flex items-start justify-between w-full">
+            <div className="flex flex-col">
+               <div className="flex items-center gap-2 mb-1.5">
+                 {order.tableId && (
+                   <span className="text-[15px] sm:text-[17px] font-black text-foreground bg-secondary/80 px-2 py-0.5 rounded-md shadow-sm border border-border/50">
+                     T-{order.tableId.replace("t", "")}
+                   </span>
+                 )}
+                 <span className="text-[13px] sm:text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                   #{order.id.slice(0, 4)}
+                 </span>
+               </div>
+               <div className="flex items-center gap-1.5 min-w-0">
+                 <TypeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                 <span className="text-[13px] sm:text-sm font-semibold text-foreground truncate" title={order.customerName || "Guest"}>
+                   {order.customerName || "Guest"}
+                 </span>
+               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-1.5 shrink-0 min-w-0">
-              <Badge variant="secondary" className="text-[10px] sm:text-[11px] font-medium bg-secondary/60 shrink-0">
-                {orderTypeLabels[order.type] || order.type}
+            
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              {/* Urgency Badge */}
+              <Badge variant="outline" className={cn("gap-1 border font-bold text-xs px-2.5 py-1 shadow-sm transition-colors", styles.badge, styles.pulse && "bg-red-500 text-white border-red-500")}>
+                <Timer className="h-3.5 w-3.5 shrink-0" />
+                {elapsed < 1 ? "Just now" : `${elapsed}m` }
               </Badge>
               {order.payLater && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] sm:text-[11px] font-bold bg-chart-3/10 text-chart-3 border-chart-3/30 shrink-0"
-                >
+                <Badge variant="outline" className="text-[9px] font-bold bg-chart-3/10 text-chart-3 border-chart-3/30 uppercase tracking-wider mt-1">
                   Pay Later
                 </Badge>
               )}
             </div>
           </div>
 
-          {/* Row 2: Time + Table + Order ID + Phone */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground w-full" suppressHydrationWarning>
-            <Badge variant="outline" className={cn("gap-1 border text-[10px] sm:text-[11px] font-medium whitespace-nowrap", styles.badge)}>
-              <Timer className="h-3 w-3 shrink-0" />
-              {elapsed < 1 ? "Just now" : `${elapsed}m` }
+          {/* Row 2: Secondary Info */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground w-full">
+            <Badge variant="secondary" className="text-[9px] font-bold uppercase tracking-wider bg-secondary/60">
+              {orderTypeLabels[order.type] || order.type}
             </Badge>
-
-            {order.tableId && (
-              <Badge variant="secondary" className="text-[10px] sm:text-[11px] font-medium whitespace-nowrap bg-muted">
-                T-{order.tableId.replace("t", "")}
-              </Badge>
-            )}
-            <span className="text-[10px] sm:text-[11px] font-mono opacity-60 truncate max-w-[90px]">{order.id.toUpperCase()}</span>
             {order.customerPhone && (
-              <Badge variant="outline" className="text-[10px] sm:text-[11px] border-dashed border-border/50">
+              <Badge variant="outline" className="text-[9px] font-medium border-dashed border-border/60">
                 📞 {order.customerPhone}
               </Badge>
             )}
             {order.createdBy && (
-              <Badge variant="outline" className="text-[10px] sm:text-[11px] border-dashed opacity-70 whitespace-nowrap max-w-[90px] overflow-hidden px-2">
-                <span className="truncate">by {order.createdBy}</span>
-              </Badge>
+              <span className="text-[10px] font-medium opacity-60 ml-auto truncate max-w-[80px]">
+                by {order.createdBy}
+              </span>
             )}
           </div>
         </div>
 
         {/* Urgency and Notes stacked below Row 2 */}
         {(urgency === "urgent" && column !== "ready") || order.orderNotes ? (
-          <div className="pt-2 flex flex-col gap-1.5 mt-1 border-t border-dashed border-border/40">
+          <div className="pt-2.5 flex flex-col gap-1.5 mt-2 border-t border-dashed border-border/40">
             {urgency === "urgent" && column !== "ready" && (
-              <div className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-red-500">
-                <AlertTriangle className="h-3 w-3 shrink-0" />
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-red-500 bg-red-500/10 px-2 py-1 rounded-md w-max">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 Waiting over {elapsed} minutes!
               </div>
             )}
@@ -559,29 +583,29 @@ function KitchenOrderCard({ order, column, onAction, onEdit, onCancel }: Kitchen
         ) : null}
       </CardHeader>
 
-      <CardContent className="p-3 sm:p-4 pt-3 flex flex-col gap-3 sm:gap-4 flex-1">
+      <CardContent className="p-4 pt-3 flex flex-col gap-4 flex-1">
         {/* Row 3: Item list */}
-        <ul className="space-y-1.5 sm:space-y-2">
+        <ul className="space-y-2.5">
           {order.items.slice(0, expanded ? undefined : 3).map((item) => (
-            <li key={item.id} className="flex flex-col text-sm border-b border-border/30 pb-2 last:border-0 last:pb-0">
+            <li key={item.id} className="flex flex-col text-sm border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
               <span className="text-foreground flex items-start leading-snug">
-                <span className="font-bold text-primary min-w-[24px] inline-block shrink-0">{item.quantity}x</span>
-                <span className="flex-1 min-w-0 break-words font-medium text-[13px] sm:text-sm">
+                <span className="font-black text-primary text-[15px] min-w-[28px] inline-block shrink-0">{item.quantity}x</span>
+                <span className="flex-1 min-w-0 break-words font-semibold text-[14px]">
                   {item.name}
                   {item.variant && (
-                    <span className="ml-1 text-[11px] sm:text-xs text-muted-foreground break-words">
-                      ({item.variant})
+                    <span className="ml-1.5 text-[11px] sm:text-xs font-medium text-muted-foreground break-words bg-secondary/50 px-1.5 py-0.5 rounded">
+                      {item.variant}
                     </span>
                   )}
                 </span>
               </span>
               {item.modifiers && item.modifiers.length > 0 && (
-                <span className="text-[11px] sm:text-xs text-muted-foreground pl-[24px] mt-0.5 leading-tight font-medium">
+                <span className="text-[11px] sm:text-xs text-muted-foreground pl-[28px] mt-1 leading-tight font-medium">
                   + {item.modifiers.map(m => m.name).join(", ")}
                 </span>
               )}
               {item.notes && (
-                <span className="text-[11px] sm:text-xs text-muted-foreground italic pl-[24px] mt-0.5 leading-tight">
+                <span className="text-[11px] sm:text-xs text-primary/80 italic pl-[28px] mt-1 leading-tight font-medium bg-primary/5 rounded-md py-1 px-2 border border-primary/10 w-fit">
                   ↳ {item.notes}
                 </span>
               )}
@@ -590,11 +614,11 @@ function KitchenOrderCard({ order, column, onAction, onEdit, onCancel }: Kitchen
           {/* Supplementary Items */}
           {(!showShowMore || expanded) && order.supplementaryBills?.map(bill =>
             bill.items.map(item => (
-              <li key={item.id} className="flex flex-col text-sm border-l-[3px] border-warning pl-2.5 ml-0.5 mt-2 py-1.5 bg-warning/5 rounded-r pb-2 last:mb-0">
+              <li key={item.id} className="flex flex-col text-sm border-l-4 border-warning pl-3 ml-0.5 mt-3 py-2 bg-warning/5 rounded-r-xl pb-2.5 last:mb-0 shadow-sm">
                 <div className="text-foreground flex items-start leading-snug">
-                  <span className="text-[9px] sm:text-[10px] font-black text-warning mr-1.5 tracking-wider uppercase mt-[3px] shrink-0">ADD</span>
-                  <span className="font-bold text-primary min-w-[20px] inline-block shrink-0">{item.quantity}x</span>
-                  <span className="flex-1 min-w-0 break-words font-medium text-[13px] sm:text-sm">
+                  <span className="text-[9px] sm:text-[10px] font-black text-warning mr-2 tracking-wider uppercase mt-[3px] shrink-0 bg-warning/10 px-1.5 py-0.5 rounded">ADD</span>
+                  <span className="font-black text-primary text-[15px] min-w-[28px] inline-block shrink-0">{item.quantity}x</span>
+                  <span className="flex-1 min-w-0 break-words font-semibold text-[14px]">
                     {item.name}
                     {item.variant && (
                       <span className="ml-1 text-[11px] sm:text-xs text-muted-foreground break-words">
@@ -631,16 +655,15 @@ function KitchenOrderCard({ order, column, onAction, onEdit, onCancel }: Kitchen
         </ul>
 
         {/* Row 4: Action buttons */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-1 mt-auto w-full">
+        <div className="flex items-center gap-2 pt-2 mt-auto w-full">
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 h-9 px-2.5 min-w-0"
+            className="h-10 w-10 p-0 shrink-0 rounded-xl"
             onClick={onEdit}
             title="Edit order"
           >
-            <Pencil className="h-3.5 w-3.5 shrink-0" />
-            <span className="hidden sm:inline truncate">Edit</span>
+            <Pencil className="h-4 w-4 text-muted-foreground" />
           </Button>
           <AlertDialog open={showCancel} onOpenChange={setShowCancel}>
             <AlertDialogTrigger asChild>
@@ -689,11 +712,11 @@ function KitchenOrderCard({ order, column, onAction, onEdit, onCancel }: Kitchen
           <Button
             size="sm"
             variant={action.variant}
-            className={cn("flex-1 h-9 gap-1.5 font-semibold min-w-0", action.className)}
+            className={cn("flex-1 h-10 gap-2 font-black text-sm min-w-0 rounded-xl", action.className)}
             onClick={onAction}
           >
             <ActionIcon className="h-4 w-4 shrink-0" />
-            <span className="truncate">{action.label}</span>
+            <span className="truncate uppercase tracking-wider">{action.label}</span>
           </Button>
         </div>
       </CardContent>
