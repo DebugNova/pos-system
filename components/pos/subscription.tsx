@@ -87,7 +87,8 @@ export function Subscription() {
         },
         body: JSON.stringify({
           plan_id: plan.planId,
-          plan_type: plan.id
+          plan_type: plan.id,
+          total_count: plan.id === 'yearly' ? 1 : plan.id === 'quarterly' ? 4 : 12
         }),
       });
 
