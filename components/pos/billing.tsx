@@ -47,7 +47,7 @@ import {
   UtensilsCrossed,
   Zap,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { ReceiptTemplate } from "./receipt-template";
@@ -101,6 +101,13 @@ export function Billing() {
       (o.supplementaryBills && o.supplementaryBills.some((b) => !b.payment))
     );
   });
+
+  const totalPendingAmount = pendingPaymentOrders.reduce((sum, o) => {
+    if (o.status === "awaiting-payment" || o.status === "served-unpaid") {
+      return sum + (o.total || 0);
+    }
+    return sum + (o.supplementaryBills?.filter(b => !b.payment).reduce((s, b) => s + b.total, 0) || 0);
+  }, 0);
 
   const order = selectedOrder ? orders.find((o) => o.id === selectedOrder) : null;
 
@@ -505,12 +512,21 @@ export function Billing() {
             </div>
             <h2 className="text-xl font-black text-foreground tracking-tight">Pending Bills</h2>
           </div>
-          <p className="text-sm font-medium text-muted-foreground ml-12">
-            {pendingPaymentOrders.length} {pendingPaymentOrders.length === 1 ? 'order' : 'orders'} waiting
-          </p>
+          <div className="flex flex-col ml-12">
+            <p className="text-sm font-medium text-muted-foreground">
+              {pendingPaymentOrders.length} {pendingPaymentOrders.length === 1 ? 'order' : 'orders'} waiting
+            </p>
+            {totalPendingAmount > 0 && (
+              <p className="text-sm font-bold text-primary mt-0.5">
+                Total: {totalPendingAmount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-3 pb-24 md:pb-5">
-          {pendingPaymentOrders.map((o) => (
+          {pendingPaymentOrders.map((o) => {
+            const isOverdue = differenceInDays(new Date(), new Date(o.createdAt)) >= 3;
+            return (
             <button
               key={o.id}
               onClick={() => {
@@ -522,12 +538,17 @@ export function Billing() {
                 "group relative w-full flex flex-col p-4 rounded-[20px] border transition-all duration-300 text-left overflow-hidden",
                 selectedOrder === o.id
                   ? "border-primary/40 bg-primary/5 shadow-[0_8px_30px_0_rgba(234,117,49,0.12)] scale-[0.98] ring-1 ring-primary/20"
+                  : isOverdue
+                  ? "border-red-500/50 bg-red-500/5 hover:bg-red-500/10 shadow-sm"
                   : "border-border/50 bg-card hover:bg-secondary/40 hover:border-border/80 hover:shadow-sm active:scale-[0.98]"
               )}
             >
               {/* Optional selected indicator line */}
               {selectedOrder === o.id && (
                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-primary rounded-r-full" />
+              )}
+              {isOverdue && selectedOrder !== o.id && (
+                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-red-500 rounded-r-full" />
               )}
               
               <div className="flex items-start justify-between gap-3 w-full relative z-10 pl-1">
@@ -576,7 +597,7 @@ export function Billing() {
                 </div>
               </div>
             </button>
-          ))}
+          )})}
           {pendingPaymentOrders.length === 0 && (
             <div className="flex flex-col h-40 items-center justify-center text-muted-foreground gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/50">
