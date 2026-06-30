@@ -124,9 +124,39 @@ export default function POSApp() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Calculate days remaining if subscription is active and we have an expiry date
-  let daysRemaining = -1;
+  // Calculate time remaining if subscription is active and we have an expiry date
+  let timeRemainingStr = "";
   let showExpiryWarning = false;
+
+  const calculateTimeRemainingStr = (diffTime: number, expiryDate: Date) => {
+    if (diffTime < 0) return "soon";
+    const hours = diffTime / (1000 * 60 * 60);
+    
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const isToday = expiryDate.getDate() === today.getDate() && expiryDate.getMonth() === today.getMonth() && expiryDate.getFullYear() === today.getFullYear();
+    const isTomorrow = expiryDate.getDate() === tomorrow.getDate() && expiryDate.getMonth() === tomorrow.getMonth() && expiryDate.getFullYear() === tomorrow.getFullYear();
+    
+    if (isToday) {
+      if (hours < 1) return "in less than an hour";
+      return `tonight (in ${Math.floor(hours)} ${Math.floor(hours) === 1 ? 'hour' : 'hours'})`;
+    }
+    
+    if (isTomorrow) {
+      if (hours < 24) return `tomorrow (in ${Math.floor(hours)} ${Math.floor(hours) === 1 ? 'hour' : 'hours'})`;
+      return "tomorrow";
+    }
+
+    if (hours < 24) {
+      const h = Math.max(1, Math.floor(hours));
+      return `in ${h} ${h === 1 ? 'hour' : 'hours'}`;
+    } else {
+      const d = Math.ceil(hours / 24);
+      return `in ${d} ${d === 1 ? 'day' : 'days'}`;
+    }
+  };
   
   if (isSubscriptionActive && subscriptionExpiryDate) {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -139,7 +169,7 @@ export default function POSApp() {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
       if (diffDays <= 3 && diffDays >= 0) {
-        daysRemaining = diffDays;
+        timeRemainingStr = calculateTimeRemainingStr(diffTime, expiryDate);
         showExpiryWarning = true;
       }
     }
@@ -155,7 +185,7 @@ export default function POSApp() {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
       if (diffDays <= 3 && diffDays > 0) {
-        daysRemaining = diffDays;
+        timeRemainingStr = calculateTimeRemainingStr(diffTime, expiryDate);
         showExpiryWarning = true;
       }
     }
@@ -217,7 +247,7 @@ export default function POSApp() {
       />
       {showExpiryWarning && (
         <SubscriptionExpiryWarningModal
-          daysRemaining={daysRemaining}
+          timeRemainingStr={timeRemainingStr}
           onViewPlans={() => {
             dismissExpiryWarning();
             setActiveView("subscription");

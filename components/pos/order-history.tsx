@@ -131,6 +131,48 @@ export function OrderHistory() {
     return matchesSearch && matchesStatus && matchesType && matchesPayment;
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  const validOrdersForTotal = filteredOrders.filter(
+    (o) => o.status !== "cancelled" && !o.refund
+  );
+
+  const totalCash = validOrdersForTotal.reduce((sum, o) => {
+    let orderCash = 0;
+    if (o.payment?.method === "cash") {
+      orderCash += o.payment.amount || (o.grandTotal ?? o.total);
+    } else if (o.payment?.method === "split" && o.payment.splitDetails?.cash) {
+      orderCash += o.payment.splitDetails.cash;
+    }
+    
+    o.supplementaryBills?.forEach(bill => {
+      if (bill.payment?.method === "cash") {
+        orderCash += bill.payment.amount || bill.total;
+      } else if (bill.payment?.method === "split" && bill.payment.splitDetails?.cash) {
+        orderCash += bill.payment.splitDetails.cash;
+      }
+    });
+
+    return sum + orderCash;
+  }, 0);
+
+  const totalUPI = validOrdersForTotal.reduce((sum, o) => {
+    let orderUPI = 0;
+    if (o.payment?.method === "upi") {
+      orderUPI += o.payment.amount || (o.grandTotal ?? o.total);
+    } else if (o.payment?.method === "split" && o.payment.splitDetails?.upi) {
+      orderUPI += o.payment.splitDetails.upi;
+    }
+    
+    o.supplementaryBills?.forEach(bill => {
+      if (bill.payment?.method === "upi") {
+        orderUPI += bill.payment.amount || bill.total;
+      } else if (bill.payment?.method === "split" && bill.payment.splitDetails?.upi) {
+        orderUPI += bill.payment.splitDetails.upi;
+      }
+    });
+
+    return sum + orderUPI;
+  }, 0);
+
   const order = selectedOrder ? orders.find((o) => o.id === selectedOrder) : null;
 
   const getStatusColor = (status: string) => {
@@ -190,10 +232,20 @@ export function OrderHistory() {
             View and manage all past and active orders
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="px-3 py-1.5 text-sm font-bold bg-secondary/80 shadow-sm border border-border/50 rounded-xl">
             {filteredOrders.length} orders found
           </Badge>
+          {totalCash > 0 && (
+            <Badge variant="outline" className="px-3 py-1.5 text-sm font-bold border-emerald-500/50 text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/10 shadow-sm rounded-xl">
+              Cash: {totalCash.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+            </Badge>
+          )}
+          {totalUPI > 0 && (
+            <Badge variant="outline" className="px-3 py-1.5 text-sm font-bold border-violet-500/50 text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-500/10 shadow-sm rounded-xl">
+              UPI: {totalUPI.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })}
+            </Badge>
+          )}
         </div>
       </div>
 

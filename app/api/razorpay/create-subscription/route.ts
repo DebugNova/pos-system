@@ -27,6 +27,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
     }
     const body = await req.json();
+    console.log("[DEBUG] create-subscription body:", body);
     const { plan_id, plan_type, total_count = 12 } = body;
 
     if (!plan_id || !plan_type) {
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
     
     // Razorpay SDK often returns the error inside an `error` property
     const errorMessage = error?.error?.description || error?.description || error?.message || 'Internal Server Error';
+    console.error("[DEBUG] Razorpay Error Message:", errorMessage);
     
     return NextResponse.json(
       { error: errorMessage },

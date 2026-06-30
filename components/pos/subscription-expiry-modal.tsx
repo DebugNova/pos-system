@@ -5,12 +5,12 @@ import { AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SubscriptionExpiryWarningModalProps {
-  daysRemaining: number;
+  timeRemainingStr: string;
   onViewPlans: () => void;
   onDismiss: () => void;
 }
 
-export function SubscriptionExpiryWarningModal({ daysRemaining, onViewPlans, onDismiss }: SubscriptionExpiryWarningModalProps) {
+export function SubscriptionExpiryWarningModal({ timeRemainingStr, onViewPlans, onDismiss }: SubscriptionExpiryWarningModalProps) {
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
       {/* Dark overlay backdrop */}
@@ -39,7 +39,7 @@ export function SubscriptionExpiryWarningModal({ daysRemaining, onViewPlans, onD
           </div>
           
           <p className="mb-8 text-sm text-muted-foreground">
-            Your maintenance plan will expire in <strong className="text-foreground">{daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}</strong>. Please renew your subscription to avoid interruption of POS services.
+            Your maintenance plan will expire <strong className="text-foreground">{timeRemainingStr}</strong>. Please renew your subscription to avoid interruption of POS services.
           </p>
           
           <div className="flex flex-col gap-3">
