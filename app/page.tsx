@@ -166,7 +166,7 @@ export default function POSApp() {
     const hasDismissedToday = lastDismissedExpiryWarningDate === todayStr;
     
     if (!hasDismissedToday) {
-      const expiryDate = new Date("2026-07-01T00:00:00Z");
+      const expiryDate = new Date("2026-07-01T00:00:00");
       const today = new Date();
       const diffTime = expiryDate.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -184,7 +184,7 @@ export default function POSApp() {
         {isLoggedIn && (
           <div className="flex w-full h-full flex-col">
             <OfflineBanner />
-            {isSubscriptionActive === false && activeView !== "subscription" && new Date() >= new Date("2026-07-01T00:00:00Z") ? (
+            {isSubscriptionActive === false && activeView !== "subscription" && new Date() >= new Date("2026-07-01T00:00:00") ? (
               <div className="flex w-full h-full overflow-hidden relative">
                 {/* Blurred POS Background */}
                 <div className="flex w-full h-full overflow-hidden blur-[8px] pointer-events-none opacity-50 scale-[0.98] transition-all">
