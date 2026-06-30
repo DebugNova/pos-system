@@ -22,7 +22,7 @@ import {
   Wallet,
   Smartphone
 } from "lucide-react";
-import { formatDistanceToNow, isToday } from "date-fns";
+import { formatDistanceToNow, isToday, differenceInDays } from "date-fns";
 import { ReportsContent } from "./reports";
 import { DataManager } from "./data-manager";
 
@@ -103,14 +103,24 @@ export function Dashboard() {
     (o) => o.status === "new" || o.status === "preparing" || o.status === "ready"
   ).length;
   const kitchenQueue = orders.filter((o) => o.status === "preparing").length;
-  const awaitingPaymentOrders = orders.filter((o) => {
+  const awaitingPaymentOrdersList = orders.filter((o) => {
     if (o.status === "cancelled" || o.status === "completed") return false;
     return (
       o.status === "awaiting-payment" ||
       o.status === "served-unpaid" ||
       (o.supplementaryBills && o.supplementaryBills.some((b) => !b.payment))
     );
-  }).length;
+  });
+  const awaitingPaymentOrders = awaitingPaymentOrdersList.length;
+
+  const totalPendingAmount = awaitingPaymentOrdersList.reduce((sum, o) => {
+    if (o.status === "awaiting-payment" || o.status === "served-unpaid") {
+      return sum + (o.total || 0);
+    }
+    return sum + (o.supplementaryBills?.filter(b => !b.payment).reduce((s, b) => s + b.total, 0) || 0);
+  }, 0);
+
+  const hasOverdueBills = awaitingPaymentOrdersList.some(o => differenceInDays(new Date(), new Date(o.createdAt)) >= 3);
 
   const recentOrders = orders.slice(0, 5);
 
@@ -204,17 +214,43 @@ export function Dashboard() {
         {/* Awaiting Payment */}
         <div 
           onClick={() => setActiveView("billing")}
-          className="flex flex-col p-5 sm:p-6 rounded-[24px] bg-gradient-to-br from-amber-500/5 to-card border border-border/40 shadow-sm transition-all hover:shadow-lg relative overflow-hidden group cursor-pointer active:scale-[0.98]"
+          className={cn(
+            "flex flex-col p-5 sm:p-6 rounded-[24px] border shadow-sm transition-all hover:shadow-lg relative overflow-hidden group cursor-pointer active:scale-[0.98]",
+            hasOverdueBills 
+              ? "bg-red-500/10 border-red-500/30 hover:bg-red-500/15" 
+              : "bg-gradient-to-br from-amber-500/5 to-card border-border/40"
+          )}
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-[40px] -mr-10 -mt-10 transition-all duration-500 group-hover:bg-amber-500/20" />
+          <div className={cn(
+            "absolute top-0 right-0 w-32 h-32 rounded-full blur-[40px] -mr-10 -mt-10 transition-all duration-500",
+            hasOverdueBills ? "bg-red-500/20 group-hover:bg-red-500/30" : "bg-amber-500/10 group-hover:bg-amber-500/20"
+          )} />
           <div className="flex items-start justify-between mb-4 relative z-10">
-            <div className="flex items-center justify-center w-12 h-12 rounded-[18px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 shadow-sm">
+            <div className={cn(
+              "flex items-center justify-center w-12 h-12 rounded-[18px] border group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 shadow-sm",
+              hasOverdueBills 
+                ? "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/20" 
+                : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20"
+            )}>
               <Wallet className="h-6 w-6" />
             </div>
+            {hasOverdueBills && (
+              <div className="px-2 py-1 rounded-full bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                Overdue
+              </div>
+            )}
           </div>
           <div className="flex flex-col relative z-10">
-            <div className="text-3xl sm:text-4xl font-black text-foreground tracking-tighter mb-1 drop-shadow-sm">
+            <div className="text-3xl sm:text-4xl font-black text-foreground tracking-tighter mb-1 drop-shadow-sm flex items-end gap-2">
               {awaitingPaymentOrders}
+              {totalPendingAmount > 0 && (
+                <span className={cn(
+                  "text-base mb-1.5 font-bold",
+                  hasOverdueBills ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-500"
+                )}>
+                  ({totalPendingAmount.toLocaleString("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 })})
+                </span>
+              )}
             </div>
             <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Awaiting Pay</span>
           </div>

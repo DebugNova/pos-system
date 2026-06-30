@@ -130,7 +130,6 @@ export default function POSApp() {
 
   const calculateTimeRemainingStr = (diffTime: number, expiryDate: Date) => {
     if (diffTime < 0) return "soon";
-    const hours = diffTime / (1000 * 60 * 60);
     
     const today = new Date();
     const tomorrow = new Date(today);
@@ -139,23 +138,11 @@ export default function POSApp() {
     const isToday = expiryDate.getDate() === today.getDate() && expiryDate.getMonth() === today.getMonth() && expiryDate.getFullYear() === today.getFullYear();
     const isTomorrow = expiryDate.getDate() === tomorrow.getDate() && expiryDate.getMonth() === tomorrow.getMonth() && expiryDate.getFullYear() === tomorrow.getFullYear();
     
-    if (isToday) {
-      if (hours < 1) return "in less than an hour";
-      return `tonight (in ${Math.floor(hours)} ${Math.floor(hours) === 1 ? 'hour' : 'hours'})`;
-    }
-    
-    if (isTomorrow) {
-      if (hours < 24) return `tomorrow (in ${Math.floor(hours)} ${Math.floor(hours) === 1 ? 'hour' : 'hours'})`;
-      return "tomorrow";
-    }
+    if (isToday) return "today";
+    if (isTomorrow) return "tomorrow";
 
-    if (hours < 24) {
-      const h = Math.max(1, Math.floor(hours));
-      return `in ${h} ${h === 1 ? 'hour' : 'hours'}`;
-    } else {
-      const d = Math.ceil(hours / 24);
-      return `in ${d} ${d === 1 ? 'day' : 'days'}`;
-    }
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return `in ${diffDays} days`;
   };
   
   if (isSubscriptionActive && subscriptionExpiryDate) {
