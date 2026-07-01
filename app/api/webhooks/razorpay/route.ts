@@ -72,7 +72,9 @@ export async function POST(req: Request) {
           
         if (error) {
           console.error('Supabase upsert error:', error);
-          return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+          // Return 200 to prevent Razorpay from retrying and disabling the webhook
+          // for non-transient errors like foreign key violations (user deleted, etc.)
+          return NextResponse.json({ received: true, error: 'Database update failed but acknowledged' }, { status: 200 });
         }
       } else {
         const { error } = await supabase
@@ -82,7 +84,8 @@ export async function POST(req: Request) {
           
         if (error) {
           console.error('Supabase update error:', error);
-          return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+          // Return 200 to prevent Razorpay from retrying continuously
+          return NextResponse.json({ received: true, error: 'Database update failed but acknowledged' }, { status: 200 });
         }
       }
       
@@ -107,12 +110,17 @@ export async function POST(req: Request) {
         }
         
         if (notifType) {
-          await supabase.from('notifications').insert({
+          const { error: notifError } = await supabase.from('notifications').insert({
             user_id: userId,
             type: notifType,
             title,
             message,
           });
+          
+          if (notifError) {
+            console.error('Supabase notification insert error:', notifError);
+            // Non-critical, continue
+          }
         }
       }
     }
@@ -120,6 +128,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   } catch (error: any) {
     console.error('Webhook error:', error);
+    // Return 500 only for unhandled exceptions or severe errors before signature validation
     return NextResponse.json(
       { error: error.message || 'Internal Server Error' },
       { status: 500 }
