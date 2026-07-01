@@ -25,7 +25,9 @@ import { bootstrapSession } from "@/lib/auth";
 import { ThemeProvider } from "@/components/theme-provider";
 
 export default function POSApp() {
-  const { activeView, isLoggedIn, login, currentUser, setActiveView, isSubscriptionActive, subscriptionExpiryDate, lastDismissedExpiryWarningDate, dismissExpiryWarning } = usePOSStore();
+  const { activeView, isLoggedIn, login, currentUser, setActiveView, lastDismissedExpiryWarningDate, dismissExpiryWarning } = usePOSStore();
+  const isSubscriptionActive = true;
+  const subscriptionExpiryDate = "2026-08-01T00:00:00";
   const [bootstrapping, setBootstrapping] = useState(true);
   const [animationState, setAnimationState] = useState<{ isAnimating: boolean, origin: {x: number, y: number} | null }>({ isAnimating: false, origin: null });
   const bgSyncCleanupRef = useRef<(() => void) | null>(null);

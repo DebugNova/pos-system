@@ -48,7 +48,9 @@ const plans = [
 ];
 
 export function Subscription() {
-  const { isSubscriptionActive, setSubscriptionStatus, setActiveView, subscriptionExpiryDate } = usePOSStore();
+  const { setSubscriptionStatus, setActiveView } = usePOSStore();
+  const isSubscriptionActive = true;
+  const subscriptionExpiryDate = "2026-08-01T00:00:00";
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [subDetails, setSubDetails] = useState<{ planType: string, currentPeriodEnd: string } | null>(null);
