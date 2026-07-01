@@ -48,7 +48,7 @@ const plans = [
 ];
 
 export function Subscription() {
-  const { isSubscriptionActive, setSubscriptionStatus, setActiveView } = usePOSStore();
+  const { isSubscriptionActive, setSubscriptionStatus, setActiveView, subscriptionExpiryDate } = usePOSStore();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [subDetails, setSubDetails] = useState<{ planType: string, currentPeriodEnd: string } | null>(null);
@@ -251,7 +251,7 @@ export function Subscription() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground font-medium">Current Plan</p>
-                      <p className="font-semibold text-lg capitalize">{subDetails?.planType || 'Test Plan'}</p>
+                      <p className="font-semibold text-lg capitalize">{subDetails?.planType || 'Monthly'}</p>
                     </div>
                   </div>
                   <div className="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-sm font-bold tracking-wide">
@@ -267,7 +267,7 @@ export function Subscription() {
                     <div>
                       <p className="text-sm text-muted-foreground font-medium">Valid Until</p>
                       <p className="font-semibold text-lg">
-                        {subDetails?.currentPeriodEnd ? format(new Date(subDetails.currentPeriodEnd), 'MMM dd, yyyy') : format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'MMM dd, yyyy')}
+                        {subDetails?.currentPeriodEnd ? format(new Date(subDetails.currentPeriodEnd), 'MMM dd, yyyy') : (subscriptionExpiryDate ? format(new Date(subscriptionExpiryDate), 'MMM dd, yyyy') : format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'MMM dd, yyyy'))}
                       </p>
                     </div>
                   </div>

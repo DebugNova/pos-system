@@ -31,6 +31,12 @@ export default function POSApp() {
   const bgSyncCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    // Force subscription active for client since payment was done manually
+    usePOSStore.getState().setSubscriptionStatus(true);
+    usePOSStore.getState().setSubscriptionExpiryDate("2026-08-01T00:00:00");
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
