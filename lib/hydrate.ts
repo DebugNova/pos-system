@@ -123,8 +123,12 @@ export async function hydrateStoreFromSupabase(): Promise<void> {
       let finalMenuItems = state.menuItems;
       if (menuItems.length === 0 && state.menuItems.length > 0) {
         console.log("[hydrate] menu_items table empty — seeding", state.menuItems.length, "items to Supabase");
-        await Promise.all(state.menuItems.map((item) => upsertMenuItem(item).catch(console.error)));
-        finalMenuItems = state.menuItems; // keep local (DB now has them)
+        const results = await Promise.allSettled(state.menuItems.map((item) => upsertMenuItem(item)));
+        const failedCount = results.filter(r => r.status === 'rejected').length;
+        if (failedCount > 0) {
+          console.warn(`[hydrate] Failed to seed ${failedCount} menu items due to Supabase RLS policies. Your local menu items will still work offline.`);
+        }
+        finalMenuItems = state.menuItems; // keep local (DB now has them, or we fallback gracefully)
       } else if (menuItems.length > 0) {
         // DB has items — use DB as source of truth but keep any locally-added
         // items that haven't synced yet (id not present in DB result).
