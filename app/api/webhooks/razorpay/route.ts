@@ -24,6 +24,58 @@ export async function POST(req: Request) {
     const event = JSON.parse(bodyText);
     const eventType = event.event;
 
+    // ── Campus Connect payment relay (Suhashi is CC's single Razorpay webhook endpoint) ──
+    // CC purchases run through this shared Razorpay account, so Razorpay delivers their payment
+    // events HERE. If an event is tagged for Campus Connect (notes.source / notes.cc_purchase_id
+    // set by app/api/campus-connect/create-payment), forward the raw event — HMAC-signed with the
+    // shared SUHASHI_HANDOFF_SECRET — to CC's webhook, which verifies + grants the entitlement.
+    // Suhashi's own POS billing (subscription.* events) is untouched below.
+    const CC_PAYMENT_EVENTS = ['payment.captured', 'payment_link.paid', 'order.paid'];
+    if (CC_PAYMENT_EVENTS.includes(eventType)) {
+      const pl = event.payload || {};
+      const notes =
+        pl.payment?.entity?.notes || pl.payment_link?.entity?.notes || pl.order?.entity?.notes || {};
+      const isCampusConnect = notes?.source === 'campus_connect' || !!notes?.cc_purchase_id;
+
+      if (isCampusConnect) {
+        const handoff = process.env.SUHASHI_HANDOFF_SECRET;
+        const ccUrl =
+          process.env.CC_WEBHOOK_RELAY_URL ||
+          'https://zvcdqdtuzatmthrawrnv.functions.supabase.co/razorpay-webhook';
+
+        if (!handoff) {
+          console.error('[cc-relay] SUHASHI_HANDOFF_SECRET not set — cannot forward CC payment');
+          return NextResponse.json({ received: true, cc_relay: 'no_secret' }, { status: 200 });
+        }
+
+        const relaySig = crypto.createHmac('sha256', handoff).update(bodyText).digest('hex');
+        try {
+          const ccRes = await fetch(ccUrl, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-cc-relay-signature': relaySig },
+            body: bodyText,
+          });
+          if (ccRes.ok) {
+            return NextResponse.json({ received: true, cc_relay: 'ok' }, { status: 200 });
+          }
+          const detail = await ccRes.text().catch(() => '');
+          console.error('[cc-relay] CC webhook returned', ccRes.status, detail);
+          // 4xx won't be fixed by a retry (config issue) → ack so Razorpay stops; alert via logs.
+          // 5xx/transient → 502 so Razorpay retries later (CC's grant is idempotent, safe to repeat).
+          if (ccRes.status >= 400 && ccRes.status < 500) {
+            return NextResponse.json({ received: true, cc_relay: 'client_error' }, { status: 200 });
+          }
+          return NextResponse.json({ received: false, cc_relay: 'downstream_error' }, { status: 502 });
+        } catch (e: any) {
+          console.error('[cc-relay] forward failed:', e?.message);
+          return NextResponse.json({ received: false, cc_relay: 'forward_failed' }, { status: 502 });
+        }
+      }
+
+      // A payment event that isn't Campus Connect's → nothing for Suhashi to do here.
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+
     // Use Service Role to bypass RLS during webhook updates
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
