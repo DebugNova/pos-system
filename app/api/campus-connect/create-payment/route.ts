@@ -15,7 +15,7 @@ import crypto from 'crypto';
 
 function priceFor(item_type: string, qty = 1): number | null {
   switch (item_type) {
-    case 'sub_plus_monthly':    return 100;
+    case 'sub_plus_monthly':    return 16900;
     case 'sub_plus_quarterly':  return 46900;
     case 'sub_plus_semester':   return 76900;
     case 'sub_elite_monthly':   return 46900;
