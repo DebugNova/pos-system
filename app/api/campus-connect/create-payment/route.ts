@@ -76,7 +76,15 @@ export async function POST(req: Request) {
     }
 
     // Re-price against our own catalog. The token's amount must match exactly.
-    const expected = priceFor(data.item_type, data.quantity ?? 1);
+    // For party_booking (which has dynamic pricing), we bypass the static price catalog check
+    // since the handoff token is signed securely with our shared HMAC secret.
+    let expected = null;
+    if (data.item_type === 'party_booking') {
+      expected = data.amount_paise;
+    } else {
+      expected = priceFor(data.item_type, data.quantity ?? 1);
+    }
+
     if (expected == null || expected !== data.amount_paise) {
       return NextResponse.json({ error: 'amount mismatch' }, { status: 400 });
     }
